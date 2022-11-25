@@ -597,8 +597,8 @@ public class Core implements AutoCloseable {
     return Mono.defer(() -> {
       NanoTimestamp start = NanoTimestamp.now();
       return configurationProvider
-        .closeBucket(name)
-        .doOnNext(v -> logger.info("closed bucket {}", name))
+        .closeBucket(name, !shutdown.get())
+        .doFinally(v -> logger.info("closed bucket {}", name))
         .doOnSuccess(ignored -> eventBus.publish(new BucketClosedEvent(
           start.elapsed(),
           coreContext,
@@ -758,18 +758,22 @@ public class Core implements AutoCloseable {
           return Flux
             .fromIterable(currentConfig.bucketConfigs().keySet())
                   .doOnNext(v -> logger.info("shutdown: closing bucket {}", v))
+            // Don't push a config here, we'll push just one config in configurationProvider.shutdown
             .flatMap(this::closeBucket)
-                  .doOnNext(v -> logger.info("shutdown: closed buckets"))
+                  .doFinally(v -> logger.info("shutdown: closed buckets"))
             .then(configurationProvider.shutdown())
-                  .doOnNext(v -> logger.info("shutdown: closed config provider"))
-            // every 10ms check if all nodes have been cleared, and then move on.
-            // this links the config provider shutdown with our core reconfig logic
-            // -> 500 just to not spam so much logs disappear
-            .then(Flux.interval(Duration.ofMillis(500), coreContext.environment().scheduler()).takeUntil(i -> {
-              logger.info("shutdown:nodes = {} {}", nodes.size(), nodes);
-              return nodes.isEmpty();
-            }).then())
-                  .doOnNext(v -> logger.info("shutdown: done"))
+                  .doFinally(v -> logger.info("shutdown: closed config provider"))
+            // JVMCBC-1161: The configurationProvider used to emit this empty config itself, but due to races it was unreliable.
+            .then(Mono.fromRunnable(() -> {
+                logger.info("shutdown: reconfiguring from empty config");
+              currentConfig = new ClusterConfig();
+            reconfigure();
+          }))
+//            .then(Flux.interval(Duration.ofMillis(500), coreContext.environment().scheduler()).takeUntil(i -> {
+//              logger.info("shutdown:nodes = {} {}", nodes.size(), nodes);
+//              return nodes.isEmpty();
+//            }).then())
+//                  .doOnNext(v -> logger.info("shutdown: done"))
             .doOnTerminate(() -> {
               NUM_INSTANCES.decrementAndGet();
               eventBus.publish(new ShutdownCompletedEvent(start.elapsed(), coreContext));

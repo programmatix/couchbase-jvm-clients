@@ -238,7 +238,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
           })
           .then(registerRefresher(name))
           .doOnTerminate(bucketConfigLoadInProgress::decrementAndGet)
-          .onErrorResume(t -> closeBucketIgnoreShutdown(name).then(Mono.error(t)));
+          .onErrorResume(t -> closeBucketIgnoreShutdown(name, true).then(Mono.error(t)));
       } else {
         return Mono.error(new AlreadyShutdownException());
       }
@@ -406,10 +406,10 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
   }
 
   @Override
-  public Mono<Void> closeBucket(final String name) {
+  public Mono<Void> closeBucket(final String name, boolean pushConfig) {
     return Mono.defer(() -> shutdown.get()
       ? Mono.error(new AlreadyShutdownException())
-      : closeBucketIgnoreShutdown(name)
+      : closeBucketIgnoreShutdown(name, pushConfig)
     ).doOnNext(v -> logger.info("closeBucket {}", name))
       .doOnError(err -> logger.info("closeBucket error {}", name, err));
   }
@@ -423,14 +423,18 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
    * on checking the shutdown atomic variable.</p>
    *
    * @param name the bucket name.
+   * @param pushConfig whether to push the updated config.  Here so that during shutdown we only
+   *             push one config.
    * @return completed mono once done.
    */
-  private Mono<Void> closeBucketIgnoreShutdown(final String name) {
+  private Mono<Void> closeBucketIgnoreShutdown(final String name, final boolean pushConfig) {
     return Mono
       .defer(() -> {
         logger.info("closeBucketIgnoreShutdown 1 {} {}", name, pushConfig);
         currentConfig.deleteBucketConfig(name);
-        pushConfig("closeBucketIgnoreShutdown");
+        if (pushConfig) {
+          pushConfig("closeBucketIgnoreShutdown", false);
+        }
         return Mono.empty();
       })
       .doOnNext(v -> logger.info("closeBucketIgnoreShutdown 2 {}", name))
@@ -447,13 +451,14 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
       if (shutdown.compareAndSet(false, true)) {
         return Flux
           .fromIterable(currentConfig.bucketConfigs().values())
-          .flatMap(bucketConfig -> closeBucketIgnoreShutdown(bucketConfig.name()))
+          // Don't push the updated config here - we'll push one final updated config in doOnTerminate
+          .flatMap(bucketConfig -> closeBucketIgnoreShutdown(bucketConfig.name(), false))
           .then(Mono.defer(this::disableAndClearGlobalConfig))
           .doOnTerminate(() -> {
             // make sure to push a final, empty config before complete to give downstream
             // consumers a chance to clean up
             logger.info("Pushing empty config in shutdown");
-            pushConfig("empty shutdown config");
+            pushConfig("empty shutdown config", true);
             configsSink.emitComplete(emitFailureHandler());
           })
           .then(keyValueRefresher.shutdown())
@@ -592,7 +597,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     checkAlternateAddress();
     updateSeedNodeList();
     logger.info("checkAndApplyConfig pushing bucket config {} {}", name, newConfig.nodes().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
-    pushConfig("new bucket config");
+    pushConfig("new bucket config", false);
   }
 
   /**
@@ -619,7 +624,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     checkAlternateAddress();
     updateSeedNodeList();
     logger.info("checkAndApplyConfig pushing global config {}", newConfig.portInfos().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
-    pushConfig("new global config");
+    pushConfig("new global config", false);
   }
 
   /**
@@ -791,11 +796,24 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
    * {@link reactor.core.publisher.Sinks.EmitResult#FAIL_NON_SERIALIZED} from happening. All other results
    * should not be happening, but just to be sure we log them as WARN, so we have a chance to debug them in the field.
    */
-  private synchronized void pushConfig(String why) {
-    logger.info("pushConfig {} {}", why, currentConfig.debug());
-    Sinks.EmitResult emitResult = configsSink.tryEmitNext(currentConfig);
-    if (emitResult != Sinks.EmitResult.OK) {
-      eventBus.publish(new ConfigPushFailedEvent(core.context(), emitResult));
+  private synchronized void pushConfig(String why, boolean ignoreShutdown) {
+    if (ignoreShutdown || !shutdown.get()) {
+      logger.info("pushConfig {} {} {} {}", why, currentConfig.debug(), shutdown.get(), ignoreShutdown);
+      Sinks.EmitResult emitResult = configsSink.tryEmitNext(currentConfig);
+      if (emitResult != Sinks.EmitResult.OK) {
+        eventBus.publish(new ConfigPushFailedEvent(core.context(), emitResult));
+      }
+    }
+    else {
+      logger.info("pushConfig {} ignoring as shutdown {}", why, currentConfig.debug());
+
+      // Try to reduce races during shutdown.  But it's only narrowing the window since the config may already have been emitted post-shutdown.
+      eventBus.publish(new ConfigIgnoredEvent(
+        core.context(),
+        ConfigIgnoredEvent.Reason.ALREADY_SHUTDOWN,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty()));
     }
   }
 

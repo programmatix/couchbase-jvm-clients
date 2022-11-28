@@ -161,7 +161,9 @@ public class WaitUntilReadyHelper {
           .doOnNext(v -> logger.info("waitUntilReady PING {} {}", v, desiredState))
           .takeUntil(s -> s == desiredState);
 
-        return Flux.concat(ping(core, servicesToCheck(core, serviceTypes, bucketName), timeout, bucketName)
+        Duration timeoutForPing = Duration.ofMillis(Math.min(5000, timeout.toMillis()));
+
+        return Flux.concat(ping(core, servicesToCheck(core, serviceTypes, bucketName), timeoutForPing, bucketName)
                         .doOnNext(v -> logger.info("waitUntilReady PING PingResult {} {}", v, servicesToCheck(core, serviceTypes, bucketName)))
                 , diagnostics
                         .doOnNext(v -> logger.info("waitUntilReady PING diagnostics {}", v)));

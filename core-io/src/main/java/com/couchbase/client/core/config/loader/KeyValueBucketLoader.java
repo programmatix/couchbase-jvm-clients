@@ -26,7 +26,7 @@ import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.kv.CarrierBucketConfigRequest;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.BestEffortRetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -54,7 +54,7 @@ public class KeyValueBucketLoader extends BaseBucketLoader {
   private final Logger logger = LoggerFactory.getLogger(KeyValueBucketLoader.class);
 
   public KeyValueBucketLoader(final Core core) {
-    super(core, ServiceType.KV);
+    super(core, ServiceCoordinate.KV);
   }
 
   @Override
@@ -62,7 +62,7 @@ public class KeyValueBucketLoader extends BaseBucketLoader {
     final CoreContext ctx = core().context();
 
     return Mono.defer(() -> {
-      logger.info("KeyValueBucketLoader.discoverConfig {} {}", seed, bucket);
+      logger.debug("KeyValueBucketLoader.discoverConfig {} {}", seed, bucket);
       CarrierBucketConfigRequest request = new CarrierBucketConfigRequest(
         ctx.environment().timeoutConfig().connectTimeout(),
         ctx,
@@ -74,7 +74,7 @@ public class KeyValueBucketLoader extends BaseBucketLoader {
       return Reactor.wrap(request, request.response(), true);
     })
     .map(response -> {
-      logger.info("KeyValueBucketLoader.discoverConfig {} {} got response {}", seed, bucket, response);
+      logger.debug("KeyValueBucketLoader.discoverConfig {} {} got response {}", seed, bucket, response);
       if (response.status().success()) {
         return response.content();
       } else if (response.status() == ResponseStatus.UNSUPPORTED) {

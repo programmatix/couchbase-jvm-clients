@@ -20,7 +20,7 @@ import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.deps.io.netty.buffer.ByteBuf;
 import com.couchbase.client.core.deps.io.netty.buffer.Unpooled;
 import com.couchbase.client.core.node.MemcachedHashingStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -50,7 +50,7 @@ public final class KetamaRing<E> {
   private final NavigableMap<Long, E> points;
 
   public static KetamaRing<NodeInfo> create(List<NodeInfo> nodes, MemcachedHashingStrategy strategy) {
-    List<NodeInfo> kvNodes = filter(nodes, it -> it.services().containsKey(ServiceType.KV));
+    List<NodeInfo> kvNodes = filter(nodes, it -> it.services().containsKey(ServiceCoordinate.KV));
 
     // Compatibility note: libcouchbase sorts the nodes using a lexical sort on "host:port"
     // to get deterministic behavior if node hashes collide. Although deterministic, the actual

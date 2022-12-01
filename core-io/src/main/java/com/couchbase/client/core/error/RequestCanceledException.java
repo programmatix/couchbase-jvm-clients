@@ -17,8 +17,15 @@
 package com.couchbase.client.core.error;
 
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.cnc.AbstractContext;
 import com.couchbase.client.core.error.context.CancellationErrorContext;
+import com.couchbase.client.core.error.context.ErrorContext;
+import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.msg.CancellationReason;
+import com.couchbase.client.core.protostellar.ProtostellarRequest;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class RequestCanceledException extends CouchbaseException {
 
@@ -27,6 +34,11 @@ public class RequestCanceledException extends CouchbaseException {
   public RequestCanceledException(String message, CancellationReason reason, CancellationErrorContext ctx) {
     super(message, ctx);
     this.reason = reason;
+  }
+
+  public static <TGrpcRequest> RequestCanceledException shuttingDown(AbstractContext context) {
+    CancellationErrorContext ctx = new CancellationErrorContext(context);
+    throw new RequestCanceledException("Request cancelled as in the process of shutting down", CancellationReason.SHUTDOWN, ctx);
   }
 
   @Override

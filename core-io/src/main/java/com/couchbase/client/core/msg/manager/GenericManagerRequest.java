@@ -71,7 +71,7 @@ public class GenericManagerRequest extends BaseManagerRequest<GenericManagerResp
   @Override
   public FullHttpRequest encode() {
     FullHttpRequest request = requestSupplier.get();
-    context().authenticator().authHttpRequest(serviceType(), request);
+    context().authenticator().authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 

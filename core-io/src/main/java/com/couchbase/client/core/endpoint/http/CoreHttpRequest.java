@@ -42,7 +42,7 @@ import com.couchbase.client.core.msg.NonChunkedHttpRequest;
 import com.couchbase.client.core.msg.RequestTarget;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.util.UrlQueryStringBuilder;
 
 import java.nio.charset.StandardCharsets;
@@ -92,7 +92,7 @@ public class CoreHttpRequest extends BaseRequest<CoreHttpResponse>
     this.bypassExceptionTranslation = builder.bypassExceptionTranslation;
 
     if (span != null && !CbTracing.isInternalSpan(span)) {
-      span.attribute(TracingIdentifiers.ATTR_SERVICE, CbTracing.getTracingId(target.serviceType()));
+      span.attribute(TracingIdentifiers.ATTR_SERVICE, CbTracing.getTracingId(target.serviceTypeAndProtocol()));
       span.attribute(TracingIdentifiers.ATTR_OPERATION, builder.method + " " + builder.path.format());
     }
   }
@@ -110,7 +110,7 @@ public class CoreHttpRequest extends BaseRequest<CoreHttpResponse>
   public FullHttpRequest encode() {
     FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, method, pathAndQueryString(), content);
     request.headers().add(headers);
-    context().authenticator().authHttpRequest(serviceType(), request);
+    context().authenticator().authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 
@@ -121,8 +121,8 @@ public class CoreHttpRequest extends BaseRequest<CoreHttpResponse>
   }
 
   @Override
-  public ServiceType serviceType() {
-    return target.serviceType();
+  public ServiceCoordinate serviceCoordinate() {
+    return target.serviceTypeAndProtocol();
   }
 
   @Override
@@ -148,7 +148,7 @@ public class CoreHttpRequest extends BaseRequest<CoreHttpResponse>
   @Override
   public Map<String, Object> serviceContext() {
     Map<String, Object> ctx = new TreeMap<>();
-    ctx.put("type", serviceType().ident());
+    ctx.put("type", serviceCoordinate().ident());
     ctx.put("method", method.toString());
     ctx.put("path", redactMeta(pathAndQueryString()));
     if (target() != null) {
@@ -314,7 +314,7 @@ public class CoreHttpRequest extends BaseRequest<CoreHttpResponse>
       return new CoreHttpRequest(
           this,
           span,
-          resolveTimeout(coreContext, target.serviceType(), options.timeout()),
+          resolveTimeout(coreContext, target.serviceTypeAndProtocol().serviceType(), options.timeout()),
           options.retryStrategy().orElse(null)
       );
     }

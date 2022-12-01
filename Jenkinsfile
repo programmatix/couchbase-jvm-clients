@@ -37,21 +37,21 @@ pipeline {
     }
 
     stages {
-        stage('Build Scala 2.13 (OpenJDK 11)') {
-            agent { label "sdkqe" }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                buildScala(OPENJDK, OPENJDK_11, "2.13", "2.13.7", REFSPEC)
-            }
-        }
+//         stage('Build Scala 2.13 (OpenJDK 11)') {
+//             agent { label "sdkqe" }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 buildScala(OPENJDK, OPENJDK_11, "2.13", "2.13.7", REFSPEC)
+//             }
+//         }
 
         // Test against mock - this skips a lot of tests, and is intended for quick validation
         stage('Validation testing (mock, Oracle JDK 8)') {
@@ -102,28 +102,27 @@ pipeline {
         // No cluster testing for CLUSTER_VERSION_LATEST_STABLE since that is thoroughly tested by JVM tests
         // No cluster testing for non-serverless 7.5, as that is dedicated to serverless
 
-        // Temporarily disabled as MB-54250 is creating a large number of failed tests.
-        // Also "8.0-stable" does not currently work with cbdyncluster.
-//         stage('Cluster testing  (Linux, cbdyncluster 8.0-stable, Oracle JDK 8)') {
-//             agent { label "sdkqe" }
-//             environment {
-//                 JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}"
-//                 PATH = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}/bin:$PATH"
-//             }
-//             when {
-//                 beforeAgent true;
-//                 expression
-//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
-//             }
-//             steps {
-//                 test(ORACLE_JDK, ORACLE_JDK_8, "8.0-stable", REFSPEC)
-//             }
-//             post {
-//                 always {
-//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-//                 }
-//             }
-//         }
+        // Picking an arbitrary recent 8.0 as "8.0-stable" does not currently work with cbdyncluster.
+        stage('Cluster testing  (Linux, cbdyncluster 8.0.0-1178, Oracle JDK 8)') {
+            agent { label "sdkqe" }
+            environment {
+                JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}"
+                PATH = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}/bin:$PATH"
+            }
+            when {
+                beforeAgent true;
+                expression
+                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
+            }
+            steps {
+                test(ORACLE_JDK, ORACLE_JDK_8, "8.0.0-1178", REFSPEC)
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+                }
+            }
+        }
 
         stage('JDK/Cluster testing  (Linux, cbdyncluster 7.2-stable, Oracle JDK 8)') {
             agent { label "sdkqe" }
@@ -146,145 +145,11 @@ pipeline {
             }
         }
 
-        stage('JDK/Cluster testing  (Linux, cbdyncluster 7.1-stable, openjdk 17)') {
-            agent { label "sdkqe" }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                test(OPENJDK, OPENJDK_17, "7.1-stable", REFSPEC)
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('JDK/Cluster testing  (Linux, cbdyncluster 7.0-stable, Oracle JDK 11)') {
-            agent { label "sdkqe" }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_11}"
-                PATH = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_11}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                test(ORACLE_JDK, ORACLE_JDK_11, "7.0-stable", REFSPEC)
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('JDK/Cluster testing  (Linux, cbdyncluster 6.6-stable, Corretto 8)') {
-            agent { label "sdkqe" }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_8}"
-                PATH = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_8}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                test(CORRETTO, CORRETTO_8, "6.6-stable", REFSPEC)
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        // 6.5 is EOL, we do one sanity test against it
-        stage('JDK/Cluster testing  (Linux, cbdyncluster 6.5-release, Corretto 11)') {
-            agent { label "sdkqe" }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_11}"
-                PATH = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_11}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                test(CORRETTO, CORRETTO_11, "6.5-release", REFSPEC)
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        // 6.0 is EOL, we do one sanity test against it
-        stage('JDK/Cluster testing  (Linux, cbdyncluster 6.0-release, openjdk 11)') {
-             agent { label "sdkqe" }
-             environment {
-                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}"
-                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}/bin:$PATH"
-             }
-             when {
-                 beforeAgent true;
-                 expression
-                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
-             }
-             steps {
-                 test(OPENJDK, OPENJDK_11, "6.0-release", REFSPEC)
-             }
-             post {
-                 always {
-                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                 }
-             }
-         }
-
-        // When removing tests for an older cluster version, if it's a JDK/Cluster test please
-        // make sure that JDK is still tested.
-
-        // 5.5 is EOL, we do one sanity test against it
-        stage('JDK/Cluster testing  (Linux, cbdyncluster 5.5-release, openjdk 8)') {
-             agent { label "sdkqe" }
-             environment {
-                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_8}"
-                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_8}/bin:$PATH"
-             }
-             when {
-                 beforeAgent true;
-                 expression
-                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
-             }
-             steps {
-                 test(OPENJDK, OPENJDK_8, "5.5-release", includeAnalytics : false, REFSPEC)
-             }
-             post {
-                 always {
-                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                 }
-             }
-         }
-
-        // 7.5 is dedicated to serverless
-        // Temporarily disabled as MB-54250 is creating a large number of failed tests.
-//         stage('Serverless testing (Linux, cbdyncluster 7.5-stable Serverless mode, Oracle JDK 8)') {
+//         stage('JDK/Cluster testing  (Linux, cbdyncluster 7.1-stable, openjdk 17)') {
 //             agent { label "sdkqe" }
 //             environment {
-//                 JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}"
-//                 PATH = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}/bin:$PATH"
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}/bin:$PATH"
 //             }
 //             when {
 //                 beforeAgent true;
@@ -292,7 +157,7 @@ pipeline {
 //                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
 //             }
 //             steps {
-//                 test(ORACLE_JDK, ORACLE_JDK_8, "7.5-stable", includeEventing : true, serverlessMode: true, REFSPEC)
+//                 test(OPENJDK, OPENJDK_17, "7.1-stable", REFSPEC)
 //             }
 //             post {
 //                 always {
@@ -300,31 +165,121 @@ pipeline {
 //                 }
 //             }
 //         }
+//
+//         stage('JDK/Cluster testing  (Linux, cbdyncluster 7.0-stable, Oracle JDK 11)') {
+//             agent { label "sdkqe" }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_11}"
+//                 PATH = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_11}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 test(ORACLE_JDK, ORACLE_JDK_11, "7.0-stable", REFSPEC)
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//         stage('JDK/Cluster testing  (Linux, cbdyncluster 6.6-stable, Corretto 8)') {
+//             agent { label "sdkqe" }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_8}"
+//                 PATH = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_8}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 test(CORRETTO, CORRETTO_8, "6.6-stable", REFSPEC)
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//         // 6.5 is EOL, we do one sanity test against it
+//         stage('JDK/Cluster testing  (Linux, cbdyncluster 6.5-release, Corretto 11)') {
+//             agent { label "sdkqe" }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_11}"
+//                 PATH = "${WORKSPACE}/deps/${CORRETTO}-${CORRETTO_11}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 test(CORRETTO, CORRETTO_11, "6.5-release", REFSPEC)
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//         // 6.0 is EOL, we do one sanity test against it
+//         stage('JDK/Cluster testing  (Linux, cbdyncluster 6.0-release, openjdk 11)') {
+//              agent { label "sdkqe" }
+//              environment {
+//                  JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}"
+//                  PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}/bin:$PATH"
+//              }
+//              when {
+//                  beforeAgent true;
+//                  expression
+//                          { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//              }
+//              steps {
+//                  test(OPENJDK, OPENJDK_11, "6.0-release", REFSPEC)
+//              }
+//              post {
+//                  always {
+//                      junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                  }
+//              }
+//          }
+//
+//         // When removing tests for an older cluster version, if it's a JDK/Cluster test please
+//         // make sure that JDK is still tested.
+//
+//         // 5.5 is EOL, we do one sanity test against it
+//         stage('JDK/Cluster testing  (Linux, cbdyncluster 5.5-release, openjdk 8)') {
+//              agent { label "sdkqe" }
+//              environment {
+//                  JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_8}"
+//                  PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_8}/bin:$PATH"
+//              }
+//              when {
+//                  beforeAgent true;
+//                  expression
+//                          { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//              }
+//              steps {
+//                  test(OPENJDK, OPENJDK_8, "5.5-release", includeAnalytics : false, REFSPEC)
+//              }
+//              post {
+//                  always {
+//                      junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                  }
+//              }
+//          }
 
-        // Cannot use 7.1-stable, it maps to 7.1.3 and there is no 7.1.3 CE release.  7.1.1 is current latest (Nov '22).
-        stage("CE testing (Linux, cbdyncluster 7.1.1, OpenJDK JDK 17)") {
-            agent { label "sdkqe" }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                test(OPENJDK, OPENJDK_17, "7.1.1", ceMode : true, REFSPEC)
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        // 7.0.3 does not and will not have a CE build.
-        stage('CE testing (Linux, cbdyncluster 7.0.2, Oracle JDK 8)') {
+        // 7.5 is dedicated to serverless
+        // Using 3270 for MB-54250
+        stage('Serverless testing (Linux, cbdyncluster 7.5-3270 Serverless mode, Oracle JDK 8)') {
             agent { label "sdkqe" }
             environment {
                 JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}"
@@ -336,7 +291,7 @@ pipeline {
                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
             }
             steps {
-                test(ORACLE_JDK, ORACLE_JDK_8, "7.0.2", ceMode : true, REFSPEC)
+                test(ORACLE_JDK, ORACLE_JDK_8, "7.5.0-3270", includeEventing : true, serverlessMode: true, REFSPEC)
             }
             post {
                 always {
@@ -345,123 +300,167 @@ pipeline {
             }
         }
 
-
-        stage("Platform testing (M1, stable, openjdk 11)") {
-            agent { label 'm1' }
-            environment {
-                // Advice from builds team: '"java" doesn't support Linux aarch64. Only openjdk.'
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                test(OPENJDK, OPENJDK_11_M1, CLUSTER_VERSION_LATEST_STABLE, REFSPEC)
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-
-        stage('Platform testing (Graviton2, mocks, openjdk 11)') {
-            agent { label 'qe-grav2-amzn2' }
-            environment {
-                // Advice from builds team: '"java" doesn't support Linux aarch64. Only openjdk.'
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}/bin:${WORKSPACE}/deps/maven-3.5.2-cb6/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    cleanupWorkspace()
-                    installJDKIfNeeded(OPENJDK, OPENJDK_11)
-                    // qe-grav2-amzn2 doesn't have maven
-                    shWithEcho("cbdep install -d deps maven 3.5.2-cb6")
-                    dir('couchbase-jvm-clients') {
-                        doCheckout(REFSPEC)
-                        // Advice from builds team: cbdyncluster cannot be contacted from qe-grav2-amzn2, so testing
-                        // against mocks only for now
-                        script { testAgainstMock() }
-                    }
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('Platform testing (Alpine, mock, openjdk 11)') {
-            agent { label 'alpine' }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    cleanupWorkspace()
-                    installJDKIfNeeded(OPENJDK, OPENJDK_11_M1)
-                    dir('couchbase-jvm-clients') {
-                        doCheckout(REFSPEC)
-                        // Mock testing only, with native IO disabled - check JVMCBC-942 for details
-                        script { testAgainstMock(true) }
-                    }
-                 }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('Platform testing (ARM Ubuntu 20, mock, openjdk 17)') {
-            agent { label 'qe-ubuntu20-arm64' }
-            environment {
-                JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}"
-                PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}/bin:$PATH"
-            }
-            when {
-                beforeAgent true;
-                expression
-                        { return IS_GERRIT_TRIGGER.toBoolean() == false }
-            }
-            steps {
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    cleanupWorkspace()
-                    installJDKIfNeeded(OPENJDK, OPENJDK_17)
-                    dir('couchbase-jvm-clients') {
-                        doCheckout(REFSPEC)
-                        // Cbdyn not available on this machine
-                        script {
-                            shWithEcho("make deps-only")
-                            shWithEcho("./mvnw --fail-at-end clean install --batch-mode")
-                        }
-                    }
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                }
-            }
-        }
+        // Cannot use 7.1-stable, it maps to 7.1.3 and there is no 7.1.3 CE release.  7.1.1 is current latest (Nov '22).
+//         stage("CE testing (Linux, cbdyncluster 7.1.1, OpenJDK JDK 17)") {
+//             agent { label "sdkqe" }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 test(OPENJDK, OPENJDK_17, "7.1.1", ceMode : true, REFSPEC)
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//         // 7.0.3 does not and will not have a CE build.
+//         stage('CE testing (Linux, cbdyncluster 7.0.2, Oracle JDK 8)') {
+//             agent { label "sdkqe" }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}"
+//                 PATH = "${WORKSPACE}/deps/${ORACLE_JDK}-${ORACLE_JDK_8}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 test(ORACLE_JDK, ORACLE_JDK_8, "7.0.2", ceMode : true, REFSPEC)
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//
+//         stage("Platform testing (M1, stable, openjdk 11)") {
+//             agent { label 'm1' }
+//             environment {
+//                 // Advice from builds team: '"java" doesn't support Linux aarch64. Only openjdk.'
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 test(OPENJDK, OPENJDK_11_M1, CLUSTER_VERSION_LATEST_STABLE, REFSPEC)
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//
+//         stage('Platform testing (Graviton2, mocks, openjdk 11)') {
+//             agent { label 'qe-grav2-amzn2' }
+//             environment {
+//                 // Advice from builds team: '"java" doesn't support Linux aarch64. Only openjdk.'
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11}/bin:${WORKSPACE}/deps/maven-3.5.2-cb6/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+//                     cleanupWorkspace()
+//                     installJDKIfNeeded(OPENJDK, OPENJDK_11)
+//                     // qe-grav2-amzn2 doesn't have maven
+//                     shWithEcho("cbdep install -d deps maven 3.5.2-cb6")
+//                     dir('couchbase-jvm-clients') {
+//                         doCheckout(REFSPEC)
+//                         // Advice from builds team: cbdyncluster cannot be contacted from qe-grav2-amzn2, so testing
+//                         // against mocks only for now
+//                         script { testAgainstMock() }
+//                     }
+//                 }
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//         stage('Platform testing (Alpine, mock, openjdk 11)') {
+//             agent { label 'alpine' }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_11_M1}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                  catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+//                     cleanupWorkspace()
+//                     installJDKIfNeeded(OPENJDK, OPENJDK_11_M1)
+//                     dir('couchbase-jvm-clients') {
+//                         doCheckout(REFSPEC)
+//                         // Mock testing only, with native IO disabled - check JVMCBC-942 for details
+//                         script { testAgainstMock(true) }
+//                     }
+//                  }
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
+//
+//         stage('Platform testing (ARM Ubuntu 20, mock, openjdk 17)') {
+//             agent { label 'qe-ubuntu20-arm64' }
+//             environment {
+//                 JAVA_HOME = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}"
+//                 PATH = "${WORKSPACE}/deps/${OPENJDK}-${OPENJDK_17}/bin:$PATH"
+//             }
+//             when {
+//                 beforeAgent true;
+//                 expression
+//                         { return IS_GERRIT_TRIGGER.toBoolean() == false }
+//             }
+//             steps {
+//                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+//                     cleanupWorkspace()
+//                     installJDKIfNeeded(OPENJDK, OPENJDK_17)
+//                     dir('couchbase-jvm-clients') {
+//                         doCheckout(REFSPEC)
+//                         // Cbdyn not available on this machine
+//                         script {
+//                             shWithEcho("make deps-only")
+//                             shWithEcho("./mvnw --fail-at-end clean install --batch-mode")
+//                         }
+//                     }
+//                 }
+//             }
+//             post {
+//                 always {
+//                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+//                 }
+//             }
+//         }
 
 
 

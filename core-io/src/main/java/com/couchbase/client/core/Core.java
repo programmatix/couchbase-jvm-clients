@@ -67,11 +67,13 @@ import com.couchbase.client.core.node.Node;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.node.RoundRobinLocator;
 import com.couchbase.client.core.node.ViewLocator;
+import com.couchbase.client.core.service.Protocol;
 import com.couchbase.client.core.service.ServiceScope;
 import com.couchbase.client.core.service.ServiceState;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.transaction.components.CoreTransactionRequest;
 import com.couchbase.client.core.transaction.context.CoreTransactionsContext;
+import com.couchbase.client.core.util.ConnectionString;
 import com.couchbase.client.core.util.NanoTimestamp;
 import com.couchbase.client.core.transaction.cleanup.CoreTransactionsCleanup;
 import com.couchbase.client.core.cnc.events.transaction.TransactionsStartedEvent;
@@ -85,7 +87,6 @@ import reactor.util.annotation.Nullable;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,13 +149,13 @@ public class Core implements AutoCloseable {
    * Locates the right node for the manager service.
    */
   private static final RoundRobinLocator MANAGER_LOCATOR =
-    new RoundRobinLocator(ServiceType.MANAGER);
+    new RoundRobinLocator(ServiceCoordinate.MANAGER);
 
   /**
    * Locates the right node for the query service.
    */
   private static final RoundRobinLocator QUERY_LOCATOR =
-    new RoundRobinLocator(ServiceType.QUERY);
+    new RoundRobinLocator(ServiceCoordinate.QUERY);
 
   /**
    * Locates the right node for the analytics service.
@@ -166,7 +167,7 @@ public class Core implements AutoCloseable {
    * Locates the right node for the search service.
    */
   private static final RoundRobinLocator SEARCH_LOCATOR =
-    new RoundRobinLocator(ServiceType.SEARCH);
+    new RoundRobinLocator(ServiceCoordinate.SEARCH);
 
   /**
    * Locates the right node for the view service.
@@ -175,10 +176,16 @@ public class Core implements AutoCloseable {
     new ViewLocator();
 
   private static final RoundRobinLocator EVENTING_LOCATOR =
-    new RoundRobinLocator(ServiceType.EVENTING);
+    new RoundRobinLocator(ServiceCoordinate.EVENTING);
 
   private static final RoundRobinLocator BACKUP_LOCATOR =
-      new RoundRobinLocator(ServiceType.BACKUP);
+      new RoundRobinLocator(ServiceCoordinate.BACKUP);
+
+  private static final RoundRobinLocator PROTOSTELLAR_LOCATOR_KV =
+          new RoundRobinLocator(ServiceCoordinate.KV_PROTOSTELLAR);
+
+  private static final RoundRobinLocator PROTOSTELLAR_LOCATOR_QUERY =
+    new RoundRobinLocator(ServiceCoordinate.QUERY_PROTOSTELLAR);
 
   /**
    * The interval under which the invalid state watchdog should be scheduled to run.
@@ -254,6 +261,8 @@ public class Core implements AutoCloseable {
    */
   @Nullable
   private final String connectionString;
+
+  @Nullable private final CoreProtostellar protostellar;
 
   /**
    * Creates a new {@link Core} with the given environment with no connection string.
@@ -345,7 +354,7 @@ public class Core implements AutoCloseable {
       .configs()
       .publishOn(environment.scheduler())
       .subscribe(c -> {
-        logger.info("reconfiguring 1 {}", c.debug());
+        logger.debug("reconfiguring 1 {}", c.debug());
         currentConfig = c;
         reconfigure();
       });
@@ -358,7 +367,17 @@ public class Core implements AutoCloseable {
       .map(c -> (BeforeSendRequestCallback) c)
       .collect(Collectors.toList());
 
-    eventBus.publish(new CoreCreatedEvent(coreContext, environment, seedNodes, NUM_INSTANCES.get(), connectionString));
+    boolean isProtostellar = (!seedNodes.isEmpty() && seedNodes.stream().findFirst().get().protostellarPort().isPresent()) ||
+      (connectionString != null && ConnectionString.create(connectionString).scheme() == ConnectionString.Scheme.PROTOSTELLAR);
+
+    if (isProtostellar) {
+      this.protostellar = new CoreProtostellar(this, authenticator, seedNodes);
+    }
+    else {
+      this.protostellar = null;
+    }
+
+    eventBus.publish(new CoreCreatedEvent(coreContext, environment, seedNodes, NUM_INSTANCES.get(), connectionString, isProtostellar()));
 
     long watchdogInterval = INVALID_STATE_WATCHDOG_INTERVAL.getSeconds();
     if (watchdogInterval <= 1) {
@@ -373,6 +392,11 @@ public class Core implements AutoCloseable {
     this.transactionsContext = new CoreTransactionsContext(environment.meter());
     context().environment().eventBus().publish(new TransactionsStartedEvent(environment.transactionsConfig().cleanupConfig().runLostAttemptsCleanupThread(),
             environment.transactionsConfig().cleanupConfig().runRegularAttemptsCleanupThread()));
+  }
+
+  @Stability.Internal
+  public CoreProtostellar protostellar() {
+    return protostellar;
   }
 
   /**
@@ -462,7 +486,7 @@ public class Core implements AutoCloseable {
       }
     }
 
-    locator(request.serviceType()).dispatch(request, nodes, currentConfig, context());
+    locator(request.serviceCoordinate()).dispatch(request, nodes, currentConfig, context());
   }
 
   /**
@@ -494,8 +518,8 @@ public class Core implements AutoCloseable {
    * @return if found, a flux with the service states.
    */
   @Stability.Internal
-  public Optional<Flux<ServiceState>> serviceState(NodeIdentifier nodeIdentifier, ServiceType type, Optional<String> bucket) {
-    logger.info("Getting service state for {} {} {}, nodes={}", nodeIdentifier, type, bucket, nodeIdentifier);
+  public Optional<Flux<ServiceState>> serviceState(NodeIdentifier nodeIdentifier, ServiceCoordinate type, Optional<String> bucket) {
+    logger.debug("Getting service state for {} {} {}, nodes={}", nodeIdentifier, type, bucket, nodeIdentifier);
     for (Node node : nodes) {
       if (node.identifier().equals(nodeIdentifier)) {
         return node.serviceState(type, bucket);
@@ -623,8 +647,10 @@ public class Core implements AutoCloseable {
    * @return a {@link Mono} which completes once initiated.
    */
   @Stability.Internal
-  public Mono<Void> ensureServiceAt(final NodeIdentifier identifier, final ServiceType serviceType, final int port,
+  public Mono<Void> ensureServiceAt(final NodeIdentifier identifier, final ServiceCoordinate serviceType, final int port,
                                     final Optional<String> bucket, final Optional<String> alternateAddress) {
+    logger.debug("ensureServiceAt {} {} {}", identifier, serviceType, port);
+
     if (shutdown.get()) {
       logger.info("skipping ensureServiceAt as shutting down {} {} {}", identifier, serviceType, port);
       // We don't want do add a node if we are already shutdown!
@@ -658,6 +684,16 @@ public class Core implements AutoCloseable {
       else {
         tags.put(TracingIdentifiers.ATTR_SERVICE, key.serviceType);
       }
+      tags.put(TracingIdentifiers.ATTR_OPERATION, key.requestName);
+      return coreContext.environment().meter().valueRecorder(TracingIdentifiers.METER_OPERATIONS, tags);
+    });
+  }
+
+  @Stability.Internal
+  public ValueRecorder responseMetric(final ResponseMetricIdentifier rmi) {
+    return responseMetrics.computeIfAbsent(rmi, key -> {
+      Map<String, String> tags = new HashMap<>(4);
+      tags.put(TracingIdentifiers.ATTR_SERVICE, key.serviceType);
       tags.put(TracingIdentifiers.ATTR_OPERATION, key.requestName);
       return coreContext.environment().meter().valueRecorder(TracingIdentifiers.METER_OPERATIONS, tags);
     });
@@ -706,7 +742,7 @@ public class Core implements AutoCloseable {
       }
 
       boolean remove = (!stillPresentInBuckets && !stillPresentInGlobal) || !node.hasServicesEnabled();
-      logger.info("maybeRemoveNode {} {} stillPresentInBuckets={} stillPresentInGlobal={} servicesEnabled={} remove = {}", config.debug(), node.identifier(), stillPresentInBuckets, stillPresentInGlobal, node.hasServicesEnabled(), remove);
+      logger.debug("maybeRemoveNode {} {} stillPresentInBuckets={} stillPresentInGlobal={} servicesEnabled={} remove = {}", config.debug(), node.identifier(), stillPresentInBuckets, stillPresentInGlobal, node.hasServicesEnabled(), remove);
 
       if ((!stillPresentInBuckets && !stillPresentInGlobal) || !node.hasServicesEnabled()) {
         return node.disconnect().doOnTerminate(() -> {
@@ -726,7 +762,7 @@ public class Core implements AutoCloseable {
    * @param serviceType the service type to remove if present.
    * @return a {@link Mono} which completes once initiated.
    */
-  private Mono<Void> removeServiceFrom(final NodeIdentifier identifier, final ServiceType serviceType,
+  private Mono<Void> removeServiceFrom(final NodeIdentifier identifier, final ServiceCoordinate serviceType,
                                        final Optional<String> bucket) {
     return Flux
       .fromIterable(new ArrayList<>(nodes))
@@ -760,7 +796,7 @@ public class Core implements AutoCloseable {
                   .doOnNext(v -> logger.info("shutdown: closing bucket {}", v))
             // Don't push a config here, we'll push just one config in configurationProvider.shutdown
             .flatMap(this::closeBucket)
-                  .doFinally(v -> logger.info("shutdown: closed buckets"))
+                  .doOnTerminate(() -> logger.info("shutdown: closed buckets"))
             .then(configurationProvider.shutdown())
                   .doFinally(v -> logger.info("shutdown: closed config provider"))
             // JVMCBC-1161: The configurationProvider used to emit this empty config itself, but due to races it was unreliable.
@@ -769,6 +805,17 @@ public class Core implements AutoCloseable {
               currentConfig = new ClusterConfig();
             reconfigure();
           }))
+            .then(Mono.defer(() -> {
+              if (protostellar != null) {
+                return Mono.fromRunnable(() -> {
+                  // This will block, locking up a scheduler thread - but since all we're interested in doing is shutting down, that doesn't matter.
+                  protostellar.shutdown(timeout);
+                });
+              }
+              else {
+                return Mono.empty();
+              }
+            }))
 //            .then(Flux.interval(Duration.ofMillis(500), coreContext.environment().scheduler()).takeUntil(i -> {
 //              logger.info("shutdown:nodes = {} {}", nodes.size(), nodes);
 //              return nodes.isEmpty();
@@ -795,10 +842,10 @@ public class Core implements AutoCloseable {
    * it works very similar.</p>
    */
   private void reconfigure() {
-    logger.info("reconfigure {}", currentConfig.debug());
+    logger.debug("reconfigure {}", currentConfig.debug());
     if (reconfigureInProgress.compareAndSet(false, true)) {
       final ClusterConfig configForThisAttempt = currentConfig;
-      logger.info("reconfigure locked {}", configForThisAttempt.debug());
+      logger.debug("reconfigure locked {}", configForThisAttempt.debug());
 
       if (configForThisAttempt.bucketConfigs().isEmpty() && configForThisAttempt.globalConfig() == null) {
         reconfigureDisconnectAll();
@@ -870,10 +917,10 @@ public class Core implements AutoCloseable {
    * Clean reconfiguration in progress and check if there is a new one we need to try.
    */
   private void clearReconfigureInProgress() {
-    logger.info("clearReconfigureInProgress unlocking");
+    logger.debug("clearReconfigureInProgress unlocking");
     reconfigureInProgress.set(false);
     if (moreConfigsPending.compareAndSet(true, false)) {
-      logger.info("clearReconfigureInProgress more configs to handle");
+      logger.debug("clearReconfigureInProgress more configs to handle");
       reconfigure();
     }
   }
@@ -884,14 +931,14 @@ public class Core implements AutoCloseable {
         return Mono.empty();
       }
 
-      logger.info("reconfigureGlobal {}", config.shortDebug());
+      logger.debug("reconfigureGlobal {}", config.shortDebug());
 
       return Flux
         .fromIterable(config.portInfos())
         .flatMap(ni -> {
           boolean tls = coreContext.environment().securityConfig().tlsEnabled();
 
-          Set<Map.Entry<ServiceType, Integer>> aServices = null;
+          Set<Map.Entry<ServiceCoordinate, Integer>> aServices = null;
           Optional<String> alternateAddress = coreContext.alternateAddress();
           String aHost = null;
           if (alternateAddress.isPresent()) {
@@ -905,19 +952,19 @@ public class Core implements AutoCloseable {
           }
 
           final String alternateHost = aHost;
-          final Set<Map.Entry<ServiceType, Integer>> services = aServices;
+          final Set<Map.Entry<ServiceCoordinate, Integer>> services = aServices;
 
           Flux<Void> serviceRemoveFlux = Flux
-            .fromIterable(Arrays.asList(ServiceType.values()))
+            .fromIterable(ServiceCoordinate.ALL)
             .filter(s -> {
-              for (Map.Entry<ServiceType, Integer> inConfig : services) {
+              for (Map.Entry<ServiceCoordinate, Integer> inConfig : services) {
                 if (inConfig.getKey() == s) {
                   return false;
                 }
               }
               return true;
             })
-            .doOnNext(s ->  logger.info("removeServiceFrom on global config {} {} {}", ni.identifier(), s, config.shortDebug()))
+            .doOnNext(s ->  logger.debug("removeServiceFrom on global config {} {} {}", ni.identifier(), s, config.shortDebug()))
             .flatMap(s -> removeServiceFrom(
               ni.identifier(),
               s,
@@ -926,7 +973,7 @@ public class Core implements AutoCloseable {
                 eventBus.publish(new ServiceReconfigurationFailedEvent(
                   coreContext,
                   ni.hostname(),
-                  s,
+                  s.serviceType(),
                   throwable
                 ));
                 return Mono.empty();
@@ -946,7 +993,7 @@ public class Core implements AutoCloseable {
                 eventBus.publish(new ServiceReconfigurationFailedEvent(
                   coreContext,
                   ni.hostname(),
-                  s.getKey(),
+                  s.getKey().serviceType(),
                   throwable
                 ));
                 return Mono.empty();
@@ -970,9 +1017,9 @@ public class Core implements AutoCloseable {
       Flux.fromIterable(bc.nodes())
         .flatMap(ni -> {
           boolean tls = coreContext.environment().securityConfig().tlsEnabled();
-          logger.info("reconfigureBuckets {} {} {}", ni.hostname(), ni.services(), bc.shortDebug());
+          logger.debug("reconfigureBuckets {} {} {}", ni.hostname(), ni.services(), bc.shortDebug());
 
-          Set<Map.Entry<ServiceType, Integer>> aServices = null;
+          Set<Map.Entry<ServiceCoordinate, Integer>> aServices = null;
           Optional<String> alternateAddress = coreContext.alternateAddress();
           String aHost = null;
           if (alternateAddress.isPresent()) {
@@ -987,28 +1034,28 @@ public class Core implements AutoCloseable {
           }
 
           final String alternateHost = aHost;
-          final Set<Map.Entry<ServiceType, Integer>> services = aServices;
+          final Set<Map.Entry<ServiceCoordinate, Integer>> services = aServices;
 
           Flux<Void> serviceRemoveFlux = Flux
-            .fromIterable(Arrays.asList(ServiceType.values()))
+            .fromIterable(ServiceCoordinate.ALL)
             .filter(s -> {
-              for (Map.Entry<ServiceType, Integer> inConfig : services) {
+              for (Map.Entry<ServiceCoordinate, Integer> inConfig : services) {
                 if (inConfig.getKey() == s) {
                   return false;
                 }
               }
               return true;
             })
-            .doOnNext(s ->  logger.info("removeServiceFrom on bucket config {} {} {}", ni.identifier(), s, bc.shortDebug()))
+            .doOnNext(s ->  logger.debug("removeServiceFrom on bucket config {} {} {}", ni.identifier(), s, bc.shortDebug()))
             .flatMap(s -> removeServiceFrom(
               ni.identifier(),
               s,
-              s.scope() == ServiceScope.BUCKET ? Optional.of(bc.name()) : Optional.empty())
+              s.serviceType().scope() == ServiceScope.BUCKET ? Optional.of(bc.name()) : Optional.empty())
               .onErrorResume(throwable -> {
                 eventBus.publish(new ServiceReconfigurationFailedEvent(
                   coreContext,
                   ni.hostname(),
-                  s,
+                  s.serviceType(),
                   throwable
                 ));
                 return Mono.empty();
@@ -1021,13 +1068,13 @@ public class Core implements AutoCloseable {
               ni.identifier(),
               s.getKey(),
               s.getValue(),
-              s.getKey().scope() == ServiceScope.BUCKET ? Optional.of(bc.name()) : Optional.empty(),
+              s.getKey().serviceType().scope() == ServiceScope.BUCKET ? Optional.of(bc.name()) : Optional.empty(),
               Optional.ofNullable(alternateHost))
               .onErrorResume(throwable -> {
                 eventBus.publish(new ServiceReconfigurationFailedEvent(
                   coreContext,
                   ni.hostname(),
-                  s.getKey(),
+                  s.getKey().serviceType(),
                   throwable
                 ));
                 return Mono.empty();
@@ -1042,17 +1089,30 @@ public class Core implements AutoCloseable {
   /**
    * Helper method to match the right locator to the given service type.
    *
-   * @param serviceType the service type for which a locator should be returned.
+   * @param serviceCoordinate the service type for which a locator should be returned.
    * @return the locator for the service type, or an exception if unknown.
    */
-  private static Locator locator(final ServiceType serviceType) {
-    switch (serviceType) {
+  private static Locator locator(final ServiceCoordinate serviceCoordinate) {
+    if (serviceCoordinate.protocol() == Protocol.PROTOSTELLAR) {
+      switch (serviceCoordinate.serviceType()) {
+        case KV:
+          return PROTOSTELLAR_LOCATOR_KV;
+        case QUERY:
+          return PROTOSTELLAR_LOCATOR_QUERY;
+        default:
+          throw new IllegalStateException("Unsupported ServiceType: " + serviceCoordinate);
+      }
+    }
+
+    switch (serviceCoordinate.serviceType()) {
       case KV:
         return KEY_VALUE_LOCATOR;
       case MANAGER:
         return MANAGER_LOCATOR;
       case QUERY:
         return QUERY_LOCATOR;
+//      case PROTOSTELLAR:
+//        return PROTOSTELLAR_LOCATOR;
       case ANALYTICS:
         return ANALYTICS_LOCATOR;
       case SEARCH:
@@ -1064,7 +1124,7 @@ public class Core implements AutoCloseable {
       case BACKUP:
         return BACKUP_LOCATOR;
       default:
-        throw new IllegalStateException("Unsupported ServiceType: " + serviceType);
+        throw new IllegalStateException("Unsupported ServiceType: " + serviceCoordinate);
     }
   }
 
@@ -1083,13 +1143,18 @@ public class Core implements AutoCloseable {
     shutdown().block();
   }
 
-  private static class ResponseMetricIdentifier {
+  public boolean isProtostellar() {
+    return protostellar != null;
+  }
+
+  @Stability.Internal
+  public static class ResponseMetricIdentifier {
 
     private final String serviceType;
     private final String requestName;
 
     ResponseMetricIdentifier(final Request<?> request) {
-      if (request.serviceType() == null) {
+      if (request.serviceCoordinate() == null) {
         if (request instanceof CoreTransactionRequest) {
           this.serviceType = TracingIdentifiers.SERVICE_TRANSACTIONS;
         }
@@ -1099,9 +1164,14 @@ public class Core implements AutoCloseable {
         }
       }
       else {
-        this.serviceType = request.serviceType().ident();
+        this.serviceType = request.serviceCoordinate().ident();
       }
       this.requestName = request.name();
+    }
+
+    public ResponseMetricIdentifier(final String serviceType, final String requestName) {
+      this.serviceType = serviceType;
+      this.requestName = requestName;
     }
 
     @Override

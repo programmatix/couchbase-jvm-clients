@@ -170,7 +170,7 @@ class AsyncBucket private[scala] (
         core,
         options.timeout.map(scalaDurationToJava).asJava,
         options.retryStrategy.getOrElse(environment.retryStrategy),
-        if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
+        null, // todo sn if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
         options.reportId.asJava,
         Optional.of(name)
       )
@@ -208,7 +208,7 @@ class AsyncBucket private[scala] (
       .javaCFToScalaFuture(
         WaitUntilReadyHelper.waitUntilReady(
           core,
-          if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
+          null, // todo sn if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
           timeout,
           options.desiredState,
           Optional.of(name)

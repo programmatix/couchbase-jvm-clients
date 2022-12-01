@@ -17,10 +17,10 @@
 package com.couchbase.client.core.config;
 
 import com.couchbase.client.core.error.CouchbaseException;
-import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonCreator;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonProperty;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,8 +29,8 @@ import java.util.Map;
 public class AlternateAddress {
 
     private final String hostname;
-    private final Map<ServiceType, Integer> directServices;
-    private final Map<ServiceType, Integer> sslServices;
+    private final Map<ServiceCoordinate, Integer> directServices;
+    private final Map<ServiceCoordinate, Integer> sslServices;
 
     @JsonCreator
     public AlternateAddress(
@@ -53,11 +53,11 @@ public class AlternateAddress {
         return hostname;
     }
 
-    public Map<ServiceType, Integer> services() {
+    public Map<ServiceCoordinate, Integer> services() {
         return directServices;
     }
 
-    public Map<ServiceType, Integer> sslServices() {
+    public Map<ServiceCoordinate, Integer> sslServices() {
         return sslServices;
     }
 

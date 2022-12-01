@@ -17,6 +17,7 @@
 package com.couchbase.client.core.config;
 
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,11 +67,11 @@ public abstract class AbstractBucketConfig implements BucketConfig {
         this.nodeInfo = portInfos == null ? nodeInfos : nodeInfoFromExtended(portInfos, nodeInfos);
         int es = 0;
         for (NodeInfo info : nodeInfo) {
-            for (ServiceType type : info.services().keySet()) {
-                es |= 1 << type.ordinal();
+            for (ServiceCoordinate type : info.services().keySet()) {
+                es |= 1 << type.serviceType().ordinal();
             }
-            for (ServiceType type : info.sslServices().keySet()) {
-                es |= 1 << type.ordinal();
+            for (ServiceCoordinate type : info.sslServices().keySet()) {
+                es |= 1 << type.serviceType().ordinal();
             }
         }
         this.enabledServices = es;
@@ -173,8 +174,8 @@ public abstract class AbstractBucketConfig implements BucketConfig {
                     hostname = origin;
                 }
             }
-            Map<ServiceType, Integer> ports = new HashMap<>(nodesExt.get(i).ports());
-            Map<ServiceType, Integer> sslPorts = new HashMap<>(nodesExt.get(i).sslPorts());
+            Map<ServiceCoordinate, Integer> ports = new HashMap<>(nodesExt.get(i).ports());
+            Map<ServiceCoordinate, Integer> sslPorts = new HashMap<>(nodesExt.get(i).sslPorts());
             Map<String, AlternateAddress> aa = new HashMap<>(nodesExt.get(i).alternateAddresses());
 
             // this is an ephemeral bucket (not supporting views), don't enable views!

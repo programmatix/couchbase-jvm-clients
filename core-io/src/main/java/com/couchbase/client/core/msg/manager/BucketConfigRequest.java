@@ -58,7 +58,7 @@ public class BucketConfigRequest extends BaseManagerRequest<BucketConfigResponse
       HttpMethod.GET,
       String.format(PATH, bucketName)
     );
-    authenticator.authHttpRequest(serviceType(), request);
+    authenticator.authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 
@@ -80,7 +80,7 @@ public class BucketConfigRequest extends BaseManagerRequest<BucketConfigResponse
   @Override
   public Map<String, Object> serviceContext() {
     final Map<String, Object> ctx = new TreeMap<>();
-    ctx.put("type", serviceType().ident());
+    ctx.put("type", serviceCoordinate().ident());
     ctx.put("bucket", redactMeta(bucketName));
     if (target != null) {
       ctx.put("target", redactSystem(target.address()));

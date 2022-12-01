@@ -19,7 +19,7 @@ package com.couchbase.client.java.http;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.msg.RequestTarget;
 import com.couchbase.client.core.node.NodeIdentifier;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import static java.util.Objects.requireNonNull;
 
@@ -38,7 +38,7 @@ import static java.util.Objects.requireNonNull;
 public class HttpTarget {
   final RequestTarget coreTarget;
 
-  private HttpTarget(ServiceType service) {
+  private HttpTarget(ServiceCoordinate service) {
     this(service, null, null);
   }
 
@@ -46,7 +46,7 @@ public class HttpTarget {
    * @param node (nullable)
    * @param bucket (nullable)
    */
-  private HttpTarget(ServiceType service, NodeIdentifier node, String bucket) {
+  private HttpTarget(ServiceCoordinate service, NodeIdentifier node, String bucket) {
     this.coreTarget = new RequestTarget(service, node, bucket);
   }
 
@@ -57,7 +57,7 @@ public class HttpTarget {
    */
   @Stability.Internal
   public HttpTarget withNode(NodeIdentifier node) {
-    return new HttpTarget(coreTarget.serviceType(), node, coreTarget.bucketName());
+    return new HttpTarget(coreTarget.serviceTypeAndProtocol(), node, coreTarget.bucketName());
   }
 
   @Override
@@ -66,26 +66,26 @@ public class HttpTarget {
   }
 
   public static HttpTarget analytics() {
-    return new HttpTarget(ServiceType.ANALYTICS);
+    return new HttpTarget(ServiceCoordinate.ANALYTICS);
   }
 
   public static HttpTarget backup() {
-    return new HttpTarget(ServiceType.BACKUP);
+    return new HttpTarget(ServiceCoordinate.BACKUP);
   }
 
   public static HttpTarget eventing() {
-    return new HttpTarget(ServiceType.EVENTING);
+    return new HttpTarget(ServiceCoordinate.EVENTING);
   }
 
   public static HttpTarget manager() {
-    return new HttpTarget(ServiceType.MANAGER);
+    return new HttpTarget(ServiceCoordinate.MANAGER);
   }
 
   public static HttpTarget query() {
-    return new HttpTarget(ServiceType.QUERY);
+    return new HttpTarget(ServiceCoordinate.QUERY);
   }
 
   public static HttpTarget search() {
-    return new HttpTarget(ServiceType.SEARCH);
+    return new HttpTarget(ServiceCoordinate.SEARCH);
   }
 }

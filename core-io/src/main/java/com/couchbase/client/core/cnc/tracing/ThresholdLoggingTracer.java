@@ -180,7 +180,7 @@ public class ThresholdLoggingTracer implements RequestTracer {
    */
   private boolean isOverThreshold(final Request<?> request) {
     final long tookNanos = request.context().logicalRequestLatency();
-    final ServiceType serviceType = request.serviceType();
+    final ServiceType serviceType = request.serviceCoordinate().serviceType();
     if (serviceType == null) {
       // Virtual service
       if (request instanceof CoreTransactionRequest) {
@@ -302,7 +302,7 @@ public class ThresholdLoggingTracer implements RequestTracer {
         if (request == null) {
           return;
         }
-        final ServiceType serviceType = request.serviceType();
+        final ServiceType serviceType = request.serviceCoordinate().serviceType();
         if (serviceType == null) {
           // Virtual service
           if (request instanceof CoreTransactionRequest) {

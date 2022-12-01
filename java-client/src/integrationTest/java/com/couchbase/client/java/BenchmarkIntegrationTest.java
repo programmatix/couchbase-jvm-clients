@@ -1,0 +1,220 @@
+/*
+ * Copyright (c) 2018 Couchbase, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.couchbase.client.java;
+
+import com.couchbase.client.core.deps.org.HdrHistogram.Histogram;
+import com.couchbase.client.core.deps.org.LatencyUtils.LatencyStats;
+import com.couchbase.client.core.error.CasMismatchException;
+import com.couchbase.client.core.error.DocumentExistsException;
+import com.couchbase.client.core.error.DocumentNotFoundException;
+import com.couchbase.client.core.error.FeatureNotAvailableException;
+import com.couchbase.client.core.error.RequestCanceledException;
+import com.couchbase.client.core.error.TimeoutException;
+import com.couchbase.client.core.error.ValueTooLargeException;
+import com.couchbase.client.core.retry.RetryReason;
+import com.couchbase.client.java.codec.RawBinaryTranscoder;
+import com.couchbase.client.java.json.JsonObject;
+import com.couchbase.client.java.kv.CounterResult;
+import com.couchbase.client.java.kv.ExistsResult;
+import com.couchbase.client.java.kv.GetOptions;
+import com.couchbase.client.java.kv.GetResult;
+import com.couchbase.client.java.kv.InsertOptions;
+import com.couchbase.client.java.kv.MutateInSpec;
+import com.couchbase.client.java.kv.MutationResult;
+import com.couchbase.client.java.kv.StoreSemantics;
+import com.couchbase.client.java.util.JavaIntegrationTest;
+import com.couchbase.client.test.Capabilities;
+import com.couchbase.client.test.ClusterType;
+import com.couchbase.client.test.IgnoreWhen;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.couchbase.client.core.util.CbCollections.listOf;
+import static com.couchbase.client.java.kv.DecrementOptions.decrementOptions;
+import static com.couchbase.client.java.kv.GetAndLockOptions.getAndLockOptions;
+import static com.couchbase.client.java.kv.GetOptions.getOptions;
+import static com.couchbase.client.java.kv.IncrementOptions.incrementOptions;
+import static com.couchbase.client.java.kv.InsertOptions.insertOptions;
+import static com.couchbase.client.java.kv.MutateInOptions.mutateInOptions;
+import static com.couchbase.client.java.kv.RemoveOptions.removeOptions;
+import static com.couchbase.client.java.kv.ReplaceOptions.replaceOptions;
+import static com.couchbase.client.java.kv.UpsertOptions.upsertOptions;
+import static com.couchbase.client.test.Util.waitUntilCondition;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.time.temporal.ChronoUnit.DAYS;
+import static java.time.temporal.ChronoUnit.SECONDS;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * This integration test makes sure the various KV-based APIs work as they are intended to.
+ *
+ * <p>Note that specialized tests which assert some kind of special environment should be placed in
+ * separate files for better debuggability.</p>
+ *
+ * @since 3.0.0
+ */
+class BenchmarkIntegrationTest extends JavaIntegrationTest {
+
+  static private Cluster cluster;
+  static private Collection collection;
+
+  @BeforeAll
+  static void beforeAll() {
+    cluster = createCluster();
+    Bucket bucket = cluster.bucket(config().bucketname());
+    collection = bucket.defaultCollection();
+  }
+
+  @AfterAll
+  static void afterAll() {
+    cluster.disconnect();
+  }
+
+
+  @Test
+  void insertAndGetHighThroughput() {
+//    Cluster direct = Cluster.connect("couchbase://localhost", "Administrator", "password");
+//    run(direct.bucket(config().bucketname()).defaultCollection());
+//    direct.disconnect();
+
+    Cluster ps = Cluster.connect("protostellar://localhost", "Administrator", "password");
+    run(ps.bucket(config().bucketname()).defaultCollection());
+  }
+
+  private void run(Collection collection) {
+    int opsTotalBase = 1000;
+    int runForSecs = 10;
+
+    // Just for warmup, throw away
+    run(collection, 1, opsTotalBase, runForSecs);
+
+    run(collection, 1, opsTotalBase, runForSecs);
+    run(collection, 2, opsTotalBase, runForSecs);
+    run(collection, 3, opsTotalBase, runForSecs);
+    run(collection, 5, opsTotalBase, runForSecs);
+    run(collection, 10, opsTotalBase, runForSecs);
+    run(collection, 20, opsTotalBase, runForSecs);
+    run(collection, 50, opsTotalBase, runForSecs);
+    run(collection, 100, opsTotalBase, runForSecs);
+    run(collection, 200, opsTotalBase, runForSecs);
+    //run(collection, 500, opsTotalBase, runForSecs);
+  }
+
+  private LatencyStats run(Collection collection, int opsDesiredInFlight, int opsTotalBase, int runForSecs) {
+    int opsTotal = opsDesiredInFlight * opsTotalBase;
+
+    AtomicInteger opsActuallyInFlight = new AtomicInteger();
+    AtomicInteger opsActuallyInFlightMax = new AtomicInteger();
+    Set<Integer> concurrentlyOutgoingMessagesSeen = new ConcurrentSkipListSet<>();
+    LatencyStats stats = new LatencyStats();
+    AtomicInteger errorCount = new AtomicInteger();
+    AtomicInteger errorCountTimeouts = new AtomicInteger();
+
+    AtomicInteger count = new AtomicInteger();
+
+    long realStart = System.nanoTime();
+
+    Flux.generate(() -> null,
+      (state, sink) -> {
+      String next = UUID.randomUUID().toString();
+      sink.next(next);
+        return null;
+      })
+      .takeWhile(v -> TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - realStart) <= runForSecs)
+      .parallel(opsDesiredInFlight)
+      // Defaults to 10*numProcessors threads
+      .runOn(Schedulers.boundedElastic())
+      .concatMap(id -> {
+        concurrentlyOutgoingMessagesSeen.add(opsActuallyInFlight.incrementAndGet());
+//        int newCountReal = opsActuallyInFlight.incrementAndGet();
+//
+//        if (newCountReal > opsActuallyInFlightMax.get()) {
+//          opsActuallyInFlightMax.set(newCountReal);
+//          System.out.println("New max " + newCountReal);
+//        }
+        long start = System.nanoTime();
+        return collection.reactive().insert(id.toString(), "Hello, world")
+          .onErrorResume(err -> {
+            opsActuallyInFlight.decrementAndGet();
+            if (err instanceof TimeoutException) {
+              errorCountTimeouts.incrementAndGet();
+            }
+            else {
+              errorCount.incrementAndGet();
+            }
+            //System.out.println("Error: " + err.toString());
+            return Mono.empty();
+          })
+          .doOnNext(v -> {
+            opsActuallyInFlight.decrementAndGet();
+            stats.recordLatency(System.nanoTime() - start);
+//            opsActuallyInFlight.decrementAndGet();
+
+            int newCount = count.getAndIncrement();
+//            if (newCount % 20000 == 0) {
+//            }
+          });
+      })
+      .sequential()
+      .blockLast();
+
+//    System.out.println("Ran " + opsTotal + " with " + opsDesiredInFlight + " parallel");
+    System.out.println("Ran with " + opsDesiredInFlight + " parallel");
+    Histogram histogram = stats.getIntervalHistogram();
+//    System.out.println("   Min: " + TimeUnit.NANOSECONDS.toMicros(histogram.getMinValue()));
+//    System.out.println("   Max: " + TimeUnit.NANOSECONDS.toMicros(histogram.getMaxValue()));
+    System.out.println("   Mean: " + TimeUnit.NANOSECONDS.toMicros((long) histogram.getMean()) + "µs");
+//    System.out.println("   p50: " + TimeUnit.NANOSECONDS.toMicros(histogram.getValueAtPercentile(50)));
+//    System.out.println("   p95: " + TimeUnit.NANOSECONDS.toMicros(histogram.getValueAtPercentile(95)));
+//    System.out.println("   p99: " + TimeUnit.NANOSECONDS.toMicros(histogram.getValueAtPercentile(99)));
+    System.out.println("   Max in-flight: " + concurrentlyOutgoingMessagesSeen.stream().max(Comparator.comparingInt(v -> v)).get());
+    System.out.println("   Ops/sec: " + (int)((double) count.get() / runForSecs));
+    System.out.println("   Run for: " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - realStart) + "ms");
+    if (errorCountTimeouts.get() != 0) {
+      System.out.println("   Timeouts: " + errorCountTimeouts.get());
+    }
+    if (errorCount.get() != 0) {
+      System.out.println("   Other errors: " + errorCount.get());
+    }
+
+    return stats;
+  }
+}

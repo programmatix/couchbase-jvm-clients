@@ -19,7 +19,7 @@ import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.msg.BaseRequest;
 import com.couchbase.client.core.retry.BestEffortRetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.time.Duration;
 
@@ -34,7 +34,7 @@ public class CoreTransactionRequest extends BaseRequest<CoreTransactionResponse>
   }
 
   @Override
-  public ServiceType serviceType() {
+  public ServiceCoordinate serviceCoordinate() {
     // This is part of the transactions 'virtual service'.  We don't want to add ServiceType.TRANSACTIONS
     // as that's a very wide-reaching change (e.g. users could waitUntilReady on it).
     return null;

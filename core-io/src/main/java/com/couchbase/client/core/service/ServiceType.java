@@ -64,7 +64,20 @@ public enum ServiceType {
    * The Backup service
    */
   @Stability.Volatile
-  BACKUP(ServiceScope.CLUSTER, "backup");
+  BACKUP(ServiceScope.CLUSTER, "backup"),
+
+  /**
+   * The Transactions service.
+   */
+  @Stability.Volatile
+  TRANSACTIONS(ServiceScope.CLUSTER, "transactions"),
+
+  /**
+   * The Protostellar service.
+   */
+//  @Stability.Volatile
+//  PROTOSTELLAR(ServiceScope.CLUSTER, "protostellar")
+  ;
 
   private final ServiceScope scope;
   private final String ident;

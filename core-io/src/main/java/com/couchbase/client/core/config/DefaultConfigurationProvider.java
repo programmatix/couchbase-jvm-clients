@@ -61,6 +61,7 @@ import com.couchbase.client.core.msg.kv.GetCollectionIdRequest;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.BestEffortRetryStrategy;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.util.ConnectionString;
 import com.couchbase.client.core.util.NanoTimestamp;
 import com.couchbase.client.core.util.UnsignedLEB128;
@@ -295,7 +296,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
    * @return the mapped hostname.
    */
   private String mapAlternateAddress(final String a, final SeedNode seed, final boolean tls,
-                                     final AtomicReference<Map<ServiceType, Integer>> alternatePorts) {
+                                     final AtomicReference<Map<ServiceCoordinate, Integer>> alternatePorts) {
     ClusterConfig c = currentConfig;
     if (c.globalConfig() != null) {
       for (PortInfo pi : c.globalConfig().portInfos()) {
@@ -596,7 +597,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     currentConfig.setBucketConfig(newConfig);
     checkAlternateAddress();
     updateSeedNodeList();
-    logger.info("checkAndApplyConfig pushing bucket config {} {}", name, newConfig.nodes().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
+    logger.debug("checkAndApplyConfig pushing bucket config {} {}", name, newConfig.nodes().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
     pushConfig("new bucket config", false);
   }
 
@@ -623,7 +624,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     currentConfig.setGlobalConfig(newConfig);
     checkAlternateAddress();
     updateSeedNodeList();
-    logger.info("checkAndApplyConfig pushing global config {}", newConfig.portInfos().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
+    logger.debug("checkAndApplyConfig pushing global config {}", newConfig.portInfos().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
     pushConfig("new global config", false);
   }
 
@@ -662,7 +663,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
 
     if (config.globalConfig() != null) {
       Set<SeedNode> seedNodes = unmodifiableSet(config.globalConfig().portInfos().stream().map(ni -> {
-        Map<ServiceType, Integer> ports = tlsEnabled ? ni.sslPorts() : ni.ports();
+        Map<ServiceCoordinate, Integer> ports = tlsEnabled ? ni.sslPorts() : ni.ports();
 
         if (!ports.containsKey(ServiceType.KV)) {
           // We  only want seed nodes where the KV service is enabled
@@ -690,17 +691,17 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
       .stream()
       .flatMap(bc -> bc.nodes().stream())
       .map(ni -> {
-        Map<ServiceType, Integer> ports = tlsEnabled ? ni.sslServices() : ni.services();
+        Map<ServiceCoordinate, Integer> ports = tlsEnabled ? ni.sslServices() : ni.services();
 
-        if (!ports.containsKey(ServiceType.KV)) {
+        if (!ports.containsKey(ServiceCoordinate.KV)) {
           // We  only want seed nodes where the KV service is enabled
           return null;
         }
 
         return SeedNode.create(
           ni.hostname(),
-          Optional.ofNullable(ports.get(ServiceType.KV)),
-          Optional.ofNullable(ports.get(ServiceType.MANAGER))
+          Optional.ofNullable(ports.get(ServiceCoordinate.KV)),
+          Optional.ofNullable(ports.get(ServiceCoordinate.MANAGER))
         );
       }).filter(Objects::nonNull).collect(Collectors.toSet()));
 
@@ -943,16 +944,16 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
         .flatMap(seed -> {
           NodeIdentifier identifier = new NodeIdentifier(seed.address(), seed.clusterManagerPort().orElse(DEFAULT_MANAGER_PORT));
 
-          final AtomicReference<Map<ServiceType, Integer>> alternatePorts = new AtomicReference<>();
+          final AtomicReference<Map<ServiceCoordinate, Integer>> alternatePorts = new AtomicReference<>();
           final Optional<String> alternateAddress = alternate.map(a -> mapAlternateAddress(a, seed, tls, alternatePorts));
 
           final int mappedKvPort;
           final int mappedManagerPort;
 
           if (alternateAddress.isPresent()) {
-            Map<ServiceType, Integer> ports = alternatePorts.get();
-            mappedKvPort = ports.get(ServiceType.KV);
-            mappedManagerPort = ports.get(ServiceType.MANAGER);
+            Map<ServiceCoordinate, Integer> ports = alternatePorts.get();
+            mappedKvPort = ports.get(ServiceCoordinate.KV);
+            mappedManagerPort = ports.get(ServiceCoordinate.MANAGER);
           } else {
             mappedKvPort = seed.kvPort().orElse(kvPort);
             mappedManagerPort = seed.clusterManagerPort().orElse(managerPort);

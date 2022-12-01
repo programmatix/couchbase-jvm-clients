@@ -227,7 +227,7 @@ public class OrphanReporter {
         if (request == null) {
           return;
         }
-        final ServiceType serviceType = request.serviceType();
+        final ServiceType serviceType = request.serviceCoordinate().serviceType();
         if (serviceType == ServiceType.KV) {
           updateSet(kvOrphans, request);
           kvOrphanCount += 1;

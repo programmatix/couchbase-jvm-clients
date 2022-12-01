@@ -28,7 +28,7 @@ import com.couchbase.client.core.error.context.ReducedAnalyticsErrorContext;
 import com.couchbase.client.core.error.context.ReducedQueryErrorContext;
 import com.couchbase.client.core.error.context.ReducedSearchErrorContext;
 import com.couchbase.client.core.msg.search.SearchRequest;
-import com.couchbase.client.java.analytics.AnalyticsAccessor;
+import com.couchbase.client.java.analytics.AnalyticsAccessorHttp;
 import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.ReactiveAnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
@@ -44,6 +44,7 @@ import com.couchbase.client.java.manager.query.AsyncQueryIndexManager;
 import com.couchbase.client.java.manager.query.ReactiveQueryIndexManager;
 import com.couchbase.client.java.manager.search.ReactiveSearchIndexManager;
 import com.couchbase.client.java.manager.user.ReactiveUserManager;
+import com.couchbase.client.java.query.QueryAccessorProtostellar;
 import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.ReactiveQueryResult;
 import com.couchbase.client.java.search.SearchAccessor;
@@ -291,11 +292,21 @@ public class ReactiveCluster {
     else {
       JsonSerializer serializer = opts.serializer() == null ? environment().jsonSerializer() : opts.serializer();
       return Mono.defer(() -> {
-        return asyncCluster.queryAccessor().queryReactive(
-                asyncCluster.queryRequest(statement, opts),
-                opts,
-                serializer
-        );
+        if (core().isProtostellar()) {
+          return QueryAccessorProtostellar.reactive(
+            core(),
+            opts,
+            QueryAccessorProtostellar.request(core(), statement, opts, environment(), null, null),
+            serializer
+          );
+        }
+        else {
+          return asyncCluster.queryAccessor().queryReactive(
+            asyncCluster.queryRequest(statement, opts),
+            opts,
+            serializer
+          );
+        }
       });
     }
   }
@@ -323,9 +334,9 @@ public class ReactiveCluster {
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment().jsonSerializer() : opts.serializer();
     return Mono.defer(() -> {
-      return AnalyticsAccessor.analyticsQueryReactive(
+      return AnalyticsAccessorHttp.analyticsQueryReactive(
         asyncCluster.core(),
-        asyncCluster.analyticsRequest(statement, opts),
+        asyncCluster.analyticsRequestHttp(statement, opts),
         serializer
       );
     });

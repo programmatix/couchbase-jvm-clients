@@ -247,8 +247,8 @@ private[scala] class QueryHandler(hp: HandlerBasicParams)(implicit ec: Execution
     * @return the mono once the result is complete.
     */
   private def maybePrepareAndExecute(
-      request: QueryRequest,
-      options: QueryOptions
+                                            request: QueryRequest,
+                                            options: QueryOptions
   ): SMono[QueryResponse] = {
     val cacheEntry      = queryCache.get(request.statement)
     val enhancedEnabled = enhancedPreparedEnabled
@@ -315,8 +315,8 @@ private[scala] class QueryHandler(hp: HandlerBasicParams)(implicit ec: Execution
     * @return the mono once the result is complete.
     */
   private def queryReactive(
-      request: QueryRequest,
-      options: QueryOptions
+                                   request: QueryRequest,
+                                   options: QueryOptions
   ): SMono[ReactiveQueryResult] = {
     SMono.defer(() => {
       queryInternal(request, options, options.adhoc)
@@ -372,9 +372,9 @@ private[scala] class QueryHandler(hp: HandlerBasicParams)(implicit ec: Execution
     * @return the created request, ready to be sent over the wire.
     */
   private def buildExecuteRequest(
-      cacheEntry: QueryCacheEntry,
-      original: QueryRequest,
-      originalOptions: QueryOptions
+                                         cacheEntry: QueryCacheEntry,
+                                         original: QueryRequest,
+                                         originalOptions: QueryOptions
   ): QueryRequest = {
     val query = cacheEntry.`export`
 

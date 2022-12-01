@@ -27,7 +27,7 @@ import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.kv.CarrierGlobalConfigRequest;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.BestEffortRetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -65,20 +65,20 @@ public class GlobalLoader {
    */
   public Mono<ProposedGlobalConfigContext> load(final NodeIdentifier seed, final int port) {
     return Mono.defer(() -> {
-      logger.info("load {} {}", seed, port);
+      logger.debug("load {} {}", seed, port);
 
       return core
-        .ensureServiceAt(seed, ServiceType.KV, port, Optional.empty(), Optional.empty())
+        .ensureServiceAt(seed, ServiceCoordinate.KV, port, Optional.empty(), Optional.empty())
         .then(discoverConfig(seed))
         .map(config -> new String(config, UTF_8))
         .map(config -> config.replace("$HOST", seed.address()))
-        .doOnNext(config -> logger.info("load {} {} got config {}", seed, port, config))
+        .doOnNext(config -> logger.debug("load {} {} got config {}", seed, port, config))
         .map(config -> new ProposedGlobalConfigContext(config, seed.address()))
         .onErrorResume(ex -> Mono.error(ex instanceof ConfigException
           ? ex
           : new ConfigException("Caught exception while loading global config.", ex)
         ))
-        .doOnNext(v -> logger.info("load finished {} {}", seed, port));
+        .doOnNext(v -> logger.debug("load finished {} {}", seed, port));
     });
   }
 

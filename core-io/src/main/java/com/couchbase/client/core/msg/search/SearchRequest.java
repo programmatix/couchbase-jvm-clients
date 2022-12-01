@@ -28,7 +28,7 @@ import com.couchbase.client.core.msg.BaseRequest;
 import com.couchbase.client.core.msg.HttpRequest;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -65,13 +65,13 @@ public class SearchRequest extends BaseRequest<SearchResponse>
         FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, uri, c);
         request.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
         request.headers().set(HttpHeaderNames.CONTENT_LENGTH, c.readableBytes());
-        authenticator.authHttpRequest(serviceType(), request);
+        authenticator.authHttpRequest(serviceCoordinate(), request);
         return request;
     }
 
     @Override
-    public ServiceType serviceType() {
-        return ServiceType.SEARCH;
+    public ServiceCoordinate serviceCoordinate() {
+        return ServiceCoordinate.SEARCH;
     }
 
     @Override
@@ -88,7 +88,7 @@ public class SearchRequest extends BaseRequest<SearchResponse>
     @Override
     public Map<String, Object> serviceContext() {
         Map<String, Object> ctx = new TreeMap<>();
-        ctx.put("type", serviceType().ident());
+        ctx.put("type", serviceCoordinate().ident());
         ctx.put("indexName", redactMeta(indexName));
         return ctx;
     }

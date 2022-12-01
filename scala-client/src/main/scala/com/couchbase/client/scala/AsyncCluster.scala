@@ -352,7 +352,7 @@ class AsyncCluster(
         core,
         options.timeout.map(scalaDurationToJava).asJava,
         options.retryStrategy.getOrElse(env.retryStrategy),
-        if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
+        null, // todo sn if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
         options.reportId.asJava,
         Optional.empty()
       )
@@ -390,7 +390,7 @@ class AsyncCluster(
       .javaCFToScalaFuture(
         WaitUntilReadyHelper.waitUntilReady(
           core,
-          if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
+          null, // todo sn if (options.serviceTypes.isEmpty) null else options.serviceTypes.asJava,
           timeout,
           options.desiredState,
           Optional.empty()

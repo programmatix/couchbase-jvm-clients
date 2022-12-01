@@ -26,7 +26,6 @@ import com.couchbase.client.core.env.CoreEnvironment;
 import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.msg.Request;
 import com.couchbase.client.core.msg.RequestContext;
-import com.couchbase.client.core.msg.TargetedRequest;
 import com.couchbase.client.core.msg.kv.CarrierBucketConfigRequest;
 import com.couchbase.client.core.msg.kv.GetRequest;
 import org.junit.jupiter.api.Test;

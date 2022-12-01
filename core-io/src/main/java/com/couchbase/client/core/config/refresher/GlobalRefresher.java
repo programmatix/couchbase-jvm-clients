@@ -27,7 +27,7 @@ import com.couchbase.client.core.config.PortInfo;
 import com.couchbase.client.core.config.ProposedGlobalConfigContext;
 import com.couchbase.client.core.msg.kv.CarrierGlobalConfigRequest;
 import com.couchbase.client.core.retry.FailFastRetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.util.NanoTimestamp;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -210,7 +210,7 @@ public class GlobalRefresher {
 
     return nodes
       .stream()
-      .filter(n -> n.ports().containsKey(ServiceType.KV) || n.sslPorts().containsKey(ServiceType.KV))
+      .filter(n -> n.ports().containsKey(ServiceCoordinate.KV) || n.sslPorts().containsKey(ServiceCoordinate.KV))
       .collect(Collectors.toList());
   }
 

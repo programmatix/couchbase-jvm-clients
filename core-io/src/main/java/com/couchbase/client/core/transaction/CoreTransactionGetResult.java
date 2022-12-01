@@ -28,6 +28,9 @@ import com.couchbase.client.core.transaction.components.OperationTypes;
 import com.couchbase.client.core.transaction.components.TransactionLinks;
 import com.couchbase.client.core.transaction.forwards.ForwardCompatibility;
 import com.couchbase.client.core.transaction.util.DebugUtil;
+import com.couchbase.client.protostellar.transactions.v1.TransactionGetResponse;
+import com.couchbase.client.protostellar.transactions.v1.TransactionInsertResponse;
+import com.couchbase.client.protostellar.transactions.v1.TransactionsV1;
 import reactor.util.annotation.Nullable;
 
 import java.io.IOException;
@@ -165,7 +168,7 @@ public class CoreTransactionGetResult {
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
-                Optional.of(OperationTypes.INSERT),
+                Optional.of(OperationTypes.INSERT.asString()),
                 true,
                 Optional.empty(),
                 Optional.empty(),
@@ -357,6 +360,37 @@ public class CoreTransactionGetResult {
                 Optional.of(crc32FromDocument));
 
         return out;
+    }
+
+    @Stability.Internal
+    public static CoreTransactionGetResult createFrom(CollectionIdentifier collection,
+                                                      String documentId,
+                                                      TransactionGetResponse response) {
+
+        return new CoreTransactionGetResult(documentId,
+                response.getValue().toByteArray(),
+                response.getCas(),
+                collection,
+                null,
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty());
+    }
+
+    @Stability.Internal
+    public static CoreTransactionGetResult createFrom(CollectionIdentifier collection,
+                                                      String documentId,
+                                                      byte[] content,
+                                                      TransactionInsertResponse response) {
+
+        return new CoreTransactionGetResult(documentId,
+                content,
+                response.getCas(),
+                collection,
+                null,
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty());
     }
 
     public CollectionIdentifier collection() {

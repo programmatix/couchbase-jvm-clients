@@ -212,7 +212,10 @@ public class Bucket internal constructor(
         services: Set<ServiceType> = emptySet(),
         desiredState: ClusterState = ClusterState.ONLINE,
     ): Bucket {
-        WaitUntilReadyHelper.waitUntilReady(core, services, timeout.toJavaDuration(), desiredState, name.toOptional())
+        WaitUntilReadyHelper.waitUntilReady(core,
+        null,
+            // todo sn services,
+            timeout.toJavaDuration(), desiredState, name.toOptional())
             .await()
         return this
     }
@@ -235,7 +238,8 @@ public class Bucket internal constructor(
             core,
             Optional.ofNullable(common.timeout?.toJavaDuration()),
             common.retryStrategy,
-            services,
+            null, // todo sn services
+            // services,
             Optional.of(reportId),
             Optional.of(name),
         ).awaitSingle()

@@ -31,6 +31,7 @@ import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.retry.RetryOrchestrator;
 import com.couchbase.client.core.retry.RetryReason;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,13 +62,13 @@ public class RoundRobinLocator implements Locator {
   /**
    * Holds the configured service type for this locator.
    */
-  private final ServiceType serviceType;
+  private final ServiceCoordinate serviceType;
 
-  public RoundRobinLocator(final ServiceType serviceType) {
+  public RoundRobinLocator(final ServiceCoordinate serviceType) {
     this(serviceType, new Random().nextInt(1024));
   }
 
-  RoundRobinLocator(final ServiceType serviceType, final long initialValue) {
+  RoundRobinLocator(final ServiceCoordinate serviceType, final long initialValue) {
     counter = new AtomicLong(initialValue);
     this.serviceType = serviceType;
   }
@@ -97,7 +98,7 @@ public class RoundRobinLocator implements Locator {
       } else {
         logger.info("Raising FeatureNotAvailableException {}", serviceType);
 
-        request.fail(FeatureNotAvailableException.clusterLevelQuery(serviceType));
+        request.fail(FeatureNotAvailableException.clusterLevelQuery(serviceType.serviceType()));
       }
       return;
     }
@@ -117,7 +118,7 @@ public class RoundRobinLocator implements Locator {
         // retry will not help resolve the situation so let's make it clear in the exception what's
         //going on.
         request.fail(new ServiceNotAvailableException(
-          "The " + request.serviceType().ident()
+          "The " + request.serviceCoordinate().ident()
             + " service is not available in the cluster.",
           new GenericRequestErrorContext(request)
         ));

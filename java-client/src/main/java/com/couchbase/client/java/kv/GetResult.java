@@ -74,7 +74,8 @@ public class GetResult {
    * @param cas the cas from the doc.
    * @param expiry the expiry if fetched from the doc.
    */
-  GetResult(final byte[] content, final int flags, final long cas, final Optional<Instant> expiry, Transcoder transcoder) {
+  @Stability.Internal
+  public GetResult(final byte[] content, final int flags, final long cas, final Optional<Instant> expiry, Transcoder transcoder) {
     this.cas = cas;
     this.content = content;
     this.flags = flags;

@@ -19,6 +19,7 @@ package com.couchbase.client.core.endpoint;
 import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.core.util.HostAndPort;
+import reactor.util.annotation.Nullable;
 
 import java.util.Map;
 import java.util.Optional;
@@ -43,7 +44,7 @@ public class EndpointContext extends CoreContext {
   /**
    * The service type of this endpoint.
    */
-  private final ServiceType serviceType;
+  private final @Nullable ServiceType serviceType;
 
   private final Optional<String> bucket;
 
@@ -62,7 +63,7 @@ public class EndpointContext extends CoreContext {
    * Creates a new {@link EndpointContext}.
    */
   public EndpointContext(CoreContext ctx, HostAndPort remoteSocket,
-                         CircuitBreaker circuitBreaker, ServiceType serviceType,
+                         CircuitBreaker circuitBreaker, @Nullable ServiceType serviceType,
                          Optional<HostAndPort> localSocket, Optional<String> bucket, Optional<String> channelId) {
     super(ctx.core(), ctx.id(), ctx.environment(), ctx.authenticator());
     this.remoteSocket = remoteSocket;
@@ -98,7 +99,10 @@ public class EndpointContext extends CoreContext {
     return remoteSocket;
   }
 
-  public ServiceType serviceType() {
+  /**
+   * @return the service type of this endpoint.  Null if this endpoint is not bound to any particular service - e.g. Protostellar connections can handle multiple services.
+   */
+  public @Nullable ServiceType serviceType() {
     return serviceType;
   }
 

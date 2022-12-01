@@ -21,7 +21,7 @@ import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.msg.BaseRequest;
 import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.time.Duration;
 
@@ -39,8 +39,8 @@ public abstract class BaseManagerRequest<R extends Response> extends BaseRequest
   }
 
   @Override
-  public ServiceType serviceType() {
-    return ServiceType.MANAGER;
+  public ServiceCoordinate serviceCoordinate() {
+    return ServiceCoordinate.MANAGER;
   }
 
 }

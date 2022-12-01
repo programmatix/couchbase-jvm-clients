@@ -34,7 +34,7 @@ import com.couchbase.client.core.msg.HttpRequest;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.ScopedRequest;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -78,8 +78,8 @@ public class ViewRequest extends BaseRequest<ViewResponse>
   }
 
   @Override
-  public ServiceType serviceType() {
-    return ServiceType.VIEWS;
+  public ServiceCoordinate serviceCoordinate() {
+    return ServiceCoordinate.VIEWS;
   }
 
   @Override
@@ -106,7 +106,7 @@ public class ViewRequest extends BaseRequest<ViewResponse>
       .set(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes())
       .set(HttpHeaderNames.USER_AGENT, context().environment().userAgent().formattedLong());
 
-    authenticator.authHttpRequest(serviceType(), request);
+    authenticator.authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 
@@ -130,7 +130,7 @@ public class ViewRequest extends BaseRequest<ViewResponse>
   @Override
   public Map<String, Object> serviceContext() {
     Map<String, Object> ctx = new TreeMap<>();
-    ctx.put("type", serviceType().ident());
+    ctx.put("type", serviceCoordinate().ident());
     ctx.put("bucket", redactMeta(bucket));
     ctx.put("designDoc", redactMeta(design));
     ctx.put("viewName", redactMeta(view));

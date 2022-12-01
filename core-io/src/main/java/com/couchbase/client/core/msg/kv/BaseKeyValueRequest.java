@@ -32,7 +32,7 @@ import com.couchbase.client.core.io.netty.kv.KeyValueChannelContext;
 import com.couchbase.client.core.msg.BaseRequest;
 import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.util.Bytes;
 
 import java.time.Duration;
@@ -204,8 +204,8 @@ public abstract class BaseKeyValueRequest<R extends Response>
   }
 
   @Override
-  public ServiceType serviceType() {
-    return ServiceType.KV;
+  public ServiceCoordinate serviceCoordinate() {
+    return ServiceCoordinate.KV;
   }
 
   public int opaque() {
@@ -215,7 +215,7 @@ public abstract class BaseKeyValueRequest<R extends Response>
   @Override
   public Map<String, Object> serviceContext() {
     Map<String, Object> ctx = new TreeMap<>();
-    ctx.put("type", serviceType().ident());
+    ctx.put("type", serviceCoordinate().ident());
     ctx.put("opaque", operationId());
 
     if (collectionIdentifier != null) {

@@ -22,6 +22,7 @@ import com.couchbase.client.core.endpoint.CircuitBreakerConfig;
 import com.couchbase.client.core.env.IoConfig;
 import com.couchbase.client.core.env.ThresholdLoggingTracerConfig;
 import com.couchbase.client.core.error.DocumentNotFoundException;
+import com.couchbase.client.core.error.transaction.TransactionOperationFailedException;
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -52,12 +54,15 @@ import static com.couchbase.client.core.transaction.config.CoreTransactionsClean
 import static com.couchbase.client.core.transaction.config.CoreTransactionsCleanupConfig.TRANSACTIONS_CLEANUP_REGULAR_PROPERTY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Transactions are heavily tested by FIT, these are some basic sanity tests for KV-only transactions.
  */
 @IgnoreWhen(clusterTypes = {ClusterType.MOCKED},
         missesCapabilities = {Capabilities.CREATE_AS_DELETED})
+@Timeout(5)
 public class TransactionsIntegrationTest extends JavaIntegrationTest {
 
     static private Cluster cluster;
@@ -71,6 +76,8 @@ public class TransactionsIntegrationTest extends JavaIntegrationTest {
         collection = bucket.defaultCollection();
 
         bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+
+        System.setProperty("com.couchbase.transactions.sn_mode", "true");
     }
 
     @AfterAll
@@ -154,16 +161,46 @@ public class TransactionsIntegrationTest extends JavaIntegrationTest {
     }
 
     @Test
+    void getNotExist() {
+        String docId = UUID.randomUUID().toString();
+
+        try {
+            TransactionResult tr = cluster.transactions().run((ctx) -> {
+                try {
+                    TransactionGetResult doc = ctx.get(collection, docId);
+                }
+                catch (RuntimeException err) {
+                    ctx.logger().logs().forEach(l -> System.out.println(l.toString()));
+
+                    assertTrue(err instanceof TransactionOperationFailedException);
+                }
+                fail();
+            });
+            fail();
+        }
+        catch (TransactionFailedException err) {
+            err.logs().forEach(l -> System.out.println(l.toString()));
+        }
+    }
+
+    @Timeout(5)
+    @Test
     void replace() {
         String docId = UUID.randomUUID().toString();
         JsonObject initial = JsonObject.create().put("foo", "bar");
         JsonObject updated = JsonObject.create().put("foo", "baz");
         collection.insert(docId, initial);
 
-        TransactionResult tr = cluster.transactions().run((ctx) -> {
-            TransactionGetResult doc = ctx.get(collection, docId);
-            ctx.replace(doc, updated);
-        });
+        try {
+            TransactionResult tr = cluster.transactions().run((ctx) -> {
+                TransactionGetResult doc = ctx.get(collection, docId);
+                ctx.replace(doc, updated);
+            });
+            System.out.println(true);
+        }
+        catch (TransactionFailedException err) {
+            err.logs().forEach(l -> System.out.println(l.toString()));
+        }
 
         assertEquals(updated, collection.get(docId).contentAsObject());
     }

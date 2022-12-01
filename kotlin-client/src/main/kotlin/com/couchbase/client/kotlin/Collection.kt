@@ -155,12 +155,12 @@ public class Collection internal constructor(
     ): GetResult {
         if (!withExpiry && project.isEmpty()) {
             val request = GetRequest(
-                validateDocumentId(id),
-                common.actualKvTimeout(Durability.none()),
-                core.context(),
-                collectionId,
-                common.actualRetryStrategy(),
-                common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_GET),
+                    validateDocumentId(id),
+                    common.actualKvTimeout(Durability.none()),
+                    core.context(),
+                    collectionId,
+                    common.actualRetryStrategy(),
+                    common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_GET),
             )
 
             return exec(request, common) {

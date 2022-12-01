@@ -62,7 +62,7 @@ public class BucketConfigStreamingRequest extends BaseManagerRequest<BucketConfi
       HttpMethod.GET,
       String.format(PATH, bucketName)
     );
-    authenticator.authHttpRequest(serviceType(), request);
+    authenticator.authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 

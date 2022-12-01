@@ -16,10 +16,13 @@
 
 package com.couchbase.client.java;
 
+import com.couchbase.client.core.deps.org.LatencyUtils.LatencyStats;
+import com.couchbase.client.core.env.PasswordAuthenticator;
 import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.core.error.FeatureNotAvailableException;
+import com.couchbase.client.core.error.RequestCanceledException;
 import com.couchbase.client.core.error.TimeoutException;
 import com.couchbase.client.core.error.ValueTooLargeException;
 import com.couchbase.client.core.retry.RetryReason;
@@ -40,15 +43,21 @@ import com.couchbase.client.test.IgnoreWhen;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.couchbase.client.core.util.CbCollections.listOf;
 import static com.couchbase.client.java.kv.DecrementOptions.decrementOptions;
@@ -71,6 +80,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.couchbase.client.core.deps.org.HdrHistogram.Histogram;
 
 /**
  * This integration test makes sure the various KV-based APIs work as they are intended to.
@@ -91,7 +101,9 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
     Bucket bucket = cluster.bucket(config().bucketname());
     collection = bucket.defaultCollection();
 
-    bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // todo snbrett - what does it meant for this in SN?
+//     bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // cluster.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
   }
 
   @AfterAll
@@ -107,11 +119,25 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
     assertTrue(insertResult.cas() != 0);
     assertTrue(insertResult.mutationToken().isPresent());
 
-    GetResult getResult = collection.get(id);
+
+    GetResult getResult = collection.get(id, getOptions().timeout(Duration.ofDays(1)));
     assertEquals("Hello, World", getResult.contentAs(String.class));
     assertEquals("\"Hello, World\"", new String(getResult.contentAsBytes(), UTF_8));
     assertTrue(getResult.cas() != 0);
     assertFalse(getResult.expiryTime().isPresent());
+  }
+
+
+  @Test
+  void requestCancelledPostShutdown() {
+    Cluster cluster1 = createCluster();
+    Collection coll = cluster1.bucket(config().bucketname()).defaultCollection();
+    cluster1.disconnect();
+
+    assertThrows(RequestCanceledException.class, () -> {
+      String id = UUID.randomUUID().toString();
+      coll.insert(id, "Hello, World");
+    });
   }
 
   /**
@@ -136,6 +162,14 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
 
   @Test
   void emptyIfGetNotFound() {
+    try {
+      collection.get(UUID.randomUUID().toString());
+    }
+    catch (DocumentNotFoundException err) {
+      System.out.println(err);
+    }
+
+
     assertThrows(DocumentNotFoundException.class, () -> collection.get(UUID.randomUUID().toString()));
   }
 

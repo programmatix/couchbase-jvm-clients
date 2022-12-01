@@ -24,11 +24,12 @@ import com.couchbase.client.core.msg.Request;
 import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.msg.analytics.AnalyticsRequest;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 public class AnalyticsLocator extends RoundRobinLocator {
 
   public AnalyticsLocator() {
-    super(ServiceType.ANALYTICS);
+    super(ServiceCoordinate.ANALYTICS);
   }
 
   @Override

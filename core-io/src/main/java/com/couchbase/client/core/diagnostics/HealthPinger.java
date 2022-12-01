@@ -32,7 +32,8 @@ import com.couchbase.client.core.msg.RequestTarget;
 import com.couchbase.client.core.msg.kv.KvPingRequest;
 import com.couchbase.client.core.msg.kv.KvPingResponse;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.Protocol;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -69,11 +70,11 @@ public class HealthPinger {
    */
   @Stability.Internal
   public static Mono<PingResult> ping(final Core core, final Optional<Duration> timeout, final RetryStrategy retryStrategy,
-                                final Set<ServiceType> serviceTypes, final Optional<String> reportId, final Optional<String> bucketName) {
+                                      final Set<ServiceCoordinate> serviceTypes, final Optional<String> reportId, final Optional<String> bucketName) {
     return Mono.defer(() -> {
       Set<RequestTarget> targets = extractPingTargets(core.clusterConfig(), bucketName);
       if (!isNullOrEmpty(serviceTypes)) {
-        targets = targets.stream().filter(t -> serviceTypes.contains(t.serviceType())).collect(Collectors.toSet());
+        targets = targets.stream().filter(t -> serviceTypes.contains(t.serviceTypeAndProtocol())).collect(Collectors.toSet());
       }
 
       return pingTargets(core, targets, timeout, retryStrategy).collectList()
@@ -93,8 +94,8 @@ public class HealthPinger {
     if (!bucketName.isPresent()) {
       if (clusterConfig.globalConfig() != null) {
         for (PortInfo portInfo : clusterConfig.globalConfig().portInfos()) {
-          for (ServiceType serviceType : portInfo.ports().keySet()) {
-            if (serviceType == ServiceType.KV || serviceType == ServiceType.VIEWS) {
+          for (ServiceCoordinate serviceType : portInfo.ports().keySet()) {
+            if (serviceType == ServiceCoordinate.KV || serviceType == ServiceCoordinate.VIEWS) {
               // do not check bucket-level resources from a global level (null bucket name will not work)
               continue;
             }
@@ -104,8 +105,8 @@ public class HealthPinger {
       }
       for (Map.Entry<String, BucketConfig> bucketConfig : clusterConfig.bucketConfigs().entrySet()) {
         for (NodeInfo nodeInfo : bucketConfig.getValue().nodes()) {
-          for (ServiceType serviceType: nodeInfo.services().keySet()) {
-            if (serviceType == ServiceType.KV || serviceType == ServiceType.VIEWS) {
+          for (ServiceCoordinate serviceType: nodeInfo.services().keySet()) {
+            if (serviceType == ServiceCoordinate.KV || serviceType == ServiceCoordinate.VIEWS) {
               // do not check bucket-level resources from a global level (null bucket name will not work)
               continue;
             }
@@ -117,8 +118,8 @@ public class HealthPinger {
       BucketConfig bucketConfig = clusterConfig.bucketConfig(bucketName.get());
       if (bucketConfig !=  null) {
         for (NodeInfo nodeInfo : bucketConfig.nodes()) {
-          for (ServiceType serviceType : nodeInfo.services().keySet()) {
-            if (serviceType != ServiceType.VIEWS && serviceType != ServiceType.KV) {
+          for (ServiceCoordinate serviceType : nodeInfo.services().keySet()) {
+            if (serviceType != ServiceCoordinate.VIEWS && serviceType != ServiceCoordinate.KV) {
               targets.add(new RequestTarget(serviceType, nodeInfo.identifier(), null));
             } else {
               targets.add(new RequestTarget(serviceType, nodeInfo.identifier(), bucketName.get()));
@@ -142,7 +143,11 @@ public class HealthPinger {
 
   private static Mono<EndpointPingReport> pingTarget(final Core core, final RequestTarget target,
                                                      final CoreCommonOptions options) {
-    switch (target.serviceType()) {
+    if (target.serviceTypeAndProtocol().protocol() == Protocol.PROTOSTELLAR) {
+      throw new UnsupportedOperationException();
+    }
+
+    switch (target.serviceTypeAndProtocol().serviceType()) {
       case QUERY: return pingHttpEndpoint(core, target, options, "/admin/ping")
         .doOnNext(v -> logger.info("pingTarget query result {}", v));
       case KV: return pingKv(core, target, options)
@@ -175,7 +180,7 @@ public class HealthPinger {
       dispatchFrom = context.lastDispatchedFrom().toString();
     }
     return new EndpointPingReport(
-      context.request().serviceType(),
+      context.request().serviceCoordinate().serviceType(),
       "0x" + channelId,
       dispatchFrom,
       dispatchTo,
@@ -198,7 +203,7 @@ public class HealthPinger {
     }
     PingState state = throwable instanceof TimeoutException ? PingState.TIMEOUT : PingState.ERROR;
     return new EndpointPingReport(
-      context.request().serviceType(),
+      context.request().serviceCoordinate().serviceType(),
       null,
       dispatchFrom,
       dispatchTo,

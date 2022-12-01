@@ -23,6 +23,7 @@ import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.deps.io.netty.util.HashedWheelTimer;
 import com.couchbase.client.core.deps.io.netty.util.Timeout;
 import com.couchbase.client.core.deps.io.netty.util.concurrent.DefaultThreadFactory;
+import com.couchbase.client.core.protostellar.ProtostellarRequest;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;

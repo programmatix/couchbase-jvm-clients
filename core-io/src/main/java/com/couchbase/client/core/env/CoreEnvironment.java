@@ -39,6 +39,7 @@ import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.service.AbstractPooledEndpointServiceConfig;
 import com.couchbase.client.core.transaction.config.CoreTransactionsConfig;
 import com.couchbase.client.core.transaction.util.CoreTransactionsSchedulers;
+import com.couchbase.client.core.transaction.util.TransactionsThreadFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -58,6 +59,9 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.jar.Attributes;
@@ -132,6 +136,7 @@ public class CoreEnvironment implements AutoCloseable {
   private final LoggerConfig loggerConfig;
   private final RetryStrategy retryStrategy;
   private final Supplier<Scheduler> scheduler;
+  private final Supplier<Executor> executor;
   private final int schedulerThreadCount;
   private final OrphanReporter orphanReporter;
   private final long maxNumRequestsInRetry;
@@ -161,6 +166,13 @@ public class CoreEnvironment implements AutoCloseable {
       .orElse(new OwnedSupplier<>(
         Schedulers.newParallel("cb-comp", schedulerThreadCount, true))
       );
+    // todo sn will want to give user configurable control over the executor
+    // todo sn experiment with different executors and thread counts for a good performant out-of-the-box setup.
+    // Creates `Runtime.getRuntime().availableProcessors()` threads.
+    this.executor = new OwnedSupplier<>(new ForkJoinPool(Runtime.getRuntime().availableProcessors(),
+      new CouchbaseThreadFactory("cb-exec"),
+      null,
+      true));
     this.eventBus = Optional
       .ofNullable(builder.eventBus)
       .orElse(new OwnedSupplier<>(DefaultEventBus.create(scheduler.get())));
@@ -368,6 +380,13 @@ public class CoreEnvironment implements AutoCloseable {
    */
   public Scheduler scheduler() {
     return scheduler.get();
+  }
+
+  /**
+   * Returns the executor used to schedule non-reactive async tasks across the SDK.
+   */
+  public Executor executor() {
+    return executor.get();
   }
 
   /**

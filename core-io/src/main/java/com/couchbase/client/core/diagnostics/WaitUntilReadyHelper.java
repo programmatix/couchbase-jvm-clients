@@ -31,7 +31,7 @@ import com.couchbase.client.core.json.Mapper;
 import com.couchbase.client.core.msg.RequestTarget;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.manager.GenericManagerRequest;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -59,7 +59,7 @@ public class WaitUntilReadyHelper {
   private static final Logger logger = LoggerFactory.getLogger(WaitUntilReadyHelper.class);
 
   @Stability.Internal
-  public static CompletableFuture<Void> waitUntilReady(final Core core, final Set<ServiceType> serviceTypes,
+  public static CompletableFuture<Void> waitUntilReady(final Core core, final Set<ServiceCoordinate> serviceTypes,
                                                        final Duration timeout, final ClusterState desiredState,
                                                        final Optional<String> bucketName) {
     final WaitUntilReadyState state = new WaitUntilReadyState();
@@ -204,14 +204,14 @@ public class WaitUntilReadyHelper {
       .toFuture();
   }
 
-  private static Set<ServiceType> servicesToCheck(final Core core, final Set<ServiceType> serviceTypes,
-                                                  final Optional<String> bucketName) {
+  private static Set<ServiceCoordinate> servicesToCheck(final Core core, final Set<ServiceCoordinate> serviceTypes,
+                                                        final Optional<String> bucketName) {
     return !isNullOrEmpty(serviceTypes)
       ? serviceTypes
       : HealthPinger
       .extractPingTargets(core.clusterConfig(), bucketName)
       .stream()
-      .map(RequestTarget::serviceType)
+      .map(RequestTarget::serviceTypeAndProtocol)
       .collect(Collectors.toSet());
   }
 
@@ -228,7 +228,7 @@ public class WaitUntilReadyHelper {
   /**
    * Performs the ping part of the wait until ready (calling into the health pinger).
    */
-  private static Flux<PingResult> ping(final Core core, final Set<ServiceType> serviceTypes, final Duration timeout,
+  private static Flux<PingResult> ping(final Core core, final Set<ServiceCoordinate> serviceTypes, final Duration timeout,
                                        final Optional<String> bucketName) {
     return HealthPinger
       .ping(core, Optional.of(timeout), core.context().environment().retryStrategy(), serviceTypes, Optional.empty(), bucketName)

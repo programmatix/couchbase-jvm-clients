@@ -54,6 +54,12 @@ public class SeedNode {
    */
   private final Optional<Integer> clusterManagerPort;
 
+
+  /**
+   * If present, an alternate Protostellar port.
+   */
+  private final Optional<Integer> protostellarPort;
+
   /**
    * Creates a seed node from a hostname and the default ports.
    *
@@ -72,13 +78,21 @@ public class SeedNode {
    */
   public static SeedNode create(final String address, final Optional<Integer> kvPort,
                                 final Optional<Integer> clusterManagerPort) {
-    return new SeedNode(address, kvPort, clusterManagerPort);
+    return new SeedNode(address, kvPort, clusterManagerPort, Optional.empty());
   }
 
-  private SeedNode(final String address, final Optional<Integer> kvPort, final Optional<Integer> clusterManagerPort) {
+  public static SeedNode protostellar(final String address, final int protostellarPort) {
+    return new SeedNode(address, Optional.empty(), Optional.empty(), Optional.of(protostellarPort));
+  }
+
+  private SeedNode(final String address,
+                   final Optional<Integer> kvPort,
+                   final Optional<Integer> clusterManagerPort,
+                   final Optional<Integer> protostellarPort) {
     this.address = notNullOrEmpty(address, "Address");
     this.kvPort = notNull(kvPort, "KvPort");
     this.clusterManagerPort = notNull(clusterManagerPort, "ClusterManagerPort");
+    this.protostellarPort = notNull(protostellarPort, "ProtostellarPort");
   }
 
   /**
@@ -120,12 +134,20 @@ public class SeedNode {
     return clusterManagerPort;
   }
 
+  /**
+   * If present, the Protostellar port.
+   */
+  public Optional<Integer> protostellarPort() {
+    return protostellarPort;
+  }
+
   @Override
   public String toString() {
     return "SeedNode{" +
       "address='" + address + '\'' +
       ", kvPort=" + kvPort +
       ", mgmtPort=" + clusterManagerPort +
+      ", psPort=" + protostellarPort +
       '}';
   }
 
@@ -136,12 +158,13 @@ public class SeedNode {
     SeedNode seedNode = (SeedNode) o;
     return Objects.equals(address, seedNode.address) &&
       Objects.equals(kvPort, seedNode.kvPort) &&
-      Objects.equals(clusterManagerPort, seedNode.clusterManagerPort);
+      Objects.equals(clusterManagerPort, seedNode.clusterManagerPort) &&
+      Objects.equals(protostellarPort, seedNode.protostellarPort);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(address, kvPort, clusterManagerPort);
+    return Objects.hash(address, kvPort, clusterManagerPort, protostellarPort);
   }
 
 }

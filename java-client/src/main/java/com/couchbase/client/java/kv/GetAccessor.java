@@ -58,6 +58,9 @@ public enum GetAccessor {
         if (response.status().success()) {
           return new GetResult(response.content(), response.flags(), response.cas(), Optional.empty(), transcoder);
         }
+        else if (response.status() == ResponseStatus.NOT_FOUND) {
+          throw new DocumentNotFoundException(null);
+        }
         throw keyValueStatusToException(request, response);
       })
       .whenComplete((t, e) -> {

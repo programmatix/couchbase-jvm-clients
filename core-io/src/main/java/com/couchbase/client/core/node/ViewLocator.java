@@ -23,7 +23,7 @@ import com.couchbase.client.core.config.MemcachedBucketConfig;
 import com.couchbase.client.core.error.FeatureNotAvailableException;
 import com.couchbase.client.core.msg.Request;
 import com.couchbase.client.core.msg.Response;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 /**
  * The {@link ViewLocator} extends the round-robin locator with some custom checks.
@@ -31,7 +31,7 @@ import com.couchbase.client.core.service.ServiceType;
 public class ViewLocator extends RoundRobinLocator {
 
   public ViewLocator() {
-    super(ServiceType.VIEWS);
+    super(ServiceCoordinate.VIEWS);
   }
 
   @Override

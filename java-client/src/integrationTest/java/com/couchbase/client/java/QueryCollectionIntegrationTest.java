@@ -90,9 +90,9 @@ class QueryCollectionIntegrationTest extends JavaIntegrationTest {
   static void beforeAll() {
     cluster = createCluster();
     Bucket bucket = cluster.bucket(config().bucketname());
-    bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
-    waitForService(bucket, ServiceType.QUERY);
-    waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
+    // todo bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // todo waitForService(bucket, ServiceType.QUERY);
+    // todo waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
     collectionManager = bucket.collections();
 
     // Create the scope.collection (borrowed from CollectionManagerIntegrationTest )
@@ -114,7 +114,7 @@ class QueryCollectionIntegrationTest extends JavaIntegrationTest {
 
   @AfterAll
   static void afterAll() {
-    cluster.disconnect();
+    // todo cluster.disconnect();
   }
 
   @Test

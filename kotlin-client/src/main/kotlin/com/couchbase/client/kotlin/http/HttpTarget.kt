@@ -17,14 +17,14 @@
 package com.couchbase.client.kotlin.http
 
 import com.couchbase.client.core.msg.RequestTarget
-import com.couchbase.client.core.service.ServiceType
+import com.couchbase.client.core.service.ServiceCoordinate
 
 /**
  * Determines which host and port an HTTP request is dispatched to.
  * Use the companion factory methods to create new instances.
  */
 public class HttpTarget internal constructor(
-    serviceType: ServiceType,
+        serviceType: ServiceCoordinate,
 ) {
     internal val coreTarget = RequestTarget(serviceType, null, null)
 
@@ -34,31 +34,31 @@ public class HttpTarget internal constructor(
         /**
          * Target the Analytics service (port 8095 by default).
          */
-        public fun analytics(): HttpTarget = HttpTarget(ServiceType.ANALYTICS)
+        public fun analytics(): HttpTarget = HttpTarget(ServiceCoordinate.ANALYTICS)
 
         /**
          * Target the Backup service (port 8097 by default).
          */
-        public fun backup(): HttpTarget = HttpTarget(ServiceType.BACKUP)
+        public fun backup(): HttpTarget = HttpTarget(ServiceCoordinate.BACKUP)
 
         /**
          * Target the Eventing service (port 8096 by default).
          */
-        public fun eventing(): HttpTarget = HttpTarget(ServiceType.EVENTING)
+        public fun eventing(): HttpTarget = HttpTarget(ServiceCoordinate.EVENTING)
 
         /**
          * Target the Cluster Management service (port 8091 by default).
          */
-        public fun manager(): HttpTarget = HttpTarget(ServiceType.MANAGER)
+        public fun manager(): HttpTarget = HttpTarget(ServiceCoordinate.MANAGER)
 
         /**
          * Target the N1QL Query service (port 8093 by default).
          */
-        public fun query(): HttpTarget = HttpTarget(ServiceType.QUERY)
+        public fun query(): HttpTarget = HttpTarget(ServiceCoordinate.QUERY)
 
         /**
          * Target the Full-Text Search service (port 8094 by default).
          */
-        public fun search(): HttpTarget = HttpTarget(ServiceType.SEARCH)
+        public fun search(): HttpTarget = HttpTarget(ServiceCoordinate.SEARCH)
     }
 }

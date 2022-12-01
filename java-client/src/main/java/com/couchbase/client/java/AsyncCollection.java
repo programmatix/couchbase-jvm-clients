@@ -58,6 +58,7 @@ import com.couchbase.client.java.kv.ExistsOptions;
 import com.couchbase.client.java.kv.ExistsResult;
 import com.couchbase.client.java.kv.Expiry;
 import com.couchbase.client.java.kv.GetAccessor;
+import com.couchbase.client.java.kv.GetAccessorProtostellar;
 import com.couchbase.client.java.kv.GetAllReplicasOptions;
 import com.couchbase.client.java.kv.GetAndLockOptions;
 import com.couchbase.client.java.kv.GetAndTouchOptions;
@@ -66,6 +67,8 @@ import com.couchbase.client.java.kv.GetOptions;
 import com.couchbase.client.java.kv.GetReplicaResult;
 import com.couchbase.client.java.kv.GetResult;
 import com.couchbase.client.java.kv.InsertAccessor;
+import com.couchbase.client.core.protostellar.CoreInsertAccessorProtostellar;
+import com.couchbase.client.java.kv.InsertAccessorProtostellar;
 import com.couchbase.client.java.kv.InsertOptions;
 import com.couchbase.client.java.kv.LookupInAccessor;
 import com.couchbase.client.java.kv.LookupInMacro;
@@ -80,6 +83,7 @@ import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.client.java.kv.PersistTo;
 import com.couchbase.client.java.kv.RangeScan;
 import com.couchbase.client.java.kv.RemoveAccessor;
+import com.couchbase.client.java.kv.RemoveAccessorProtostellar;
 import com.couchbase.client.java.kv.RemoveOptions;
 import com.couchbase.client.java.kv.ReplaceAccessor;
 import com.couchbase.client.java.kv.ReplaceOptions;
@@ -280,7 +284,12 @@ public class AsyncCollection {
 
     final Transcoder transcoder = opts.transcoder() == null ? environment.transcoder() : opts.transcoder();
     if (opts.projections().isEmpty() && !opts.withExpiry()) {
-      return GetAccessor.get(core, fullGetRequest(id, opts), transcoder);
+      if (core.isProtostellar()) {
+        return GetAccessorProtostellar.async(core, opts, GetAccessorProtostellar.request(core, opts, collectionIdentifier, id), transcoder);
+      }
+      else {
+        return GetAccessor.get(core, fullGetRequest(id, opts), transcoder);
+      }
     } else {
       return GetAccessor.subdocGet(core, subdocGetRequest(id, opts), transcoder);
     }
@@ -636,7 +645,12 @@ public class AsyncCollection {
   public CompletableFuture<MutationResult> remove(final String id, final RemoveOptions options) {
     notNull(options, "RemoveOptions", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
     RemoveOptions.Built opts = options.build();
-    return RemoveAccessor.remove(core, removeRequest(id, opts), id, opts.persistTo(), opts.replicateTo());
+    if (core.isProtostellar()) {
+      return RemoveAccessorProtostellar.async(core(), opts, RemoveAccessorProtostellar.request(id, opts, core(), collectionIdentifier()));
+    }
+    else {
+      return RemoveAccessor.remove(core, removeRequest(id, opts), id, opts.persistTo(), opts.replicateTo());
+    }
   }
 
   /**
@@ -681,7 +695,12 @@ public class AsyncCollection {
   public CompletableFuture<MutationResult> insert(final String id, Object content, final InsertOptions options) {
     notNull(options, "InsertOptions", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
     InsertOptions.Built opts = options.build();
-    return InsertAccessor.insert(core, insertRequest(id, content, opts), id, opts.persistTo(), opts.replicateTo());
+    if (core.isProtostellar()) {
+      return InsertAccessorProtostellar.async(core, opts, InsertAccessorProtostellar.request(id, content, opts, core, environment, collectionIdentifier));
+    }
+    else {
+      return InsertAccessor.insert(core, insertRequest(id, content, opts), id, opts.persistTo(), opts.replicateTo());
+    }
   }
 
   /**
@@ -723,6 +742,8 @@ public class AsyncCollection {
       .encodeLatency(end - start);
     return request;
   }
+
+
 
   /**
    * Upserts a full document which might or might not exist yet with default options.

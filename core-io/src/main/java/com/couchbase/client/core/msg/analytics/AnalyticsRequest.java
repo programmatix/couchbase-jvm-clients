@@ -33,7 +33,7 @@ import com.couchbase.client.core.msg.BaseRequest;
 import com.couchbase.client.core.msg.HttpRequest;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
@@ -128,7 +128,7 @@ public class AnalyticsRequest
       request.headers().set("Analytics-Priority", priority);
     }
 
-    authenticator.authHttpRequest(serviceType(), request);
+    authenticator.authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 
@@ -140,8 +140,8 @@ public class AnalyticsRequest
   }
 
   @Override
-  public ServiceType serviceType() {
-    return ServiceType.ANALYTICS;
+  public ServiceCoordinate serviceCoordinate() {
+    return ServiceCoordinate.ANALYTICS;
   }
 
   @Override
@@ -161,7 +161,7 @@ public class AnalyticsRequest
   @Override
   public Map<String, Object> serviceContext() {
     Map<String, Object> ctx = new TreeMap<>();
-    ctx.put("type", serviceType().ident());
+    ctx.put("type", serviceCoordinate().ident());
     ctx.put("uri", redactMeta(uri));
     ctx.put("httpMethod", httpMethod.toString());
     ctx.put("operationId", redactMeta(operationId()));

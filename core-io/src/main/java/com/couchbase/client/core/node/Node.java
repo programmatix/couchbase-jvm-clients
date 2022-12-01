@@ -42,6 +42,7 @@ import com.couchbase.client.core.service.EventingService;
 import com.couchbase.client.core.service.KeyValueService;
 import com.couchbase.client.core.service.KeyValueServiceConfig;
 import com.couchbase.client.core.service.ManagerService;
+import com.couchbase.client.core.service.Protocol;
 import com.couchbase.client.core.service.QueryService;
 import com.couchbase.client.core.service.QueryServiceConfig;
 import com.couchbase.client.core.service.SearchService;
@@ -50,6 +51,7 @@ import com.couchbase.client.core.service.Service;
 import com.couchbase.client.core.service.ServiceScope;
 import com.couchbase.client.core.service.ServiceState;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.service.ViewService;
 import com.couchbase.client.core.service.ViewServiceConfig;
 import com.couchbase.client.core.util.CompositeStateful;
@@ -90,7 +92,7 @@ public class Node implements Stateful<NodeState> {
   private final NodeIdentifier identifier;
   private final NodeContext ctx;
   private final Authenticator authenticator;
-  private final Map<String, Map<ServiceType, Service>> services;
+  private final Map<String, Map<ServiceCoordinate, Service>> services;
   private final AtomicBoolean disconnect;
   private final Optional<String> alternateAddress;
 
@@ -219,15 +221,16 @@ public class Node implements Stateful<NodeState> {
   /**
    * Adds a {@link Service} to this {@link Node}.
    *
-   * @param type the type of the service.
+   * @param typeAndProtocol the type of the service.
    * @param port the port of the service.
    * @param bucket the bucket name (if present).
    * @return a {@link Mono} that completes once the service is added.
    */
-  public synchronized Mono<Void> addService(final ServiceType type, final int port,
+  public synchronized Mono<Void> addService(final ServiceCoordinate typeAndProtocol, final int port,
                                             final Optional<String> bucket) {
     return Mono.defer(() -> {
-      logger.info("Node.addService {} {} {} {}", identifier, type, port, bucket);
+      logger.debug("Node.addService {} {} {} {}", identifier, typeAndProtocol, port, bucket);
+      ServiceType type = typeAndProtocol.serviceType();
       if (disconnect.get()) {
         ctx.environment().eventBus().publish(new ServiceAddIgnoredEvent(
           Event.Severity.DEBUG,
@@ -238,17 +241,17 @@ public class Node implements Stateful<NodeState> {
       }
 
       String name = type.scope() == ServiceScope.CLUSTER ? GLOBAL_SCOPE : bucket.orElse(BUCKET_GLOBAL_SCOPE);
-      Map<ServiceType, Service> localMap = services.get(name);
+      Map<ServiceCoordinate, Service> localMap = services.get(name);
       if (localMap == null) {
         localMap = new ConcurrentHashMap<>();
         services.put(name, localMap);
       }
-      if (!localMap.containsKey(type)) {
-        logger.info("Node.addService {} {} {} {} really adding", identifier, type, port, bucket);
+      if (!localMap.containsKey(typeAndProtocol)) {
+        logger.debug("Node.addService {} {} {} {} really adding", identifier, type, port, bucket);
         long start = System.nanoTime();
-        Service service = createService(type, port, bucket);
+        Service service = createService(typeAndProtocol, port, bucket);
         serviceStates.register(service, service);
-        localMap.put(type, service);
+        localMap.put(typeAndProtocol, service);
         enabledServices.set(enabledServices.get() | 1 << type.ordinal());
         // todo: only return once the service is connected?
         service.connect();
@@ -258,7 +261,7 @@ public class Node implements Stateful<NodeState> {
         );
         return Mono.empty();
       } else {
-        logger.info("Node.addService {} {} {} {} already added", identifier, type, port, bucket);
+        logger.debug("Node.addService {} {} {} {} already added", identifier, type, port, bucket);
         ctx.environment().eventBus().publish(new ServiceAddIgnoredEvent(
           Event.Severity.VERBOSE,
           ServiceAddIgnoredEvent.Reason.ALREADY_ADDED,
@@ -276,15 +279,15 @@ public class Node implements Stateful<NodeState> {
    * @param bucket the bucket name if present.
    * @return a mono once completed.
    */
-  public Mono<Void> removeService(final ServiceType type, final Optional<String> bucket) {
+  public Mono<Void> removeService(final ServiceCoordinate type, final Optional<String> bucket) {
     return removeService(type, bucket, false);
   }
 
-  private synchronized Mono<Void> removeService(final ServiceType type,
+  private synchronized Mono<Void> removeService(final ServiceCoordinate type,
                                                 final Optional<String> bucket,
                                                 boolean ignoreDisconnect) {
     return Mono.defer(() -> {
-      logger.info("removeService {} {} {}", identifier, type, bucket);
+      logger.debug("removeService {} {} {}", identifier, type, bucket);
 
       if (disconnect.get() && !ignoreDisconnect) {
         ctx.environment().eventBus().publish(new ServiceRemoveIgnoredEvent(
@@ -295,8 +298,8 @@ public class Node implements Stateful<NodeState> {
         return Mono.empty();
       }
 
-      String name = type.scope() == ServiceScope.CLUSTER ? GLOBAL_SCOPE : bucket.orElse(BUCKET_GLOBAL_SCOPE);
-      Map<ServiceType, Service> localMap = services.get(name);
+      String name = type.serviceType().scope() == ServiceScope.CLUSTER ? GLOBAL_SCOPE : bucket.orElse(BUCKET_GLOBAL_SCOPE);
+      Map<ServiceCoordinate, Service> localMap = services.get(name);
       if (localMap == null || !localMap.containsKey(type)) {
         ctx.environment().eventBus().publish(new ServiceRemoveIgnoredEvent(
           Event.Severity.DEBUG,
@@ -353,9 +356,9 @@ public class Node implements Stateful<NodeState> {
    * @param bucket the bucket, if present.
    * @return if found, a flux with the service states.
    */
-  public Optional<Flux<ServiceState>> serviceState(final ServiceType type, final Optional<String> bucket) {
-    String name = type.scope() == ServiceScope.CLUSTER ? GLOBAL_SCOPE : bucket.orElse(BUCKET_GLOBAL_SCOPE);
-    Map<ServiceType, Service> s = services.get(name);
+  public Optional<Flux<ServiceState>> serviceState(final ServiceCoordinate type, final Optional<String> bucket) {
+    String name = type.serviceType().scope() == ServiceScope.CLUSTER ? GLOBAL_SCOPE : bucket.orElse(BUCKET_GLOBAL_SCOPE);
+    Map<ServiceCoordinate, Service> s = services.get(name);
     if (s == null) {
       return Optional.empty();
     }
@@ -372,7 +375,7 @@ public class Node implements Stateful<NodeState> {
    */
   public <R extends Request<? extends Response>> void send(final R request) {
     String bucket;
-    if (request.serviceType().scope() == ServiceScope.BUCKET) {
+    if (request.serviceCoordinate().serviceType().scope() == ServiceScope.BUCKET) {
       bucket = request.bucket();
       if (bucket == null) {
         // no bucket name present so this is a kv request that is not attached
@@ -383,13 +386,13 @@ public class Node implements Stateful<NodeState> {
       bucket = GLOBAL_SCOPE;
     }
 
-    Map<ServiceType, Service> scope = services.get(bucket);
+    Map<ServiceCoordinate, Service> scope = services.get(bucket);
     if (scope == null) {
       sendIntoRetry(request);
       return;
     }
 
-    Service service = scope.get(request.serviceType());
+    Service service = scope.get(request.serviceCoordinate());
     if (service == null) {
       sendIntoRetry(request);
       return;
@@ -423,8 +426,8 @@ public class Node implements Stateful<NodeState> {
    * @param type the service type to check.
    * @return true if enabled, false otherwise.
    */
-  public boolean serviceEnabled(final ServiceType type) {
-    return (enabledServices.get() & (1 << type.ordinal())) != 0;
+  public boolean serviceEnabled(final ServiceCoordinate type) {
+    return (enabledServices.get() & (1 << type.serviceType().ordinal())) != 0;
   }
 
   public boolean hasServicesEnabled() {
@@ -434,54 +437,70 @@ public class Node implements Stateful<NodeState> {
   /**
    * Helper method to create the {@link Service} based on the service type provided.
    *
-   * @param serviceType the type of service to create.
+   * @param serviceTypeProtocol the type of service to create.
    * @param port the port for that service.
    * @param bucket optionally the bucket name.
    * @return a created service, but not yet connected or anything.
    */
-  protected Service createService(final ServiceType serviceType, final int port,
+  protected Service createService(final ServiceCoordinate serviceTypeProtocol, final int port,
                                   final Optional<String> bucket) {
     CoreEnvironment env = ctx.environment();
     String address = alternateAddress.orElseGet(identifier::address);
 
-    switch (serviceType) {
+    switch (serviceTypeProtocol.serviceType()) {
       case KV:
-        return new KeyValueService(
-          KeyValueServiceConfig.endpoints(env.ioConfig().numKvConnections()).build(), ctx, address, port, bucket, authenticator);
+        if (serviceTypeProtocol.protocol() == Protocol.MEMCACHED) {
+            return new KeyValueService(
+              KeyValueServiceConfig.endpoints(env.ioConfig().numKvConnections()).build(), ctx, address, port, bucket, authenticator);
+        }
       case MANAGER:
-        return new ManagerService(ctx, address, port);
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+          return new ManagerService(ctx, address, port);
+        }
       case QUERY:
-        return new QueryService(QueryServiceConfig
-          .maxEndpoints(env.ioConfig().maxHttpConnections())
-          .idleTime(env.ioConfig().idleHttpConnectionTimeout())
-          .build(),
-          ctx, address, port
-        );
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+            return new QueryService(QueryServiceConfig
+              .maxEndpoints(env.ioConfig().maxHttpConnections())
+              .idleTime(env.ioConfig().idleHttpConnectionTimeout())
+              .build(),
+              ctx, address, port
+            );
+        }
       case VIEWS:
-        return new ViewService(ViewServiceConfig
-          .maxEndpoints(env.ioConfig().maxHttpConnections())
-          .idleTime(env.ioConfig().idleHttpConnectionTimeout())
-          .build(),
-          ctx, address, port);
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+          return new ViewService(ViewServiceConfig
+            .maxEndpoints(env.ioConfig().maxHttpConnections())
+            .idleTime(env.ioConfig().idleHttpConnectionTimeout())
+            .build(),
+            ctx, address, port);
+        }
       case SEARCH:
-        return new SearchService(SearchServiceConfig
-          .maxEndpoints(env.ioConfig().maxHttpConnections())
-          .idleTime(env.ioConfig().idleHttpConnectionTimeout())
-          .build(),
-          ctx, address, port);
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+          return new SearchService(SearchServiceConfig
+            .maxEndpoints(env.ioConfig().maxHttpConnections())
+            .idleTime(env.ioConfig().idleHttpConnectionTimeout())
+            .build(),
+            ctx, address, port);
+        }
       case ANALYTICS:
-        return new AnalyticsService(AnalyticsServiceConfig
-          .maxEndpoints(env.ioConfig().maxHttpConnections())
-          .idleTime(env.ioConfig().idleHttpConnectionTimeout())
-          .build(),
-          ctx, address, port);
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+          return new AnalyticsService(AnalyticsServiceConfig
+            .maxEndpoints(env.ioConfig().maxHttpConnections())
+            .idleTime(env.ioConfig().idleHttpConnectionTimeout())
+            .build(),
+            ctx, address, port);
+        }
       case EVENTING:
-        return new EventingService(ctx, address, port);
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+          return new EventingService(ctx, address, port);
+        }
       case BACKUP:
-        return new BackupService(ctx, address, port);
-      default:
-        throw InvalidArgumentException.fromMessage("Unsupported ServiceType: " + serviceType);
+        if (serviceTypeProtocol.protocol() == Protocol.HTTP) {
+          return new BackupService(ctx, address, port);
+        }
     }
+
+    throw InvalidArgumentException.fromMessage("Unsupported combination: " + serviceTypeProtocol);
   }
 
   public Stream<EndpointDiagnostics> diagnostics() {

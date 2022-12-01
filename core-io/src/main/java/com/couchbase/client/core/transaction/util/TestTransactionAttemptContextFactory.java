@@ -17,9 +17,10 @@ package com.couchbase.client.core.transaction.util;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
 import com.couchbase.client.core.transaction.support.SpanWrapper;
 import com.couchbase.client.core.transaction.support.TransactionAttemptContextFactory;
-import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContextClassic;
 import com.couchbase.client.core.transaction.CoreTransactionContext;
 import com.couchbase.client.core.transaction.CoreTransactionsReactive;
 import com.couchbase.client.core.transaction.config.CoreMergedTransactionConfig;
@@ -41,6 +42,6 @@ public class TestTransactionAttemptContextFactory extends TransactionAttemptCont
     @Override
     public CoreTransactionAttemptContext create(Core core, CoreTransactionContext overall, CoreMergedTransactionConfig config, String attemptId,
                                                 CoreTransactionsReactive parent, Optional<SpanWrapper> parentSpan) {
-        return new CoreTransactionAttemptContext(core, overall, config, attemptId, parent, parentSpan, hooks);
+        return new CoreTransactionAttemptContextClassic(core, overall, config, attemptId, parent, parentSpan, hooks);
     }
 }

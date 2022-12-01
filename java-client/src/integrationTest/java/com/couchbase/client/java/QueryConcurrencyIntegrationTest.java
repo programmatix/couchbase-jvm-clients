@@ -69,9 +69,9 @@ class QueryConcurrencyIntegrationTest extends JavaIntegrationTest {
     Bucket bucket = cluster.bucket(config().bucketname());
     Collection collection = bucket.defaultCollection();
 
-    bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
-    waitForService(bucket, ServiceType.QUERY);
-    waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
+    // todo bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // todo waitForService(bucket, ServiceType.QUERY);
+    // todo waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
 
     bucketName = "`" + config().bucketname() + "`";
     createPrimaryIndex(cluster, config().bucketname());
@@ -96,7 +96,7 @@ class QueryConcurrencyIntegrationTest extends JavaIntegrationTest {
 
   @AfterAll
   static void tearDown() {
-    cluster.disconnect();
+    // todo cluster.disconnect();
   }
 
   @Test

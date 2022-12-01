@@ -19,10 +19,10 @@ package com.couchbase.client.core.config;
 import com.couchbase.client.core.error.CouchbaseException;
 import com.couchbase.client.core.error.InvalidArgumentException;
 import com.couchbase.client.core.node.NodeIdentifier;
-import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonCreator;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonProperty;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.util.annotation.Nullable;
 
 import java.net.URI;
@@ -43,8 +43,8 @@ import static com.couchbase.client.core.logging.RedactableArgument.redactSystem;
 public class NodeInfo {
 
     private final String hostname;
-    private final Map<ServiceType, Integer> directServices;
-    private final Map<ServiceType, Integer> sslServices;
+    private final Map<ServiceCoordinate, Integer> directServices;
+    private final Map<ServiceCoordinate, Integer> sslServices;
     private final Map<String, AlternateAddress> alternateAddresses;
     private final NodeIdentifier nodeIdentifier;
     private int configPort;
@@ -77,7 +77,7 @@ public class NodeInfo {
         }
         this.directServices = parseDirectServices(viewUri, ports);
         this.sslServices = new HashMap<>();
-        this.nodeIdentifier = new NodeIdentifier(this.hostname, directServices.get(ServiceType.MANAGER));
+        this.nodeIdentifier = new NodeIdentifier(this.hostname, directServices.get(ServiceCoordinate.MANAGER));
     }
 
     /**
@@ -87,8 +87,8 @@ public class NodeInfo {
      * @param direct   the port list of the direct node services.
      * @param ssl      the port list of the ssl node services.
      */
-    public NodeInfo(String hostname, Map<ServiceType, Integer> direct,
-                    Map<ServiceType, Integer> ssl, Map<String, AlternateAddress> alternateAddresses) {
+    public NodeInfo(String hostname, Map<ServiceCoordinate, Integer> direct,
+                    Map<ServiceCoordinate, Integer> ssl, Map<String, AlternateAddress> alternateAddresses) {
         if (hostname == null) {
             throw InvalidArgumentException.fromMessage("NodeInfo hostname cannot be null");
         }
@@ -100,8 +100,8 @@ public class NodeInfo {
             ? Collections.emptyMap()
             : alternateAddresses;
 
-        Integer directManagerPort = directServices.get(ServiceType.MANAGER);
-        Integer sslManagerPort = sslServices.get(ServiceType.MANAGER);
+        Integer directManagerPort = directServices.get(ServiceCoordinate.MANAGER);
+        Integer sslManagerPort = sslServices.get(ServiceCoordinate.MANAGER);
         if (directManagerPort != null) {
             this.nodeIdentifier = new NodeIdentifier(this.hostname, directManagerPort);
         } else if (sslManagerPort != null) {
@@ -120,11 +120,11 @@ public class NodeInfo {
         return nodeIdentifier;
     }
 
-    public Map<ServiceType, Integer> services() {
+    public Map<ServiceCoordinate, Integer> services() {
         return directServices;
     }
 
-    public Map<ServiceType, Integer> sslServices() {
+    public Map<ServiceCoordinate, Integer> sslServices() {
         return sslServices;
     }
 
@@ -132,23 +132,23 @@ public class NodeInfo {
         return alternateAddresses;
     }
 
-    private Map<ServiceType, Integer> parseDirectServices(@Nullable final String viewUri,
-                                                          @Nullable final Map<String, Integer> input) {
-        Map<ServiceType, Integer> services = new HashMap<>();
-        services.put(ServiceType.MANAGER, configPort);
+    private Map<ServiceCoordinate, Integer> parseDirectServices(@Nullable final String viewUri,
+                                                                @Nullable final Map<String, Integer> input) {
+        Map<ServiceCoordinate, Integer> services = new HashMap<>();
+        services.put(ServiceCoordinate.MANAGER, configPort);
 
         if (input != null) {
             for (Map.Entry<String, Integer> entry : input.entrySet()) {
                 String type = entry.getKey();
                 Integer port = entry.getValue();
                 if (type.equals("direct")) {
-                    services.put(ServiceType.KV, port);
+                    services.put(ServiceCoordinate.KV, port);
                 }
             }
         }
 
         if (viewUri != null) {
-            services.put(ServiceType.VIEWS, URI.create(viewUri).getPort());
+            services.put(ServiceCoordinate.VIEWS, URI.create(viewUri).getPort());
         }
 
         return services;

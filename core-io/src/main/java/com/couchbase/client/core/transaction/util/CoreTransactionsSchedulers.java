@@ -16,8 +16,13 @@
 package com.couchbase.client.core.transaction.util;
 
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.deps.com.google.common.util.concurrent.MoreExecutors;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * Mainly to aid debugging, transactions use their own pool of schedulers.  Though the underlying KV and query operations
@@ -38,6 +43,13 @@ public class CoreTransactionsSchedulers {
     // user accidentally block, without deadlocking the SDK.
     private final Scheduler schedulerBlocking = createScheduler(100_000, "cb-txn");
 
+    // Separate executor for ListeningFutures
+    private final ThreadFactory threadFactory = new TransactionsThreadFactory("cb-txnl");
+    // todo sntxn
+//    private final ListeningExecutorService executor = MoreExecutors.listeningDecorator(Executors.newCachedThreadPool(threadFactory));//  MoreExecutors.listeningDecorator(Executors.newCachedThreadPool(threadFactory));
+    private final Executor executor = MoreExecutors.listeningDecorator(Executors.newCachedThreadPool());//  MoreExecutors.listeningDecorator(Executors.newCachedThreadPool(threadFactory));
+//    private final Executor executor = Executors.newCachedThreadPool(threadFactory);//  MoreExecutors.listeningDecorator(Executors.newCachedThreadPool(threadFactory));
+
     private Scheduler createScheduler(int threadCap, String name) {
         // Create daemon threads so we don't block the JVM from exiting if the user forgets cluster.disconnect()
         return Schedulers.newBoundedElastic(threadCap, Integer.MAX_VALUE, name, DEFAULT_TTL_SECONDS, true);
@@ -51,8 +63,14 @@ public class CoreTransactionsSchedulers {
         return schedulerBlocking;
     }
 
+    public Executor executor() {
+        return executor;
+    }
+
     public void shutdown() {
         schedulerCleanup.dispose();
         schedulerBlocking.dispose();
+        // todo sntxn
+        // executor.shutdown();
     }
 }

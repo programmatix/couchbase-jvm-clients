@@ -25,13 +25,12 @@ import com.couchbase.client.core.endpoint.http.CoreHttpPath;
 import com.couchbase.client.core.endpoint.http.CoreHttpRequest;
 import com.couchbase.client.core.endpoint.http.CoreHttpResponse;
 import com.couchbase.client.core.error.HttpStatusCodeException;
-import com.couchbase.client.core.error.IndexNotFoundException;
 import com.couchbase.client.core.error.RequestCanceledException;
 import com.couchbase.client.core.error.ViewServiceException;
 import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.msg.RequestTarget;
 import com.couchbase.client.core.node.NodeIdentifier;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.transaction.util.TriFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,7 +105,7 @@ public class ConsistencyUtil {
   }
 
   private static RequestTarget defaultManagerTarget(NodeIdentifier node) {
-    return new RequestTarget(ServiceType.MANAGER, node, null);
+    return new RequestTarget(ServiceCoordinate.MANAGER, node, null);
   }
 
   private static CoreHttpRequest defaultManagerRequest(Core core, CoreHttpPath path, NodeIdentifier node) {
@@ -263,7 +262,7 @@ public class ConsistencyUtil {
       },
       String.format("view %s == %d", path.format(), requiredHttpStatus),
       (node) -> {
-        RequestTarget target = new RequestTarget(ServiceType.VIEWS, node, bucketName);
+        RequestTarget target = new RequestTarget(ServiceCoordinate.VIEWS, node, bucketName);
         return CoreHttpRequest.builder(CoreCommonOptions.DEFAULT, core.context(), HttpMethod.GET, path, target).build();
       });
   }

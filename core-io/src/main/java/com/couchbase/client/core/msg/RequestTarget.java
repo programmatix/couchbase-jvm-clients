@@ -18,7 +18,7 @@ package com.couchbase.client.core.msg;
 
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.node.NodeIdentifier;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.util.Objects;
 
@@ -28,43 +28,43 @@ import static java.util.Objects.requireNonNull;
 
 @Stability.Internal
 public class RequestTarget {
-  private final ServiceType serviceType;
+  private final ServiceCoordinate serviceType;
   private final NodeIdentifier nodeIdentifier;
   private final String bucketName;
 
   public static RequestTarget views(String bucket) {
-    return new RequestTarget(ServiceType.VIEWS, null, bucket);
+    return new RequestTarget(ServiceCoordinate.VIEWS, null, bucket);
   }
 
   public static RequestTarget manager() {
-    return new RequestTarget(ServiceType.MANAGER, null, null);
+    return new RequestTarget(ServiceCoordinate.MANAGER, null, null);
   }
 
   public static RequestTarget query() {
-    return new RequestTarget(ServiceType.QUERY, null, null);
+    return new RequestTarget(ServiceCoordinate.QUERY, null, null);
   }
 
   public static RequestTarget analytics() {
-    return new RequestTarget(ServiceType.ANALYTICS, null, null);
+    return new RequestTarget(ServiceCoordinate.ANALYTICS, null, null);
   }
 
   public static RequestTarget search() {
-    return new RequestTarget(ServiceType.SEARCH, null, null);
+    return new RequestTarget(ServiceCoordinate.SEARCH, null, null);
   }
 
   public static RequestTarget eventing() {
-    return new RequestTarget(ServiceType.EVENTING, null, null);
+    return new RequestTarget(ServiceCoordinate.EVENTING, null, null);
   }
 
   public static RequestTarget backup() {
-    return new RequestTarget(ServiceType.BACKUP, null, null);
+    return new RequestTarget(ServiceCoordinate.BACKUP, null, null);
   }
 
   /**
    * @param nodeIdentifier (nullable)
    * @param bucketName (nullable)
    */
-  public RequestTarget(ServiceType serviceType, NodeIdentifier nodeIdentifier, String bucketName) {
+  public RequestTarget(ServiceCoordinate serviceType, NodeIdentifier nodeIdentifier, String bucketName) {
     this.serviceType = requireNonNull(serviceType);
     this.nodeIdentifier = nodeIdentifier;
     this.bucketName = bucketName;
@@ -77,7 +77,7 @@ public class RequestTarget {
     return new RequestTarget(serviceType, nodeIdentifier, bucketName);
   }
 
-  public ServiceType serviceType() {
+  public ServiceCoordinate serviceTypeAndProtocol() {
     return serviceType;
   }
 

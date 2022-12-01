@@ -38,7 +38,7 @@ import com.couchbase.client.core.msg.HttpRequest;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -52,8 +52,12 @@ import static com.couchbase.client.core.logging.RedactableArgument.redactMeta;
 import static com.couchbase.client.core.logging.RedactableArgument.redactSystem;
 import static com.couchbase.client.core.logging.RedactableArgument.redactUser;
 
+//public class QueryResponseBase {}
+//public inter QueryRequestBase extends Request<QueryResponseBase> {}
+
 public class QueryRequest
   extends BaseRequest<QueryResponse>
+//  implements QueryResponseBase
   implements HttpRequest<QueryChunkHeader, QueryChunkRow, QueryChunkTrailer, QueryResponse> {
 
   private static final String URI = "/query/service";
@@ -115,7 +119,7 @@ public class QueryRequest
       .set(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
     request.headers()
       .set(HttpHeaderNames.USER_AGENT, context().environment().userAgent().formattedLong());
-    authenticator.authHttpRequest(serviceType(), request);
+    authenticator.authHttpRequest(serviceCoordinate(), request);
     return request;
   }
 
@@ -127,8 +131,8 @@ public class QueryRequest
   }
 
   @Override
-  public ServiceType serviceType() {
-    return ServiceType.QUERY;
+  public ServiceCoordinate serviceCoordinate() {
+    return ServiceCoordinate.QUERY;
   }
 
   @Override
@@ -165,7 +169,7 @@ public class QueryRequest
   @Override
   public Map<String, Object> serviceContext() {
     Map<String, Object> ctx = new TreeMap<>();
-    ctx.put("type", serviceType().ident());
+    ctx.put("type", serviceCoordinate().ident());
     ctx.put("operationId", redactMeta(operationId()));
     ctx.put("statement", redactUser(statement()));
     if (bucket != null) {

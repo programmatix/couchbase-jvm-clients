@@ -18,6 +18,7 @@ package com.couchbase.client.core.diagnostics;
 
 import com.couchbase.client.core.cnc.AbstractContext;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -29,14 +30,14 @@ import java.util.stream.Collectors;
 
 public class WaitUntilReadyContext extends AbstractContext {
 
-  private final Set<ServiceType> serviceTypes;
+  private final Set<ServiceCoordinate> serviceTypes;
   private final Duration timeout;
   private final ClusterState desiredState;
   private final Optional<String> bucketName;
   private final Map<ServiceType, List<EndpointDiagnostics>> diagnostics;
   private final WaitUntilReadyHelper.WaitUntilReadyState state;
 
-  public WaitUntilReadyContext(final Set<ServiceType> serviceTypes, final Duration timeout,
+  public WaitUntilReadyContext(final Set<ServiceCoordinate> serviceTypes, final Duration timeout,
                                final ClusterState desiredState, final Optional<String> bucketName,
                                final Map<ServiceType, List<EndpointDiagnostics>> diagnostics,
                                final WaitUntilReadyHelper.WaitUntilReadyState state) {

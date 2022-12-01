@@ -21,11 +21,12 @@ import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.error.context.ReducedAnalyticsErrorContext;
 import com.couchbase.client.core.error.context.ReducedQueryErrorContext;
 import com.couchbase.client.core.io.CollectionIdentifier;
-import com.couchbase.client.java.analytics.AnalyticsAccessor;
+import com.couchbase.client.java.analytics.AnalyticsAccessorHttp;
 import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.ReactiveAnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.env.ClusterEnvironment;
+import com.couchbase.client.java.query.QueryAccessorProtostellar;
 import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.ReactiveQueryResult;
 import com.couchbase.client.java.transactions.internal.ErrorUtil;
@@ -156,8 +157,16 @@ public class ReactiveScope {
     else {
       JsonSerializer serializer = opts.serializer() == null ? environment().jsonSerializer() : opts.serializer();
       return Mono.defer(() -> {
-        return async().queryAccessor().queryReactive(
-                async().queryRequest(bucketName(), name(), statement, opts, core(), environment()), opts, serializer);
+        if (core().isProtostellar()) {
+          return QueryAccessorProtostellar.reactive(core(),
+            opts,
+            QueryAccessorProtostellar.request(core(), statement, opts, environment(), async().bucketName(), name()),
+            serializer);
+        }
+        else {
+          return async().queryAccessor().queryReactive(
+            async().queryRequest(bucketName(), name(), statement, opts, core(), environment()), opts, serializer);
+        }
       });
     }
   }
@@ -185,7 +194,7 @@ public class ReactiveScope {
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment().jsonSerializer() : opts.serializer();
     return Mono.defer(() -> {
-      return AnalyticsAccessor.analyticsQueryReactive(
+      return AnalyticsAccessorHttp.analyticsQueryReactive(
           asyncScope.core(),
           asyncScope.analyticsRequest(statement, opts),
           serializer

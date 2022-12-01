@@ -23,6 +23,7 @@ import com.couchbase.client.core.cnc.tracing.NoopRequestTracer;
 import com.couchbase.client.core.cnc.tracing.ThresholdLoggingTracer;
 import com.couchbase.client.core.cnc.tracing.ThresholdRequestSpan;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -113,7 +114,7 @@ public class CbTracing {
     serviceTypeToTracingId = unmodifiableMap(map);
   }
 
-  public static String getTracingId(ServiceType serviceType) {
-    return serviceTypeToTracingId.getOrDefault(serviceType, serviceType.ident());
+  public static String getTracingId(ServiceCoordinate serviceType) {
+    return serviceTypeToTracingId.getOrDefault(serviceType.serviceType(), serviceType.serviceType().ident());
   }
 }

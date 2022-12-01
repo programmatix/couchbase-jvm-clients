@@ -18,7 +18,6 @@ package com.couchbase.client.scala.query.handlers
 
 import com.couchbase.client.core.Core
 import com.couchbase.client.core.deps.io.netty.util.CharsetUtil
-import com.couchbase.client.core.msg.query.QueryRequest
 import com.couchbase.client.scala.env.ClusterEnvironment
 import com.couchbase.client.scala.query.QueryOptions
 import com.couchbase.client.scala.transformers.JacksonTransformers
@@ -27,6 +26,7 @@ import com.couchbase.client.scala.view.ViewOptions
 import java.nio.charset.StandardCharsets.UTF_8
 
 import com.couchbase.client.core.cnc.TracingIdentifiers
+import com.couchbase.client.core.msg.query.QueryRequest
 
 import scala.compat.java8.OptionConverters._
 import com.couchbase.client.core.msg.view.ViewRequest

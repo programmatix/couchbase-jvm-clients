@@ -25,7 +25,7 @@ import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.manager.BucketConfigRequest;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.BestEffortRetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.core.publisher.Mono;
 
 import static com.couchbase.client.core.logging.RedactableArgument.redactMeta;
@@ -51,7 +51,7 @@ import static com.couchbase.client.core.logging.RedactableArgument.redactMeta;
 public class ClusterManagerBucketLoader extends BaseBucketLoader {
 
   public ClusterManagerBucketLoader(final Core core) {
-    super(core, ServiceType.MANAGER);
+    super(core, ServiceCoordinate.MANAGER);
   }
 
   @Override

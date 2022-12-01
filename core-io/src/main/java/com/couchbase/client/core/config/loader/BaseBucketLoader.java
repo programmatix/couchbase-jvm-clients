@@ -22,16 +22,13 @@ import com.couchbase.client.core.error.ConfigException;
 import com.couchbase.client.core.error.SeedNodeOutdatedException;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.service.ServiceState;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -59,9 +56,9 @@ public abstract class BaseBucketLoader implements BucketLoader {
   /**
    * The service type for this loader, to know what service to enable.
    */
-  private final ServiceType serviceType;
+  private final ServiceCoordinate serviceType;
 
-  BaseBucketLoader(final Core core, final ServiceType serviceType) {
+  BaseBucketLoader(final Core core, final ServiceCoordinate serviceType) {
     this.core = core;
     this.serviceType = serviceType;
   }
@@ -101,7 +98,7 @@ public abstract class BaseBucketLoader implements BucketLoader {
   public Mono<ProposedBucketConfigContext> load(final NodeIdentifier seed, final int port, final String bucket,
                                                 final Optional<String> alternateAddress) {
     return Mono.defer(() -> {
-      logger.info("load {} {} {}", seed, port, bucket);
+      logger.debug("load {} {} {}", seed, port, bucket);
 
       return core
         .ensureServiceAt(seed, serviceType, port, Optional.of(bucket), alternateAddress)
@@ -109,13 +106,13 @@ public abstract class BaseBucketLoader implements BucketLoader {
         .then(discoverConfig(seed, bucket))
         .map(config -> new String(config, UTF_8))
         .map(config -> config.replace("$HOST", seed.address()))
-        .doOnNext(config -> logger.info("load {} {} {} got config {}", seed, port, bucket, config))
+        .doOnNext(config -> logger.debug("load {} {} {} got config {}", seed, port, bucket, config))
         .map(config -> new ProposedBucketConfigContext(bucket, config, seed.address()))
         .onErrorResume(ex -> Mono.error(ex instanceof ConfigException
           ? ex
           : new ConfigException("Caught exception while loading config.", ex)
         ))
-        .doOnNext(v -> logger.info("load finished {} {} {}", seed, port, bucket));
+        .doOnNext(v -> logger.debug("load finished {} {} {}", seed, port, bucket));
     });
   }
 
@@ -131,7 +128,7 @@ public abstract class BaseBucketLoader implements BucketLoader {
    * @param bucket the bucket name, if present.
    * @return a Mono that completes if the service is ready OR will fail if it detected it is not.
    */
-  private Mono<Void> ensureServiceConnected(final NodeIdentifier seed, final ServiceType serviceType,
+  private Mono<Void> ensureServiceConnected(final NodeIdentifier seed, final ServiceCoordinate serviceType,
                                             final Optional<String> bucket) {
     return Flux.defer(() -> {
       Optional<Flux<ServiceState>> states = core.serviceState(seed, serviceType, bucket);
@@ -148,9 +145,9 @@ public abstract class BaseBucketLoader implements BucketLoader {
       }
       return ss;
     })
-    .doOnNext(v -> logger.info("ensureServiceConnected {} {} {} state is {}", seed, serviceType, bucket, v))
+    .doOnNext(v -> logger.debug("ensureServiceConnected {} {} {} state is {}", seed, serviceType, bucket, v))
     .takeUntil(state -> state == ServiceState.CONNECTED || state == ServiceState.IDLE)
-    .doOnNext(v -> logger.info("ensureServiceConnected {} {} {} returning {}", seed, serviceType, bucket, v))
+    .doOnNext(v -> logger.debug("ensureServiceConnected {} {} {} returning {}", seed, serviceType, bucket, v))
     .then();
   }
 

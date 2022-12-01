@@ -21,10 +21,8 @@ import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.Reactor;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.error.CouchbaseException;
-import com.couchbase.client.core.error.InvalidArgumentException;
 import com.couchbase.client.core.error.TimeoutException;
 import com.couchbase.client.core.error.context.ReducedKeyValueErrorContext;
-import com.couchbase.client.core.kv.CoreRangeScanItem;
 import com.couchbase.client.core.msg.kv.GetAndLockRequest;
 import com.couchbase.client.core.msg.kv.GetAndTouchRequest;
 import com.couchbase.client.core.msg.kv.GetMetaRequest;
@@ -45,6 +43,7 @@ import com.couchbase.client.java.kv.ExistsOptions;
 import com.couchbase.client.java.kv.ExistsResult;
 import com.couchbase.client.java.kv.Expiry;
 import com.couchbase.client.java.kv.GetAccessor;
+import com.couchbase.client.java.kv.GetAccessorProtostellar;
 import com.couchbase.client.java.kv.GetAllReplicasOptions;
 import com.couchbase.client.java.kv.GetAndLockOptions;
 import com.couchbase.client.java.kv.GetAndTouchOptions;
@@ -53,6 +52,8 @@ import com.couchbase.client.java.kv.GetOptions;
 import com.couchbase.client.java.kv.GetReplicaResult;
 import com.couchbase.client.java.kv.GetResult;
 import com.couchbase.client.java.kv.InsertAccessor;
+import com.couchbase.client.core.protostellar.CoreInsertAccessorProtostellar;
+import com.couchbase.client.java.kv.InsertAccessorProtostellar;
 import com.couchbase.client.java.kv.InsertOptions;
 import com.couchbase.client.java.kv.LookupInAccessor;
 import com.couchbase.client.java.kv.LookupInOptions;
@@ -63,12 +64,11 @@ import com.couchbase.client.java.kv.MutateInOptions;
 import com.couchbase.client.java.kv.MutateInResult;
 import com.couchbase.client.java.kv.MutateInSpec;
 import com.couchbase.client.java.kv.MutationResult;
-import com.couchbase.client.java.kv.RangeScan;
 import com.couchbase.client.java.kv.RemoveAccessor;
+import com.couchbase.client.java.kv.RemoveAccessorProtostellar;
 import com.couchbase.client.java.kv.RemoveOptions;
 import com.couchbase.client.java.kv.ReplaceAccessor;
 import com.couchbase.client.java.kv.ReplaceOptions;
-import com.couchbase.client.java.kv.SamplingScan;
 import com.couchbase.client.java.kv.ScanOptions;
 import com.couchbase.client.java.kv.ScanResult;
 import com.couchbase.client.java.kv.ScanType;
@@ -82,7 +82,6 @@ import com.couchbase.client.java.kv.UpsertOptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -235,8 +234,13 @@ public class ReactiveCollection {
       final Transcoder transcoder = opts.transcoder() == null ? environment().transcoder() : opts.transcoder();
 
       if (opts.projections().isEmpty() && !opts.withExpiry()) {
-        GetRequest request = asyncCollection.fullGetRequest(id, opts);
-        return Reactor.wrap(request, GetAccessor.get(core, request, transcoder), true);
+        if (core.isProtostellar()) {
+          return GetAccessorProtostellar.reactive(core(), opts, GetAccessorProtostellar.request(core, opts, asyncCollection.collectionIdentifier(), id), transcoder);
+        }
+        else {
+          GetRequest request = asyncCollection.fullGetRequest(id, opts);
+          return Reactor.wrap(request, GetAccessor.get(core, request, transcoder), true);
+        }
       } else {
         SubdocGetRequest request = asyncCollection.subdocGetRequest(id, opts);
         return Reactor.wrap(request, GetAccessor.subdocGet(core, request, transcoder), true);
@@ -436,12 +440,16 @@ public class ReactiveCollection {
     return Mono.defer(() -> {
       notNull(options, "RemoveOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
       RemoveOptions.Built opts = options.build();
-      RemoveRequest request = asyncCollection.removeRequest(id, opts);
-      return Reactor.wrap(
-        request,
-        RemoveAccessor.remove(core, request, id, opts.persistTo(), opts.replicateTo()),
-        true
-      );
+      if (core.isProtostellar()) {
+        return RemoveAccessorProtostellar.reactive(core(), opts, RemoveAccessorProtostellar.request(id, opts, core(), async().collectionIdentifier()));
+      } else {
+        RemoveRequest request = asyncCollection.removeRequest(id, opts);
+        return Reactor.wrap(
+          request,
+          RemoveAccessor.remove(core, request, id, opts.persistTo(), opts.replicateTo()),
+          true
+        );
+      }
     });
   }
 
@@ -468,12 +476,17 @@ public class ReactiveCollection {
     return Mono.defer(() -> {
       notNull(options, "InsertOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
       InsertOptions.Built opts = options.build();
-      InsertRequest request = asyncCollection.insertRequest(id, content, opts);
-      return Reactor.wrap(
-        request,
-        InsertAccessor.insert(core, request, id, opts.persistTo(), opts.replicateTo()),
-        true
-      );
+        if (core.isProtostellar()) {
+          return InsertAccessorProtostellar.reactive(core, opts, InsertAccessorProtostellar.request(id, content, opts, core, environment(), asyncCollection.collectionIdentifier()));
+        }
+        else {
+          InsertRequest request = asyncCollection.insertRequest(id, content, opts);
+          return Reactor.wrap(
+            request,
+            InsertAccessor.insert(core, request, id, opts.persistTo(), opts.replicateTo()),
+            true
+          );
+        }
     });
   }
 

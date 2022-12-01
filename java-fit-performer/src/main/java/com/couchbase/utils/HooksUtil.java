@@ -27,8 +27,9 @@ import com.couchbase.client.core.error.transaction.internal.TestFailAmbiguousExc
 import com.couchbase.client.core.error.transaction.internal.TestFailHardException;
 import com.couchbase.client.core.error.transaction.internal.TestFailOtherException;
 import com.couchbase.client.core.error.transaction.internal.TestFailTransientException;
-import com.couchbase.client.core.transaction.ExpiryUtil;
 import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
+import com.couchbase.client.core.transaction.ExpiryUtil;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContextClassic;
 import com.couchbase.client.core.transaction.cleanup.CleanerHooks;
 import com.couchbase.client.core.transaction.cleanup.ClientRecord;
 import com.couchbase.client.core.transaction.cleanup.ClientRecordFactoryMock;

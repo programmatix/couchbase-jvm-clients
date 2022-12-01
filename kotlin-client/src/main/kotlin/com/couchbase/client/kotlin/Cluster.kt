@@ -160,7 +160,10 @@ public class Cluster internal constructor(
         services: Set<ServiceType> = emptySet(),
         desiredState: ClusterState = ClusterState.ONLINE,
     ): Cluster {
-        WaitUntilReadyHelper.waitUntilReady(core, services, timeout.toJavaDuration(), desiredState, Optional.empty())
+        WaitUntilReadyHelper.waitUntilReady(core,
+        null,
+            // todo sn services,
+            timeout.toJavaDuration(), desiredState, Optional.empty())
             .await()
         return this
     }
@@ -223,7 +226,8 @@ public class Cluster internal constructor(
             core,
             Optional.ofNullable(common.timeout?.toJavaDuration()),
             common.retryStrategy,
-            services,
+            null,
+            // todo sn services,
             Optional.of(reportId),
             Optional.empty(),
         ).awaitSingle()

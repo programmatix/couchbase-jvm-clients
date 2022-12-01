@@ -17,6 +17,8 @@ package com.couchbase.client.core.transaction.support;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContextClassic;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContextStellarNebula;
 import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
 import com.couchbase.client.core.transaction.CoreTransactionContext;
 import com.couchbase.client.core.transaction.CoreTransactionsReactive;
@@ -33,13 +35,25 @@ public class TransactionAttemptContextFactory {
                                                 String attemptId,
                                                 CoreTransactionsReactive parent,
                                                 Optional<SpanWrapper> parentSpan) {
-        return new CoreTransactionAttemptContext(core,
+
+        if (System.getProperty("com.couchbase.transactions.sn_mode", "false").equals("true")) {
+            return new CoreTransactionAttemptContextStellarNebula(core,
+                    overall,
+                    config,
+                    parent,
+                    parentSpan,
+                    new CoreTransactionAttemptContextHooks());
+        }
+        else {
+            // todo sntxn how to tell it's SN?
+        return new CoreTransactionAttemptContextClassic(core,
                 overall,
                 config,
                 attemptId,
                 parent,
                 parentSpan,
                 new CoreTransactionAttemptContextHooks());
+        }
     }
 }
 

@@ -25,7 +25,6 @@ import com.couchbase.client.core.msg.kv.InsertRequest;
 
 import java.util.concurrent.CompletableFuture;
 
-import static com.couchbase.client.core.error.DefaultErrorUtil.keyValueStatusToException;
 import static com.couchbase.client.java.kv.DurabilityUtils.wrapWithDurability;
 
 @Stability.Internal
@@ -48,5 +47,4 @@ public enum InsertAccessor {
       });
     return wrapWithDurability(mutationResult, key, persistTo, replicateTo, core, request, false);
   }
-
 }

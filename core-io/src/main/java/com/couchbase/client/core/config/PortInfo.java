@@ -17,10 +17,10 @@
 package com.couchbase.client.core.config;
 
 import com.couchbase.client.core.node.NodeIdentifier;
-import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonCreator;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonProperty;
+import com.couchbase.client.core.service.ServiceCoordinate;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,8 +31,8 @@ import static java.util.Objects.requireNonNull;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PortInfo {
 
-    private final Map<ServiceType, Integer> ports;
-    private final Map<ServiceType, Integer> sslPorts;
+    private final Map<ServiceCoordinate, Integer> ports;
+    private final Map<ServiceCoordinate, Integer> sslPorts;
     private final Map<String, AlternateAddress> alternateAddresses;
     private final String hostname;
 
@@ -66,8 +66,8 @@ public class PortInfo {
      * @param alternateAddresses the parsed alternate addresses.
      * @param hostname the hostname of the port info (node).
      */
-    PortInfo(final Map<ServiceType, Integer> ports, final Map<ServiceType, Integer> sslPorts,
-                     final Map<String, AlternateAddress> alternateAddresses, final String hostname) {
+    PortInfo(final Map<ServiceCoordinate, Integer> ports, final Map<ServiceCoordinate, Integer> sslPorts,
+             final Map<String, AlternateAddress> alternateAddresses, final String hostname) {
       this.ports = requireNonNull(ports);
       this.sslPorts = requireNonNull(sslPorts);
       this.alternateAddresses = requireNonNull(alternateAddresses);
@@ -75,7 +75,7 @@ public class PortInfo {
     }
 
     public NodeIdentifier identifier() {
-      return new NodeIdentifier(hostname, ports.get(ServiceType.MANAGER));
+      return new NodeIdentifier(hostname, ports.get(ServiceCoordinate.MANAGER));
     }
 
     /**
@@ -86,69 +86,69 @@ public class PortInfo {
      * @param sslPorts the output ssl ports
      */
     static void extractPorts(final Map<String, Integer> input,
-                             final Map<ServiceType, Integer> ports,
-                             final Map<ServiceType, Integer> sslPorts) {
+                             final Map<ServiceCoordinate, Integer> ports,
+                             final Map<ServiceCoordinate, Integer> sslPorts) {
         for (Map.Entry<String, Integer> entry : input.entrySet()) {
             String service = entry.getKey();
             int port = entry.getValue();
           switch (service) {
             case "mgmt":
-              ports.put(ServiceType.MANAGER, port);
+              ports.put(ServiceCoordinate.MANAGER, port);
               break;
             case "capi":
-              ports.put(ServiceType.VIEWS, port);
+              ports.put(ServiceCoordinate.VIEWS, port);
               break;
             case "kv":
-              ports.put(ServiceType.KV, port);
+              ports.put(ServiceCoordinate.KV, port);
               break;
             case "kvSSL":
-              sslPorts.put(ServiceType.KV, port);
+              sslPorts.put(ServiceCoordinate.KV, port);
               break;
             case "capiSSL":
-              sslPorts.put(ServiceType.VIEWS, port);
+              sslPorts.put(ServiceCoordinate.VIEWS, port);
               break;
             case "mgmtSSL":
-              sslPorts.put(ServiceType.MANAGER, port);
+              sslPorts.put(ServiceCoordinate.MANAGER, port);
               break;
             case "n1ql":
-              ports.put(ServiceType.QUERY, port);
+              ports.put(ServiceCoordinate.QUERY, port);
               break;
             case "n1qlSSL":
-              sslPorts.put(ServiceType.QUERY, port);
+              sslPorts.put(ServiceCoordinate.QUERY, port);
               break;
             case "fts":
-              ports.put(ServiceType.SEARCH, port);
+              ports.put(ServiceCoordinate.SEARCH, port);
               break;
             case "ftsSSL":
-              sslPorts.put(ServiceType.SEARCH, port);
+              sslPorts.put(ServiceCoordinate.SEARCH, port);
               break;
             case "cbas":
-              ports.put(ServiceType.ANALYTICS, port);
+              ports.put(ServiceCoordinate.ANALYTICS, port);
               break;
             case "cbasSSL":
-              sslPorts.put(ServiceType.ANALYTICS, port);
+              sslPorts.put(ServiceCoordinate.ANALYTICS, port);
               break;
             case "eventingAdminPort":
-              ports.put(ServiceType.EVENTING, port);
+              ports.put(ServiceCoordinate.EVENTING, port);
               break;
             case "eventingSSL":
-              sslPorts.put(ServiceType.EVENTING, port);
+              sslPorts.put(ServiceCoordinate.EVENTING, port);
               break;
             case "backupAPI":
-              ports.put(ServiceType.BACKUP, port);
+              ports.put(ServiceCoordinate.BACKUP, port);
               break;
             case "backupAPIHTTPS":
-              sslPorts.put(ServiceType.BACKUP, port);
+              sslPorts.put(ServiceCoordinate.BACKUP, port);
               break;
           }
         }
     }
 
-    public Map<ServiceType, Integer> ports() {
+    public Map<ServiceCoordinate, Integer> ports() {
         return ports;
     }
 
-    public Map<ServiceType, Integer> sslPorts() {
+    public Map<ServiceCoordinate, Integer> sslPorts() {
         return sslPorts;
     }
 

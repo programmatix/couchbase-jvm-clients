@@ -16,7 +16,6 @@
 package com.couchbase.client.core.transaction.support;
 
 import com.couchbase.client.core.annotation.Stability;
-import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestTracer;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.io.CollectionIdentifier;
@@ -71,5 +70,4 @@ public class SpanWrapperUtil {
         }
         return out;
     }
-
 }

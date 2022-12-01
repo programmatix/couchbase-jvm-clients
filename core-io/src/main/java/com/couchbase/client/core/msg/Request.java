@@ -20,7 +20,7 @@ import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.deps.io.netty.util.Timeout;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
@@ -150,7 +150,8 @@ public interface Request<R extends Response> {
    *
    * @return the service type for this request.
    */
-  @Nullable ServiceType serviceType();
+  @Nullable
+  ServiceCoordinate serviceCoordinate();
 
   /**
    * Returns the name of the bucket this request is scoped to, or null if not scoped to a bucket.

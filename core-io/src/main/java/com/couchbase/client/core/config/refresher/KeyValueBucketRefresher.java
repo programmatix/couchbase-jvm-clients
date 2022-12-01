@@ -30,7 +30,7 @@ import com.couchbase.client.core.config.ProposedBucketConfigContext;
 import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.kv.CarrierBucketConfigRequest;
 import com.couchbase.client.core.retry.FailFastRetryStrategy;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.service.ServiceCoordinate;
 import com.couchbase.client.core.util.NanoTimestamp;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -242,7 +242,7 @@ public class KeyValueBucketRefresher implements BucketRefresher {
 
     return nodes
       .stream()
-      .filter(n -> n.services().containsKey(ServiceType.KV) || n.sslServices().containsKey(ServiceType.KV))
+      .filter(n -> n.services().containsKey(ServiceCoordinate.KV) || n.sslServices().containsKey(ServiceCoordinate.KV))
       .collect(Collectors.toList());
   }
 

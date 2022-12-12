@@ -36,6 +36,8 @@ import com.couchbase.client.core.msg.kv.ReplicaGetRequest;
 import com.couchbase.client.core.msg.kv.SyncDurabilityRequest;
 import com.couchbase.client.core.retry.RetryOrchestrator;
 import com.couchbase.client.core.retry.RetryReason;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -53,6 +55,7 @@ import static java.util.Objects.requireNonNull;
  * @since 1.0.0
  */
 public class KeyValueLocator implements Locator {
+  private final static Logger logger = LoggerFactory.getLogger(KeyValueLocator.class);
 
   @Override
   public void dispatch(final Request<? extends Response> request, final List<Node> nodes,
@@ -121,6 +124,8 @@ public class KeyValueLocator implements Locator {
         return;
       }
     }
+
+    logger.info("handleTargetNotAvailable TARGET_NODE_REMOVED nodes={}", nodes);
 
     request.cancel(CancellationReason.TARGET_NODE_REMOVED);
   }

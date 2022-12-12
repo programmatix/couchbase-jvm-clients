@@ -22,6 +22,7 @@ import com.couchbase.client.core.service.ServiceType;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -109,6 +110,26 @@ public class ClusterConfig {
     return nodes;
   }
 
+  public String debug() {
+    try {
+      StringBuilder sb = new StringBuilder();
+      sb.append("ClusterConfig{hc=");
+      sb.append(hashCode());
+      sb.append(", nodes=");
+      sb.append(allNodeAddresses());
+      sb.append(", gc=");
+      sb.append(globalConfig() == null ? "null" : globalConfig().shortDebug());
+      sb.append(", bc=");
+      sb.append(bucketConfigs().keySet());
+      sb.append("}");
+      return sb.toString();
+    }
+    catch (RuntimeException err) {
+      // Can see NPE on globalConfig().shortDebug(), presumably as NPE check is not atomic
+      return "failed on debug: " + err.getMessage();
+    }
+  }
+
   @Override
   public String toString() {
     return "ClusterConfig{" +
@@ -130,4 +151,16 @@ public class ClusterConfig {
     return Collections.emptyMap();
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ClusterConfig that = (ClusterConfig) o;
+    return Objects.equals(bucketConfigs, that.bucketConfigs) && Objects.equals(globalConfig, that.globalConfig);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(bucketConfigs, globalConfig);
+  }
 }

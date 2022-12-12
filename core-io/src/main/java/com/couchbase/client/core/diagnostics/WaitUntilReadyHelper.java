@@ -32,6 +32,8 @@ import com.couchbase.client.core.msg.RequestTarget;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.manager.GenericManagerRequest;
 import com.couchbase.client.core.service.ServiceType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -54,6 +56,7 @@ import static com.couchbase.client.core.util.CbCollections.isNullOrEmpty;
  */
 @Stability.Internal
 public class WaitUntilReadyHelper {
+  private static final Logger logger = LoggerFactory.getLogger(WaitUntilReadyHelper.class);
 
   @Stability.Internal
   public static CompletableFuture<Void> waitUntilReady(final Core core, final Set<ServiceType> serviceTypes,
@@ -68,6 +71,7 @@ public class WaitUntilReadyHelper {
       // the 10ms of the interval signal). We can just drop the ticks that we don't need,
       // since the interval acts like a "pacemaker" here and keeps us going with new tries
       // until the wait until ready completes or times out.
+      .doOnNext(v -> logger.info("waitUntilReady 1 {}", v))
       .onBackpressureDrop()
       .filter(i -> !(core.configurationProvider().bucketConfigLoadInProgress()
         || core.configurationProvider().globalConfigLoadInProgress()
@@ -75,6 +79,7 @@ public class WaitUntilReadyHelper {
         || (bucketName.isPresent() && core.clusterConfig().bucketConfig(bucketName.get()) == null))
       )
       .flatMap(i -> {
+        logger.info("waitUntilReady 2 {} {} {} {}", i, serviceTypes, bucketName, state);
         if (bucketName.isPresent()) {
           state.transition(WaitUntilReadyStage.BUCKET_NODES_HEALTHY);
           // To avoid tmpfails on the bucket, we double check that all nodes from the nodes list are
@@ -89,6 +94,8 @@ public class WaitUntilReadyHelper {
           core.send(request);
           return Reactor.wrap(request, request.response(), true)
             .filter(response -> {
+              logger.info("waitUntilReady 3 got node list {}", response.status());
+
              if (response.status() != ResponseStatus.SUCCESS) {
                return false;
              }
@@ -101,6 +108,8 @@ public class WaitUntilReadyHelper {
                 .filter(node -> node.get("status").asText().equals("healthy"))
                 .count();
 
+              logger.info("waitUntilReady 3 got node list {} {}", healthy, nodes);
+
               return nodes.size() == healthy;
             })
             .map(ignored -> i);
@@ -110,6 +119,8 @@ public class WaitUntilReadyHelper {
       })
       .take(1)
       .flatMap(aLong -> {
+        logger.info("waitUntilReady 4 {}", aLong);
+
         // There could be a scenario where a user calls waitUntilReady on the cluster object despite
         // running a server cluster pre 6.5 (which does not support cluster-level config). Per definition,
         // we cannot make progress. So we let WaitUntilReady complete (so a user can move on to open a bucket)
@@ -119,6 +130,7 @@ public class WaitUntilReadyHelper {
         // operations will fail anyways if no further bucket is being opened and there is just nothing to "wait for"
         // to being ready at this point. Bucket level wait until ready is the way to go there.
         if (!bucketName.isPresent() && !core.clusterConfig().hasClusterOrBucketConfig()) {
+          logger.info("waitUntilReady 5");
           state.transition(WaitUntilReadyStage.COMPLETE);
           WaitUntilReadyContext waitUntilReadyContext = new WaitUntilReadyContext(
             servicesToCheck(core, serviceTypes, bucketName),
@@ -134,19 +146,28 @@ public class WaitUntilReadyHelper {
           return Flux.empty();
         }
 
+        logger.info("waitUntilReady 6");
+
         state.transition(WaitUntilReadyStage.PING);
         final Flux<ClusterState> diagnostics = Flux
           .interval(Duration.ofMillis(10), core.context().environment().scheduler())
           // Diagnostics are in-memory and should be quicker than 10ms, but just in case
           // make sure that slower downstream does not terminate the diagnostics interval
           // pacemaker.
+          .doOnNext(v -> logger.info("waitUntilReady PING {} 1", v))
           .onBackpressureDrop()
+          .doOnNext(v -> logger.info("waitUntilReady PING {} 2", v))
           .map(i -> diagnosticsCurrentState(core))
+          .doOnNext(v -> logger.info("waitUntilReady PING {} {}", v, desiredState))
           .takeUntil(s -> s == desiredState);
 
-        return Flux.concat(ping(core, servicesToCheck(core, serviceTypes, bucketName), timeout, bucketName), diagnostics);
+        return Flux.concat(ping(core, servicesToCheck(core, serviceTypes, bucketName), timeout, bucketName)
+                        .doOnNext(v -> logger.info("waitUntilReady PING PingResult {} {}", v, servicesToCheck(core, serviceTypes, bucketName)))
+                , diagnostics
+                        .doOnNext(v -> logger.info("waitUntilReady PING diagnostics {}", v)));
       })
       .then()
+      .doOnError(err -> logger.info("waitUntilReady hit error {}", err.toString()))
       .timeout(
         timeout,
         Mono.defer(() -> {
@@ -164,6 +185,8 @@ public class WaitUntilReadyHelper {
         core.context().environment().scheduler()
       )
       .doOnSuccess(unused -> {
+        logger.info("waitUntilReady 8");
+
         state.transition(WaitUntilReadyStage.COMPLETE);
         WaitUntilReadyContext waitUntilReadyContext = new WaitUntilReadyContext(
           servicesToCheck(core, serviceTypes, bucketName),
@@ -207,6 +230,7 @@ public class WaitUntilReadyHelper {
                                        final Optional<String> bucketName) {
     return HealthPinger
       .ping(core, Optional.of(timeout), core.context().environment().retryStrategy(), serviceTypes, Optional.empty(), bucketName)
+      .doOnNext(v -> logger.info("ping result {}", v))
       .flux();
   }
 
@@ -252,6 +276,10 @@ public class WaitUntilReadyHelper {
       return totalDuration.get();
     }
 
+    @Override
+    public String toString() {
+      return export().toString();
+    }
   }
 
   /**

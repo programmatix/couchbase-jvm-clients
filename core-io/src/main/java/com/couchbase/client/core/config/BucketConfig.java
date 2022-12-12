@@ -23,6 +23,7 @@ import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonTypeI
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Represents a Couchbase Bucket Configuration.
@@ -154,4 +155,9 @@ public interface BucketConfig {
    */
   List<PortInfo> portInfos();
 
+  default String shortDebug() {
+    return portInfos().stream()
+      .map(v -> v.identifier().address())
+      .collect(Collectors.joining(", "));
+  }
 }

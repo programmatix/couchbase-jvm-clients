@@ -31,6 +31,8 @@ import com.couchbase.client.test.TestNodeConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @IgnoreWhen(missesCapabilities = Capabilities.GLOBAL_CONFIG)
 class GlobalBucketRefresherIntegrationTest extends CoreIntegrationTest {
-
+  private final Logger logger = LoggerFactory.getLogger(GlobalBucketRefresherIntegrationTest.class);
   private Core core;
   private CoreEnvironment env;
 
@@ -66,8 +68,11 @@ class GlobalBucketRefresherIntegrationTest extends CoreIntegrationTest {
     GlobalConfigCountingConfigurationProvider provider = new GlobalConfigCountingConfigurationProvider(core);
     GlobalRefresher refresher = new GlobalRefresher(provider, core);
 
+    logger.info("Loading initial config");
     // prime the config provider with a global config loaded
     loadGlobalConfig(provider);
+
+    logger.info("Loaded initial config");
 
     // The config pushed from the loader is also proposed initially
     assertEquals(1, provider.proposedConfigs.size());
@@ -79,15 +84,16 @@ class GlobalBucketRefresherIntegrationTest extends CoreIntegrationTest {
     int failSafety = 30;
     while (true) {
       failSafety--;
-      Thread.sleep(500);
 
       if (provider.proposedConfigs.size() >= 3) {
         break;
       }
 
       if (failSafety <= 0) {
-        fail("No bucket configs proposed in the allowed safety time window");
+        fail(String.format("No bucket configs proposed in the allowed safety time window, have %s", provider.proposedConfigs));
       }
+
+      Thread.sleep(500);
     }
 
     refresher.stop().block();
@@ -119,6 +125,7 @@ class GlobalBucketRefresherIntegrationTest extends CoreIntegrationTest {
    * Extends the config provider to allow for introspection on the proposed global configs.
    */
   static class GlobalConfigCountingConfigurationProvider extends DefaultConfigurationProvider {
+    private final Logger logger = LoggerFactory.getLogger(GlobalConfigCountingConfigurationProvider.class);
 
     private final List<ProposedGlobalConfigContext> proposedConfigs;
 
@@ -129,6 +136,7 @@ class GlobalBucketRefresherIntegrationTest extends CoreIntegrationTest {
 
     @Override
     public void proposeGlobalConfig(ProposedGlobalConfigContext ctx) {
+      logger.info("Got proposed config {}", ctx);
       proposedConfigs.add(ctx);
       super.proposeGlobalConfig(ctx);
     }

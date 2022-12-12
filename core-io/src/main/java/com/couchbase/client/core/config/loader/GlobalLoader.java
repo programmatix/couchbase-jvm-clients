@@ -28,6 +28,8 @@ import com.couchbase.client.core.msg.kv.CarrierGlobalConfigRequest;
 import com.couchbase.client.core.node.NodeIdentifier;
 import com.couchbase.client.core.retry.BestEffortRetryStrategy;
 import com.couchbase.client.core.service.ServiceType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
@@ -42,6 +44,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * operation might fail on older clusters, higher level components need to deal with this accordingly.</p>
  */
 public class GlobalLoader {
+  private final Logger logger = LoggerFactory.getLogger(GlobalLoader.class);
 
   private final Core core;
 
@@ -61,16 +64,22 @@ public class GlobalLoader {
    * @return once complete a proposed global config context to update.
    */
   public Mono<ProposedGlobalConfigContext> load(final NodeIdentifier seed, final int port) {
-    return core
-      .ensureServiceAt(seed, ServiceType.KV, port, Optional.empty(), Optional.empty())
-      .then(discoverConfig(seed))
-      .map(config -> new String(config, UTF_8))
-      .map(config -> config.replace("$HOST", seed.address()))
-      .map(config -> new ProposedGlobalConfigContext(config, seed.address()))
-      .onErrorResume(ex -> Mono.error(ex instanceof ConfigException
-        ? ex
-        : new ConfigException("Caught exception while loading global config.", ex)
-      ));
+    return Mono.defer(() -> {
+      logger.info("load {} {}", seed, port);
+
+      return core
+        .ensureServiceAt(seed, ServiceType.KV, port, Optional.empty(), Optional.empty())
+        .then(discoverConfig(seed))
+        .map(config -> new String(config, UTF_8))
+        .map(config -> config.replace("$HOST", seed.address()))
+        .doOnNext(config -> logger.info("load {} {} got config {}", seed, port, config))
+        .map(config -> new ProposedGlobalConfigContext(config, seed.address()))
+        .onErrorResume(ex -> Mono.error(ex instanceof ConfigException
+          ? ex
+          : new ConfigException("Caught exception while loading global config.", ex)
+        ))
+        .doOnNext(v -> logger.info("load finished {} {}", seed, port));
+    });
   }
 
   private Mono<byte[]> discoverConfig(final NodeIdentifier seed) {

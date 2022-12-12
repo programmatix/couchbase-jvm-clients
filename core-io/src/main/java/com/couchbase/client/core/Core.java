@@ -75,6 +75,8 @@ import com.couchbase.client.core.transaction.context.CoreTransactionsContext;
 import com.couchbase.client.core.util.NanoTimestamp;
 import com.couchbase.client.core.transaction.cleanup.CoreTransactionsCleanup;
 import com.couchbase.client.core.cnc.events.transaction.TransactionsStartedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -110,6 +112,7 @@ import static com.couchbase.client.core.util.CbCollections.isNullOrEmpty;
  */
 @Stability.Volatile
 public class Core implements AutoCloseable {
+  private final Logger logger = LoggerFactory.getLogger(Core.class);
 
   /**
    * Holds the number of max allowed instances initialized at any point in time.
@@ -342,9 +345,11 @@ public class Core implements AutoCloseable {
       .configs()
       .publishOn(environment.scheduler())
       .subscribe(c -> {
+        logger.info("reconfiguring 1 {}", c.debug());
         currentConfig = c;
         reconfigure();
       });
+    logger.info("Creating initial config subscription");
 
     this.beforeSendRequestCallbacks = environment
       .requestCallbacks()
@@ -490,6 +495,7 @@ public class Core implements AutoCloseable {
    */
   @Stability.Internal
   public Optional<Flux<ServiceState>> serviceState(NodeIdentifier nodeIdentifier, ServiceType type, Optional<String> bucket) {
+    logger.info("Getting service state for {} {} {}, nodes={}", nodeIdentifier, type, bucket, nodeIdentifier);
     for (Node node : nodes) {
       if (node.identifier().equals(nodeIdentifier)) {
         return node.serviceState(type, bucket);
@@ -592,6 +598,7 @@ public class Core implements AutoCloseable {
       NanoTimestamp start = NanoTimestamp.now();
       return configurationProvider
         .closeBucket(name)
+        .doOnNext(v -> logger.info("closed bucket {}", name))
         .doOnSuccess(ignored -> eventBus.publish(new BucketClosedEvent(
           start.elapsed(),
           coreContext,
@@ -619,6 +626,7 @@ public class Core implements AutoCloseable {
   public Mono<Void> ensureServiceAt(final NodeIdentifier identifier, final ServiceType serviceType, final int port,
                                     final Optional<String> bucket, final Optional<String> alternateAddress) {
     if (shutdown.get()) {
+      logger.info("skipping ensureServiceAt as shutting down {} {} {}", identifier, serviceType, port);
       // We don't want do add a node if we are already shutdown!
       return Mono.empty();
     }
@@ -629,9 +637,11 @@ public class Core implements AutoCloseable {
       .switchIfEmpty(Mono.defer(() -> {
         Node node = createNode(identifier, alternateAddress);
         nodes.add(node);
+        logger.info("Adding node {} {}", identifier, alternateAddress);
         return Mono.just(node);
       }))
       .flatMap(node -> node.addService(serviceType, port, bucket))
+      .doOnNext(v -> logger.info("ensureServiceAt {} {} {} {} {} returning {}", identifier, serviceType, port, bucket, alternateAddress, v))
       .then();
   }
 
@@ -695,8 +705,14 @@ public class Core implements AutoCloseable {
         stillPresentInGlobal = false;
       }
 
+      boolean remove = (!stillPresentInBuckets && !stillPresentInGlobal) || !node.hasServicesEnabled();
+      logger.info("maybeRemoveNode {} {} stillPresentInBuckets={} stillPresentInGlobal={} servicesEnabled={} remove = {}", config.debug(), node.identifier(), stillPresentInBuckets, stillPresentInGlobal, node.hasServicesEnabled(), remove);
+
       if ((!stillPresentInBuckets && !stillPresentInGlobal) || !node.hasServicesEnabled()) {
-        return node.disconnect().doOnTerminate(() -> nodes.remove(node));
+        return node.disconnect().doOnTerminate(() -> {
+          logger.info("really removing node {} {}", config.debug(), node.identifier());
+          nodes.remove(node);
+        });
       }
 
       return Mono.empty();
@@ -731,19 +747,29 @@ public class Core implements AutoCloseable {
   @Stability.Internal
   public Mono<Void> shutdown(final Duration timeout) {
     return transactionsCleanup.shutdown(timeout)
+            .doOnNext(v -> logger.info("shutdown: transactions done"))
       .then(Mono.defer(() -> {
         NanoTimestamp start = NanoTimestamp.now();
         if (shutdown.compareAndSet(false, true)) {
+          logger.info("shutdown: initiated");
           eventBus.publish(new ShutdownInitiatedEvent(coreContext));
           invalidStateWatchdog.dispose();
 
           return Flux
             .fromIterable(currentConfig.bucketConfigs().keySet())
+                  .doOnNext(v -> logger.info("shutdown: closing bucket {}", v))
             .flatMap(this::closeBucket)
+                  .doOnNext(v -> logger.info("shutdown: closed buckets"))
             .then(configurationProvider.shutdown())
+                  .doOnNext(v -> logger.info("shutdown: closed config provider"))
             // every 10ms check if all nodes have been cleared, and then move on.
             // this links the config provider shutdown with our core reconfig logic
-            .then(Flux.interval(Duration.ofMillis(10), coreContext.environment().scheduler()).takeUntil(i -> nodes.isEmpty()).then())
+            // -> 500 just to not spam so much logs disappear
+            .then(Flux.interval(Duration.ofMillis(500), coreContext.environment().scheduler()).takeUntil(i -> {
+              logger.info("shutdown:nodes = {} {}", nodes.size(), nodes);
+              return nodes.isEmpty();
+            }).then())
+                  .doOnNext(v -> logger.info("shutdown: done"))
             .doOnTerminate(() -> {
               NUM_INSTANCES.decrementAndGet();
               eventBus.publish(new ShutdownCompletedEvent(start.elapsed(), coreContext));
@@ -765,8 +791,10 @@ public class Core implements AutoCloseable {
    * it works very similar.</p>
    */
   private void reconfigure() {
+    logger.info("reconfigure {}", currentConfig.debug());
     if (reconfigureInProgress.compareAndSet(false, true)) {
       final ClusterConfig configForThisAttempt = currentConfig;
+      logger.info("reconfigure locked {}", configForThisAttempt.debug());
 
       if (configForThisAttempt.bucketConfigs().isEmpty() && configForThisAttempt.globalConfig() == null) {
         reconfigureDisconnectAll();
@@ -838,8 +866,10 @@ public class Core implements AutoCloseable {
    * Clean reconfiguration in progress and check if there is a new one we need to try.
    */
   private void clearReconfigureInProgress() {
+    logger.info("clearReconfigureInProgress unlocking");
     reconfigureInProgress.set(false);
     if (moreConfigsPending.compareAndSet(true, false)) {
+      logger.info("clearReconfigureInProgress more configs to handle");
       reconfigure();
     }
   }
@@ -849,6 +879,8 @@ public class Core implements AutoCloseable {
       if (config == null) {
         return Mono.empty();
       }
+
+      logger.info("reconfigureGlobal {}", config.shortDebug());
 
       return Flux
         .fromIterable(config.portInfos())
@@ -881,6 +913,7 @@ public class Core implements AutoCloseable {
               }
               return true;
             })
+            .doOnNext(s ->  logger.info("removeServiceFrom on global config {} {} {}", ni.identifier(), s, config.shortDebug()))
             .flatMap(s -> removeServiceFrom(
               ni.identifier(),
               s,
@@ -933,6 +966,7 @@ public class Core implements AutoCloseable {
       Flux.fromIterable(bc.nodes())
         .flatMap(ni -> {
           boolean tls = coreContext.environment().securityConfig().tlsEnabled();
+          logger.info("reconfigureBuckets {} {} {}", ni.hostname(), ni.services(), bc.shortDebug());
 
           Set<Map.Entry<ServiceType, Integer>> aServices = null;
           Optional<String> alternateAddress = coreContext.alternateAddress();
@@ -961,6 +995,7 @@ public class Core implements AutoCloseable {
               }
               return true;
             })
+            .doOnNext(s ->  logger.info("removeServiceFrom on bucket config {} {} {}", ni.identifier(), s, bc.shortDebug()))
             .flatMap(s -> removeServiceFrom(
               ni.identifier(),
               s,
@@ -1102,6 +1137,7 @@ public class Core implements AutoCloseable {
             String message = "Number of managed nodes (" + numNodes + ") differs from the current config ("
               + numConfigNodes + "), triggering reconfiguration.";
             eventBus.publish(new WatchdogInvalidStateIdentifiedEvent(context(), message));
+            logger.info("InvalidStateWatchdog");
             reconfigure();
           }
         }

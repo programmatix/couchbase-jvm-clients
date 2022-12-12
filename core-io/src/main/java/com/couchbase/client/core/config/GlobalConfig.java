@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The {@link GlobalConfig} represents a configuration which is not tied to a bucket.
@@ -107,6 +108,12 @@ public class GlobalConfig {
    */
   public List<PortInfo> portInfos() {
     return portInfos;
+  }
+
+  public String shortDebug() {
+    return portInfos.stream()
+      .map(v -> v.identifier().address())
+      .collect(Collectors.joining(", "));
   }
 
   @Override

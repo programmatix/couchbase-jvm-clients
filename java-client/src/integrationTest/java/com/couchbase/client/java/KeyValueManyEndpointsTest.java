@@ -25,12 +25,16 @@ import com.couchbase.client.test.IgnoreWhen;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class KeyValueManyEndpointsTest extends JavaIntegrationTest {
+  private final Logger logger = LoggerFactory.getLogger(KeyValueManyEndpointsTest.class);
 
   private Cluster cluster;
   private Collection collection;
@@ -75,7 +79,11 @@ class KeyValueManyEndpointsTest extends JavaIntegrationTest {
   void onlyOpensOneGcccpPerNode() {
     int bucket = 0;
     int global = 0;
-    for (EndpointDiagnostics ed : cluster.diagnostics().endpoints().get(ServiceType.KV)) {
+    List<EndpointDiagnostics> diag = cluster.diagnostics().endpoints().get(ServiceType.KV);
+
+    logger.info("Result: {}", diag);
+
+    for (EndpointDiagnostics ed : diag) {
       if (ed.namespace().isPresent()) {
         bucket++;
       } else {

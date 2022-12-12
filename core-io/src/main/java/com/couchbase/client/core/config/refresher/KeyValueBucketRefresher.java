@@ -150,7 +150,7 @@ public class KeyValueBucketRefresher implements BucketRefresher {
         .fromIterable(registrations.keySet())
         .flatMap(KeyValueBucketRefresher.this::maybeUpdateBucket)
       )
-      .subscribe(provider::proposeBucketConfig);
+      .subscribe(v -> provider.proposeBucketConfig(v, "KeyValueBucketRefresher"));
   }
 
   /**

@@ -31,6 +31,8 @@ import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.retry.RetryOrchestrator;
 import com.couchbase.client.core.retry.RetryReason;
 import com.couchbase.client.core.service.ServiceType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +51,7 @@ import static java.util.Objects.requireNonNull;
  * @since 1.0.0
  */
 public class RoundRobinLocator implements Locator {
+  private static final Logger logger = LoggerFactory.getLogger(RoundRobinLocator.class);
 
   /**
    * Holds the counter which increments for proper round-robin.
@@ -83,6 +86,8 @@ public class RoundRobinLocator implements Locator {
       boolean bucketLoadInProgress =ctx.core().configurationProvider().bucketConfigLoadInProgress();
       boolean loadInProgress = globalLoadInProgress || bucketLoadInProgress;
 
+      logger.info("dispatch {} {} {} {}", isTargeted, config.hasClusterOrBucketConfig(), globalLoadInProgress, bucketLoadInProgress);
+
       if (loadInProgress) {
         RetryOrchestrator.maybeRetry(
           ctx,
@@ -90,6 +95,8 @@ public class RoundRobinLocator implements Locator {
           bucketLoadInProgress ? RetryReason.BUCKET_OPEN_IN_PROGRESS : RetryReason.GLOBAL_CONFIG_LOAD_IN_PROGRESS
         );
       } else {
+        logger.info("Raising FeatureNotAvailableException {}", serviceType);
+
         request.fail(FeatureNotAvailableException.clusterLevelQuery(serviceType));
       }
       return;

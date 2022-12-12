@@ -27,6 +27,8 @@ import com.couchbase.client.test.TestNodeConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
@@ -37,7 +39,7 @@ import static org.junit.Assert.assertNotNull;
  * Verifies the functionality of the {@link KeyValueBucketLoader}.
  */
 class KeyValueBucketLoaderIntegrationTest extends CoreIntegrationTest {
-
+  private final Logger logger = LoggerFactory.getLogger(KeyValueBucketLoaderIntegrationTest.class);
   private CoreEnvironment env;
   private ConfigWaitHelper configWaitHelper;
 
@@ -59,6 +61,8 @@ class KeyValueBucketLoaderIntegrationTest extends CoreIntegrationTest {
   @Test
   void loadConfigViaCarrierPublication() {
     TestNodeConfig config = config().firstNodeWith(Services.KV).get();
+    logger.info("Node: {}", config.toString());
+    logger.info("Seed nodes: {}", seedNodes());
 
     Core core = Core.create(env, authenticator(), seedNodes());
     configWaitHelper.await();

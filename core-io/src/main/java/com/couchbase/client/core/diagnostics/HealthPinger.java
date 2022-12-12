@@ -33,6 +33,8 @@ import com.couchbase.client.core.msg.kv.KvPingRequest;
 import com.couchbase.client.core.msg.kv.KvPingResponse;
 import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.service.ServiceType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -54,6 +56,7 @@ import static com.couchbase.client.core.util.CbCollections.isNullOrEmpty;
  */
 @Stability.Internal
 public class HealthPinger {
+  private static final Logger logger = LoggerFactory.getLogger(HealthPinger.class);
 
   /**
    * Performs a service ping against all or (if given) the services provided.
@@ -73,7 +76,9 @@ public class HealthPinger {
         targets = targets.stream().filter(t -> serviceTypes.contains(t.serviceType())).collect(Collectors.toSet());
       }
 
-      return pingTargets(core, targets, timeout, retryStrategy).collectList().map(reports -> new PingResult(
+      return pingTargets(core, targets, timeout, retryStrategy).collectList()
+        .doOnNext(v -> logger.info("ping result {}", v))
+        .map(reports -> new PingResult(
         reports.stream().collect(Collectors.groupingBy(EndpointPingReport::type)),
         core.context().environment().userAgent().formattedShort(),
         reportId.orElse(UUID.randomUUID().toString())
@@ -128,17 +133,24 @@ public class HealthPinger {
 
   private static Flux<EndpointPingReport> pingTargets(final Core core, final Set<RequestTarget> targets,
                                                       final Optional<Duration> timeout, final RetryStrategy retryStrategy) {
-    final CoreCommonOptions options = CoreCommonOptions.of(timeout.orElse(null), retryStrategy, null);
-    return Flux.fromIterable(targets).flatMap(target -> pingTarget(core, target, options));
+    return Flux.defer(() -> {
+      logger.info("pinging {} {}", timeout, targets);
+      final CoreCommonOptions options = CoreCommonOptions.of(timeout.orElse(null), retryStrategy, null);
+      return Flux.fromIterable(targets).flatMap(target -> pingTarget(core, target, options));
+    });
   }
 
   private static Mono<EndpointPingReport> pingTarget(final Core core, final RequestTarget target,
                                                      final CoreCommonOptions options) {
     switch (target.serviceType()) {
-      case QUERY: return pingHttpEndpoint(core, target, options, "/admin/ping");
-      case KV: return pingKv(core, target, options);
-      case VIEWS: return pingHttpEndpoint(core, target, options, "/");
-      case SEARCH: return pingHttpEndpoint(core, target, options, "/api/ping");
+      case QUERY: return pingHttpEndpoint(core, target, options, "/admin/ping")
+        .doOnNext(v -> logger.info("pingTarget query result {}", v));
+      case KV: return pingKv(core, target, options)
+        .doOnNext(v -> logger.info("pingTarget KV result {}", v));
+      case VIEWS: return pingHttpEndpoint(core, target, options, "/")
+        .doOnNext(v -> logger.info("pingTarget views result {}", v));
+      case SEARCH: return pingHttpEndpoint(core, target, options, "/api/ping")
+        .doOnNext(v -> logger.info("pingTarget search result {}", v));
       case MANAGER:
       case EVENTING:
       case BACKUP:
@@ -146,7 +158,8 @@ public class HealthPinger {
         // right now we are not pinging the eventing service
         // right now we are not pinging the backup service
         return Mono.empty();
-      case ANALYTICS: return pingHttpEndpoint(core, target, options, "/admin/ping");
+      case ANALYTICS: return pingHttpEndpoint(core, target, options, "/admin/ping")
+        .doOnNext(v -> logger.info("pingTarget analytics result {}", v));
       default: return Mono.error(new IllegalStateException("Unknown service to ping, this is a bug!"));
     }
   }
@@ -223,10 +236,12 @@ public class HealthPinger {
                                                            final CoreCommonOptions options, final String path) {
     return Mono.defer(() -> {
       CoreHttpRequest request = core.httpClient(target).get(path(path), options).build();
+      logger.info("pingHttpEndpoint sending {} {}", target, path);
       core.send(request);
       return Reactor
         .wrap(request, request.response(), true)
         .map(response -> {
+          logger.info("pingHttpEndpoint response {} {} {}", target, path, response);
           request.context().logicallyComplete();
           return assembleSuccessReport(
             request.context(),
@@ -234,6 +249,7 @@ public class HealthPinger {
             Optional.empty()
           );
         }).onErrorResume(throwable -> {
+          logger.info("pingHttpEndpoint failed {} {} {}", target, path, throwable.toString());
           request.context().logicallyComplete(throwable);
           return Mono.just(assembleFailureReport(throwable, request.context(), Optional.empty()));
         });

@@ -585,7 +585,7 @@ public class KeyValueMessageHandler extends ChannelDuplexHandler {
       .map(b -> b.toString(UTF_8).trim())
       .filter(c -> c.startsWith("{"))
       .ifPresent(c -> ioContext.core().configurationProvider().proposeBucketConfig(
-        new ProposedBucketConfigContext(request.bucket(), c, origin)
+        new ProposedBucketConfigContext(request.bucket(), c, origin), "not my vbucket"
       ));
   }
 

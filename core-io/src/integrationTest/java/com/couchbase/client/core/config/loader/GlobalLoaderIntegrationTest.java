@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @IgnoreWhen(missesCapabilities = Capabilities.GLOBAL_CONFIG)
-public class GlobalLoaderIntegrationTest extends CoreIntegrationTest {
+class GlobalLoaderIntegrationTest extends CoreIntegrationTest {
   private final Logger logger = LoggerFactory.getLogger(GlobalLoaderIntegrationTest.class);
   private CoreEnvironment env;
   private ConfigWaitHelper configWaitHelper;

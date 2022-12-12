@@ -54,6 +54,8 @@ import com.couchbase.client.core.service.ViewService;
 import com.couchbase.client.core.service.ViewServiceConfig;
 import com.couchbase.client.core.util.CompositeStateful;
 import com.couchbase.client.core.util.Stateful;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -70,6 +72,7 @@ import java.util.stream.Stream;
 import static com.couchbase.client.core.logging.RedactableArgument.redactSystem;
 
 public class Node implements Stateful<NodeState> {
+  private final Logger logger = LoggerFactory.getLogger(Node.class);
 
   /**
    * Identifier for global scope services, there is no bucket name like this.
@@ -180,6 +183,8 @@ public class Node implements Stateful<NodeState> {
    */
   public synchronized Mono<Void> disconnect() {
     return Mono.defer(() -> {
+      logger.info("disconnect {}", identifier);
+
       if (disconnect.compareAndSet(false, true)) {
         final AtomicLong start = new AtomicLong();
         return Flux
@@ -188,9 +193,10 @@ public class Node implements Stateful<NodeState> {
             start.set(System.nanoTime());
             return Flux
               .fromIterable(entry.getValue().keySet())
-              .flatMap(serviceType ->
-                removeService(serviceType, Optional.of(entry.getKey()), true)
-              );
+              .flatMap(serviceType -> {
+                logger.info("disconnect removeService {}", identifier);
+                return removeService(serviceType, Optional.of(entry.getKey()), true);
+              });
           })
           .then()
           .doOnTerminate(() ->
@@ -221,6 +227,7 @@ public class Node implements Stateful<NodeState> {
   public synchronized Mono<Void> addService(final ServiceType type, final int port,
                                             final Optional<String> bucket) {
     return Mono.defer(() -> {
+      logger.info("Node.addService {} {} {} {}", identifier, type, port, bucket);
       if (disconnect.get()) {
         ctx.environment().eventBus().publish(new ServiceAddIgnoredEvent(
           Event.Severity.DEBUG,
@@ -237,6 +244,7 @@ public class Node implements Stateful<NodeState> {
         services.put(name, localMap);
       }
       if (!localMap.containsKey(type)) {
+        logger.info("Node.addService {} {} {} {} really adding", identifier, type, port, bucket);
         long start = System.nanoTime();
         Service service = createService(type, port, bucket);
         serviceStates.register(service, service);
@@ -250,6 +258,7 @@ public class Node implements Stateful<NodeState> {
         );
         return Mono.empty();
       } else {
+        logger.info("Node.addService {} {} {} {} already added", identifier, type, port, bucket);
         ctx.environment().eventBus().publish(new ServiceAddIgnoredEvent(
           Event.Severity.VERBOSE,
           ServiceAddIgnoredEvent.Reason.ALREADY_ADDED,
@@ -275,6 +284,8 @@ public class Node implements Stateful<NodeState> {
                                                 final Optional<String> bucket,
                                                 boolean ignoreDisconnect) {
     return Mono.defer(() -> {
+      logger.info("removeService {} {} {}", identifier, type, bucket);
+
       if (disconnect.get() && !ignoreDisconnect) {
         ctx.environment().eventBus().publish(new ServiceRemoveIgnoredEvent(
           Event.Severity.DEBUG,

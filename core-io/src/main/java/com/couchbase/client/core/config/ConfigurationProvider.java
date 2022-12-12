@@ -100,7 +100,11 @@ public interface ConfigurationProvider  {
    *
    * @param ctx the bucket config and surrounding context.
    */
-  void proposeBucketConfig(ProposedBucketConfigContext ctx);
+  void proposeBucketConfig(ProposedBucketConfigContext ctx, String why);
+
+  default void proposeBucketConfig(ProposedBucketConfigContext ctx) {
+    proposeBucketConfig(ctx, "default");
+  }
 
   /**
    * Allows to propose a global config to the provider from an external context.

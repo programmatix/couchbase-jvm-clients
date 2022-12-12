@@ -49,9 +49,9 @@ public class ProposedBucketConfigInspectingProvider implements ConfigurationProv
   }
 
   @Override
-  public void proposeBucketConfig(final ProposedBucketConfigContext ctx) {
+  public void proposeBucketConfig(final ProposedBucketConfigContext ctx, String why) {
     configs.add(new ProposedConfigAndTimestamp(ctx, System.nanoTime()));
-    delegate.proposeBucketConfig(ctx);
+    delegate.proposeBucketConfig(ctx, why);
   }
 
   List<ProposedConfigAndTimestamp> proposedConfigs() {

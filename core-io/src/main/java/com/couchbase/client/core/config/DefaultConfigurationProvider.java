@@ -64,6 +64,8 @@ import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.core.util.ConnectionString;
 import com.couchbase.client.core.util.NanoTimestamp;
 import com.couchbase.client.core.util.UnsignedLEB128;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -99,6 +101,7 @@ import static java.util.Collections.unmodifiableSet;
  * @since 1.0.0
  */
 public class DefaultConfigurationProvider implements ConfigurationProvider {
+  private final Logger logger = LoggerFactory.getLogger(DefaultConfigurationProvider.class);
 
   /**
    * Don't perform DNS SRV lookups more quickly than every 10 seconds.
@@ -194,6 +197,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     globalRefresher = new GlobalRefresher(this, core);
 
     // Start with pushing the current config into the sink for all subscribers currently attached.
+    logger.info("Pushing config {}", currentConfig.allNodeAddresses());
     configsSink.emitNext(currentConfig, emitFailureHandler());
   }
 
@@ -229,7 +233,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
             new ConfigException("Could not locate a single bucket configuration for bucket: " + name)
           ))
           .map(ctx -> {
-            proposeBucketConfig(ctx);
+            proposeBucketConfig(ctx, "opening bucket " + name);
             return ctx;
           })
           .then(registerRefresher(name))
@@ -346,7 +350,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
   }
 
   @Override
-  public void proposeBucketConfig(final ProposedBucketConfigContext ctx) {
+  public void proposeBucketConfig(final ProposedBucketConfigContext ctx, String why) {
     if (!shutdown.get()) {
       try {
         BucketConfig config = BucketConfigParser.parse(
@@ -406,7 +410,8 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     return Mono.defer(() -> shutdown.get()
       ? Mono.error(new AlreadyShutdownException())
       : closeBucketIgnoreShutdown(name)
-    );
+    ).doOnNext(v -> logger.info("closeBucket {}", name))
+      .doOnError(err -> logger.info("closeBucket error {}", name, err));
   }
 
   /**
@@ -423,17 +428,22 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
   private Mono<Void> closeBucketIgnoreShutdown(final String name) {
     return Mono
       .defer(() -> {
+        logger.info("closeBucketIgnoreShutdown 1 {} {}", name, pushConfig);
         currentConfig.deleteBucketConfig(name);
-        pushConfig();
+        pushConfig("closeBucketIgnoreShutdown");
         return Mono.empty();
       })
+      .doOnNext(v -> logger.info("closeBucketIgnoreShutdown 2 {}", name))
       .then(keyValueRefresher.deregister(name))
-      .then(clusterManagerRefresher.deregister(name));
+      .doOnNext(v -> logger.info("closeBucketIgnoreShutdown 3 {}", name))
+      .then(clusterManagerRefresher.deregister(name))
+      .doOnNext(v -> logger.info("closeBucketIgnoreShutdown 4 {}", name));
   }
 
   @Override
   public Mono<Void> shutdown() {
     return Mono.defer(() -> {
+      logger.info("shutdown called");
       if (shutdown.compareAndSet(false, true)) {
         return Flux
           .fromIterable(currentConfig.bucketConfigs().values())
@@ -442,7 +452,8 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
           .doOnTerminate(() -> {
             // make sure to push a final, empty config before complete to give downstream
             // consumers a chance to clean up
-            pushConfig();
+            logger.info("Pushing empty config in shutdown");
+            pushConfig("empty shutdown config");
             configsSink.emitComplete(emitFailureHandler());
           })
           .then(keyValueRefresher.shutdown())
@@ -451,7 +462,8 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
       } else {
         return Mono.error(new AlreadyShutdownException());
       }
-    });
+    })
+      .doOnTerminate(() -> logger.info("shutdown complete"));
   }
 
   private Mono<Void> disableAndClearGlobalConfig() {
@@ -579,7 +591,8 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     currentConfig.setBucketConfig(newConfig);
     checkAlternateAddress();
     updateSeedNodeList();
-    pushConfig();
+    logger.info("checkAndApplyConfig pushing bucket config {} {}", name, newConfig.nodes().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
+    pushConfig("new bucket config");
   }
 
   /**
@@ -605,7 +618,8 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
     currentConfig.setGlobalConfig(newConfig);
     checkAlternateAddress();
     updateSeedNodeList();
-    pushConfig();
+    logger.info("checkAndApplyConfig pushing global config {}", newConfig.portInfos().stream().map(v -> v.hostname()).collect(Collectors.joining(", ")));
+    pushConfig("new global config");
   }
 
   /**
@@ -777,7 +791,8 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
    * {@link reactor.core.publisher.Sinks.EmitResult#FAIL_NON_SERIALIZED} from happening. All other results
    * should not be happening, but just to be sure we log them as WARN, so we have a chance to debug them in the field.
    */
-  private synchronized void pushConfig() {
+  private synchronized void pushConfig(String why) {
+    logger.info("pushConfig {} {}", why, currentConfig.debug());
     Sinks.EmitResult emitResult = configsSink.tryEmitNext(currentConfig);
     if (emitResult != Sinks.EmitResult.OK) {
       eventBus.publish(new ConfigPushFailedEvent(core.context(), emitResult));
@@ -873,7 +888,7 @@ public class DefaultConfigurationProvider implements ConfigurationProvider {
           for (String name : keyValueRefresher.registered()) {
             ProposedBucketConfigContext bucketConfig = fetchBucketConfigs(name, seedNodes, tlsEnabled).block();
             if (bucketConfig != null) {
-              proposeBucketConfig(bucketConfig.forceOverride());
+              proposeBucketConfig(bucketConfig.forceOverride(), "on DNS refresh");
             }
           }
 

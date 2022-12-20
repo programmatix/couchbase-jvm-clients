@@ -81,12 +81,12 @@
                             <addProtoSources>all</addProtoSources>
 
                             <inputDirectories>
-                                <include>${project.basedir}/stellar-nebula/proto</include>
+                                <include>${project.basedir}/shared/proto</include>
                             </inputDirectories>
 
                             <includeDirectories>
-                                <include>${project.basedir}/stellar-nebula/contrib/googleapis</include>
-                                <include>${project.basedir}/stellar-nebula/proto</include>
+                                <include>${project.basedir}/shared/contrib/googleapis</include>
+                                <include>${project.basedir}/shared/proto</include>
                             </includeDirectories>
 
                             <outputTargets>

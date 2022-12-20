@@ -4,14 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>com.couchbase.client</groupId>
-        <artifactId>couchbase-jvm-clients</artifactId>
-        <version>1.13.2-SNAPSHOT</version>
-    </parent>
-
     <name>Couchbase Protostellar GRPC</name>
     <artifactId>protostellar</artifactId>
+    <groupId>com.couchbase.client</groupId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
 

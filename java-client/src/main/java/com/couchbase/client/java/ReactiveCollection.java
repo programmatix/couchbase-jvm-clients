@@ -57,9 +57,7 @@ import com.couchbase.client.java.kv.ScanOptions;
 import com.couchbase.client.java.kv.ScanResult;
 import com.couchbase.client.java.kv.ScanType;
 import com.couchbase.client.java.kv.StoreSemantics;
-import com.couchbase.client.java.kv.TouchAccessor;
 import com.couchbase.client.java.kv.TouchOptions;
-import com.couchbase.client.java.kv.UnlockAccessor;
 import com.couchbase.client.java.kv.UnlockOptions;
 import com.couchbase.client.java.kv.UpsertOptions;
 import reactor.core.publisher.Flux;
@@ -70,7 +68,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.couchbase.client.core.util.Validators.notNull;
-import static com.couchbase.client.core.util.Validators.notNullOrEmpty;
 import static com.couchbase.client.java.kv.ExistsOptions.existsOptions;
 import static com.couchbase.client.java.kv.GetAllReplicasOptions.getAllReplicasOptions;
 import static com.couchbase.client.java.kv.GetAndLockOptions.getAndLockOptions;
@@ -317,20 +314,12 @@ public class ReactiveCollection {
    * @return a flux of results from all replicas
    */
   public Flux<GetReplicaResult> getAllReplicas(final String id, final GetAllReplicasOptions options) {
-    notNullOrEmpty(id, "Id", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
     notNull(options, "GetAllReplicasOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
     GetAllReplicasOptions.Built opts = options.build();
     final Transcoder transcoder = Optional.ofNullable(opts.transcoder()).orElse(environment().transcoder());
 
-    return ReplicaHelper.getAllReplicasReactive(
-        core,
-        asyncCollection.collectionIdentifier(),
-        id,
-        opts.timeout().orElse(environment().timeoutConfig().kvTimeout()),
-        opts.retryStrategy().orElse(environment().retryStrategy()),
-        opts.clientContext(),
-        opts.parentSpan().orElse(null)
-    ).map(response -> GetReplicaResult.from(response, transcoder));
+    return kvOps.getAllReplicasReactive(opts, id)
+      .map(response -> GetReplicaResult.from(response, transcoder));
   }
 
   /**
@@ -355,18 +344,12 @@ public class ReactiveCollection {
    * @return a mono containing the first available replica.
    */
   public Mono<GetReplicaResult> getAnyReplica(final String id, final GetAnyReplicaOptions options) {
+    notNull(options, "GetAnyReplicaOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
     GetAnyReplicaOptions.Built opts = options.build();
     final Transcoder transcoder = Optional.ofNullable(opts.transcoder()).orElse(environment().transcoder());
 
-    return ReplicaHelper.getAnyReplicaReactive(
-        core,
-        asyncCollection.collectionIdentifier(),
-        id,
-        opts.timeout().orElse(environment().timeoutConfig().kvTimeout()),
-        opts.retryStrategy().orElse(environment().retryStrategy()),
-        opts.clientContext(),
-        opts.parentSpan().orElse(null)
-    ).map(response -> GetReplicaResult.from(response, transcoder));
+    return kvOps.getAnyReplicaReactive(opts, id)
+      .map(response -> GetReplicaResult.from(response, transcoder));
   }
 
   /**
@@ -550,10 +533,12 @@ public class ReactiveCollection {
    * @return a {@link MutationResult} once the operation completes.
    */
   public Mono<MutationResult> touch(final String id, final Duration expiry, final TouchOptions options) {
-    return Mono.defer(() -> {
-      TouchRequest request = asyncCollection.touchRequest(id, Expiry.relative(expiry), options);
-      return Reactor.wrap(request, TouchAccessor.touch(core, request, id), true);
-    });
+    notNull(options, "TouchOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
+    notNull(expiry, "Expiry", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
+
+    TouchOptions.Built opts = options.build();
+    return kvOps.touchReactive(opts, id, Expiry.relative(expiry).encode())
+      .map(MutationResult::new);
   }
 
   /**
@@ -576,10 +561,9 @@ public class ReactiveCollection {
    * @return the mono which completes once a response has been received.
    */
   public Mono<Void> unlock(final String id, final long cas, final UnlockOptions options) {
-    return Mono.defer(() -> {
-      UnlockRequest request = asyncCollection.unlockRequest(id, cas, options);
-      return Reactor.wrap(request, UnlockAccessor.unlock(id, core, request), true);
-    });
+    notNull(options, "UnlockOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
+    UnlockOptions.Built opts = options.build();
+    return kvOps.unlockReactive(opts, id, cas);
   }
 
   /**

@@ -28,8 +28,6 @@ import static java.util.Objects.requireNonNull;
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 @Stability.Internal
 public class CoreMutationResult extends CoreKvResult {
-  private final CoreKeyspace keyspace;
-  private final String key;
   private final long cas;
   private final Optional<MutationToken> mutationToken;
 
@@ -40,19 +38,9 @@ public class CoreMutationResult extends CoreKvResult {
       long cas,
       Optional<MutationToken> mutationToken
   ) {
-    super(meta);
-    this.keyspace = requireNonNull(keyspace);
-    this.key = requireNonNull(key);
+    super(keyspace, key, meta);
     this.cas = cas;
     this.mutationToken = requireNonNull(mutationToken);
-  }
-
-  public CoreKeyspace keyspace() {
-    return keyspace;
-  }
-
-  public String key() {
-    return key;
   }
 
   public long cas() {

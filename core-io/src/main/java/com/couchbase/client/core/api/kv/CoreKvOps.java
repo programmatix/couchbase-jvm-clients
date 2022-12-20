@@ -19,6 +19,7 @@ package com.couchbase.client.core.api.kv;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.error.InvalidArgumentException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -249,10 +250,58 @@ public interface CoreKvOps {
     return Mono.defer(() -> existsAsync(common, key).toMono());
   }
 
-//  CoreAsyncResponse<CoreSubdocGetResult> subdocGet(
-//      CoreCommonOptions common,
-//      String key,
-//      byte flags,
-//      List<SubdocGetRequest.Command> commands
-//  );
+  CoreAsyncResponse<CoreMutationResult> touchAsync(
+      CoreCommonOptions common,
+      String key,
+      long expiry
+  );
+
+  default CoreMutationResult touchBlocking(
+      CoreCommonOptions common,
+      String key,
+      long expiry
+  ) {
+    return touchAsync(common, key, expiry).toBlocking();
+  }
+
+  default Mono<CoreMutationResult> touchReactive(
+      CoreCommonOptions common,
+      String key,
+      long expiry
+  ) {
+    return Mono.defer(() -> touchAsync(common, key, expiry).toMono());
+  }
+
+  CoreAsyncResponse<Void> unlockAsync(
+      CoreCommonOptions common,
+      String key,
+      long cas
+  );
+
+  default void unlockBlocking(
+      CoreCommonOptions common,
+      String key,
+      long cas
+  ) {
+    unlockAsync(common, key, cas).toBlocking();
+  }
+
+  default Mono<Void> unlockReactive(
+      CoreCommonOptions common,
+      String key,
+      long cas
+  ) {
+    return Mono.defer(() -> unlockAsync(common, key, cas).toMono());
+  }
+
+  Flux<CoreGetResult> getAllReplicasReactive(
+      CoreCommonOptions common,
+      String key
+  );
+
+  Mono<CoreGetResult> getAnyReplicaReactive(
+      CoreCommonOptions common,
+      String key
+  );
+
 }

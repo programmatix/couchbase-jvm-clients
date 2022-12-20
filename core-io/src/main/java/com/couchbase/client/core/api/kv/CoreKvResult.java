@@ -16,15 +16,30 @@
 
 package com.couchbase.client.core.api.kv;
 
+import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
 import reactor.util.annotation.Nullable;
 
+import static java.util.Objects.requireNonNull;
+
 @Stability.Internal
 public abstract class CoreKvResult {
+  private final CoreKeyspace keyspace;
+  private final String key;
   private final CoreKvResponseMetadata meta;
 
-  public CoreKvResult(@Nullable CoreKvResponseMetadata meta) {
+  public CoreKvResult(CoreKeyspace keyspace, String key, @Nullable CoreKvResponseMetadata meta) {
+    this.keyspace = requireNonNull(keyspace);
+    this.key = requireNonNull(key);
     this.meta = meta == null ? CoreKvResponseMetadata.NONE : meta;
+  }
+
+  public CoreKeyspace keyspace() {
+    return keyspace;
+  }
+
+  public String key() {
+    return key;
   }
 
   public CoreKvResponseMetadata meta() {

@@ -54,7 +54,7 @@ public interface CoreCommonOptions {
   @Nullable
   default Map<String, Object> clientContext() { return null; }
 
-  static CoreCommonOptions of(@Nullable Duration timeout, @Nullable RetryStrategy retryStrategy, @Nullable RequestSpan parentSpan) {
+  static CoreCommonOptions of(Duration timeout, RetryStrategy retryStrategy, RequestSpan parentSpan) {
     if (timeout == null && retryStrategy == null && parentSpan == null) {
       return DEFAULT;
     }

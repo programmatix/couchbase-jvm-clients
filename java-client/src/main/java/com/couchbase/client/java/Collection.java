@@ -80,6 +80,8 @@ import static com.couchbase.client.java.ReactiveCollection.DEFAULT_GET_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_INSERT_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_REMOVE_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_REPLACE_OPTIONS;
+import static com.couchbase.client.java.ReactiveCollection.DEFAULT_TOUCH_OPTIONS;
+import static com.couchbase.client.java.ReactiveCollection.DEFAULT_UNLOCK_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_UPSERT_OPTIONS;
 import static com.couchbase.client.java.kv.ArrayListOptions.arrayListOptions;
 import static com.couchbase.client.java.kv.ArraySetOptions.arraySetOptions;
@@ -555,7 +557,7 @@ public class Collection {
    * @throws CouchbaseException for all other error reasons (acts as a base type and catch-all).
    */
   public MutationResult touch(final String id, Duration expiry) {
-    return block(async().touch(id, expiry));
+    return touch(id, expiry, DEFAULT_TOUCH_OPTIONS);
   }
 
   /**
@@ -570,7 +572,13 @@ public class Collection {
    * @throws CouchbaseException for all other error reasons (acts as a base type and catch-all).
    */
   public MutationResult touch(final String id, Duration expiry, final TouchOptions options) {
-    return block(async().touch(id, expiry, options));
+    notNull(options, "TouchOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
+    notNull(expiry, "Expiry", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
+
+    TouchOptions.Built opts = options.build();
+    return new MutationResult(
+      kvOps.touchBlocking(opts, id, Expiry.relative(expiry).encode())
+    );
   }
 
   /**
@@ -584,7 +592,7 @@ public class Collection {
    * @throws CouchbaseException for all other error reasons (acts as a base type and catch-all).
    */
   public void unlock(final String id, long cas) {
-    block(async().unlock(id, cas));
+    unlock(id, cas, DEFAULT_UNLOCK_OPTIONS);
   }
 
 
@@ -600,7 +608,9 @@ public class Collection {
    * @throws CouchbaseException for all other error reasons (acts as a base type and catch-all).
    */
   public void unlock(final String id, long cas, final UnlockOptions options) {
-    block(async().unlock(id, cas, options));
+    notNull(options, "UnlockOptions", () -> ReducedKeyValueErrorContext.create(id, asyncCollection.collectionIdentifier()));
+    UnlockOptions.Built opts = options.build();
+    kvOps.unlockBlocking(opts, id, cas);
   }
 
   /**

@@ -26,8 +26,6 @@ import static java.util.Objects.requireNonNull;
 
 @Stability.Internal
 public final class CoreGetResult extends CoreKvResult {
-  private final CoreKeyspace keyspace;
-  private final String key;
   private final byte[] content;
   private final int flags;
   private final long cas;
@@ -44,22 +42,12 @@ public final class CoreGetResult extends CoreKvResult {
       @Nullable Instant expiry,
       boolean replica
   ) {
-    super(meta);
-    this.keyspace = requireNonNull(keyspace);
-    this.key = requireNonNull(key);
+    super(keyspace, key, meta);
     this.content = requireNonNull(content);
     this.flags = flags;
     this.cas = cas;
     this.expiry = expiry;
     this.replica = replica;
-  }
-
-  public CoreKeyspace keyspace() {
-    return keyspace;
-  }
-
-  public String key() {
-    return key;
   }
 
   public byte[] content() {

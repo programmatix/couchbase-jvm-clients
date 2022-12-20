@@ -34,10 +34,13 @@ import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.RequestTracer;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
+import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.error.CouchbaseException;
 import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
+import com.couchbase.client.core.error.InvalidArgumentException;
 import com.couchbase.client.core.error.context.KeyValueErrorContext;
+import com.couchbase.client.core.error.context.ReducedKeyValueErrorContext;
 import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.BaseResponse;
 import com.couchbase.client.core.msg.kv.CodecFlags;
@@ -53,9 +56,14 @@ import com.couchbase.client.core.msg.kv.SubDocumentField;
 import com.couchbase.client.core.msg.kv.SubdocCommandType;
 import com.couchbase.client.core.msg.kv.SubdocGetRequest;
 import com.couchbase.client.core.msg.kv.SubdocGetResponse;
+import com.couchbase.client.core.msg.kv.TouchRequest;
+import com.couchbase.client.core.msg.kv.UnlockRequest;
 import com.couchbase.client.core.msg.kv.UpsertRequest;
 import com.couchbase.client.core.projections.ProjectionsApplier;
 import com.couchbase.client.core.retry.RetryStrategy;
+import com.couchbase.client.core.service.kv.ReplicaHelper;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -74,6 +82,7 @@ import static com.couchbase.client.core.classic.ClassicHelper.maybeWrapWithLegac
 import static com.couchbase.client.core.classic.ClassicHelper.setClientContext;
 import static com.couchbase.client.core.error.DefaultErrorUtil.keyValueStatusToException;
 import static com.couchbase.client.core.msg.ResponseStatus.EXISTS;
+import static com.couchbase.client.core.msg.ResponseStatus.LOCKED;
 import static com.couchbase.client.core.msg.ResponseStatus.NOT_FOUND;
 import static com.couchbase.client.core.msg.ResponseStatus.NOT_STORED;
 import static com.couchbase.client.core.msg.ResponseStatus.SUBDOC_FAILURE;
@@ -567,6 +576,92 @@ public final class ClassicCoreKvOps implements CoreKvOps {
             it.status().success() && !it.deleted() // exists?
         )
     );
+  }
+
+  @Override
+  public CoreAsyncResponse<CoreMutationResult> touchAsync(CoreCommonOptions common, String key, long expiry) {
+    notNullOrEmpty(key, "Document ID");
+
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_TOUCH);
+
+    TouchRequest request = new TouchRequest(timeout, ctx, collectionIdentifier, retryStrategy, key, expiry, span);
+    setClientContext(request, common);
+
+    return newAsyncResponse(
+        request,
+        it -> new CoreMutationResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.cas(),
+            it.mutationToken()
+        )
+    );
+  }
+
+  @Override
+  public CoreAsyncResponse<Void> unlockAsync(CoreCommonOptions common, String key, long cas) {
+    notNullOrEmpty(key, "Document ID");
+    if (cas == 0) {
+      throw new InvalidArgumentException("Unlock CAS must not be 0", null, ReducedKeyValueErrorContext.create(key, collectionIdentifier));
+    }
+
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_UNLOCK);
+
+    UnlockRequest request = new UnlockRequest(timeout, ctx, collectionIdentifier, retryStrategy, key, cas, span);
+    setClientContext(request, common);
+
+    return newAsyncResponse(
+        request,
+        (req, res) -> {
+          if (res.status() == LOCKED) {
+            throw new CasMismatchException(KeyValueErrorContext.completedRequest(req, res));
+          }
+          throw keyValueStatusToException(req, res);
+        },
+        it -> null
+    );
+  }
+
+  @Override
+  public Flux<CoreGetResult> getAllReplicasReactive(CoreCommonOptions common, String key) {
+    notNullOrEmpty(key, "Document ID");
+
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
+
+    return ReplicaHelper.getAllReplicasReactive(
+        core,
+        collectionIdentifier,
+        key,
+        timeout,
+        retryStrategy,
+        common.clientContext(),
+        common.parentSpan().orElse(null)
+    ).map(it -> new CoreGetResult(
+        CoreKvResponseMetadata.from(it.getResponse().flexibleExtras()),
+        keyspace,
+        key,
+        it.getResponse().content(),
+        it.getResponse().flags(),
+        it.getResponse().cas(),
+        null,
+        it.isFromReplica()
+    ));
+  }
+
+  @Override
+  public Mono<CoreGetResult> getAnyReplicaReactive(CoreCommonOptions common, String key) {
+    notNullOrEmpty(key, "Document ID");
+
+    RequestSpan getAnySpan = span(common, TracingIdentifiers.SPAN_GET_ANY_REPLICA);
+    return getAllReplicasReactive(common.withParentSpan(getAnySpan), key)
+        .next()
+        .doFinally(signalType -> getAnySpan.end());
   }
 
   private <T extends BaseResponse, R> CompletableFuture<R> execute(

@@ -17,13 +17,11 @@
 package com.couchbase.client.core.api.kv;
 
 import com.couchbase.client.core.CoreKeyspace;
+import com.couchbase.client.core.annotation.Stability;
 import reactor.util.annotation.Nullable;
 
-import static java.util.Objects.requireNonNull;
-
+@Stability.Internal
 public class CoreExistsResult extends CoreKvResult {
-  private final CoreKeyspace keyspace;
-  private final String key;
   private final long cas;
   private final boolean exists;
 
@@ -34,19 +32,9 @@ public class CoreExistsResult extends CoreKvResult {
       long cas,
       boolean exists
   ) {
-    super(meta);
-    this.keyspace = requireNonNull(keyspace);
-    this.key = requireNonNull(key);
+    super(keyspace, key, meta);
     this.cas = cas;
     this.exists = exists;
-  }
-
-  public CoreKeyspace keyspace() {
-    return keyspace;
-  }
-
-  public String key() {
-    return key;
   }
 
   public long cas() {

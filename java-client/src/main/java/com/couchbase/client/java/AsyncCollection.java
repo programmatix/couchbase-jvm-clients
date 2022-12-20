@@ -21,7 +21,6 @@ import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.kv.CoreKvOps;
-import com.couchbase.client.core.classic.kv.ClassicCoreKvOps;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
@@ -35,11 +34,17 @@ import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.kv.CoreRangeScanItem;
 import com.couchbase.client.core.kv.RangeScanOrchestrator;
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
+import com.couchbase.client.core.msg.kv.GetAndLockRequest;
+import com.couchbase.client.core.msg.kv.GetAndTouchRequest;
+import com.couchbase.client.core.msg.kv.GetMetaRequest;
+import com.couchbase.client.core.msg.kv.GetRequest;
+import com.couchbase.client.core.msg.kv.InsertRequest;
 import com.couchbase.client.core.msg.kv.MutationToken;
+import com.couchbase.client.core.msg.kv.RemoveRequest;
+import com.couchbase.client.core.msg.kv.ReplaceRequest;
+import com.couchbase.client.core.msg.kv.SubdocCommandType;
 import com.couchbase.client.core.msg.kv.SubdocGetRequest;
 import com.couchbase.client.core.msg.kv.SubdocMutateRequest;
-import com.couchbase.client.core.msg.kv.TouchRequest;
-import com.couchbase.client.core.msg.kv.UnlockRequest;
 import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.service.kv.ReplicaHelper;
 import com.couchbase.client.core.util.BucketConfigUtil;
@@ -76,9 +81,7 @@ import com.couchbase.client.java.kv.ScanOptions;
 import com.couchbase.client.java.kv.ScanResult;
 import com.couchbase.client.java.kv.ScanType;
 import com.couchbase.client.java.kv.StoreSemantics;
-import com.couchbase.client.java.kv.TouchAccessor;
 import com.couchbase.client.java.kv.TouchOptions;
-import com.couchbase.client.java.kv.UnlockAccessor;
 import com.couchbase.client.java.kv.UnlockOptions;
 import com.couchbase.client.java.kv.UpsertOptions;
 import reactor.core.publisher.Flux;
@@ -593,32 +596,12 @@ public class AsyncCollection {
    * @return a {@link MutationResult} once the operation completes.
    */
   public CompletableFuture<MutationResult> touch(final String id, final Duration expiry, final TouchOptions options) {
-    notNull(expiry, "Expiry", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
-    return TouchAccessor.touch(core, touchRequest(id, Expiry.relative(expiry), options), id);
-  }
-
-  /**
-   * Helper method to create the touch request.
-   *
-   * @param id the id of the document to update.
-   * @param expiry the new expiry for the document.
-   * @param options the custom options.
-   * @return the touch request.
-   */
-  TouchRequest touchRequest(final String id, final Expiry expiry, final TouchOptions options) {
-    notNullOrEmpty(id, "Id", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
-    notNull(expiry, "Expiry", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
     notNull(options, "TouchOptions", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
-    TouchOptions.Built opts = options.build();
+    notNull(expiry, "Expiry", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
 
-    Duration timeout = opts.timeout().orElse(environment.timeoutConfig().kvTimeout());
-    RetryStrategy retryStrategy = opts.retryStrategy().orElse(environment.retryStrategy());
-    RequestSpan span = environment.requestTracer().requestSpan(TracingIdentifiers.SPAN_REQUEST_KV_TOUCH, opts.parentSpan().orElse(null));
-    long encodedExpiry = expiry.encode();
-    TouchRequest request = new TouchRequest(timeout, coreContext, collectionIdentifier, retryStrategy, id,
-        encodedExpiry, span);
-    request.context().clientContext(opts.clientContext());
-    return request;
+    TouchOptions.Built opts = options.build();
+    return kvOps.touchAsync(opts, id, Expiry.relative(expiry).encode())
+      .toFuture().thenApply(MutationResult::new);
   }
 
   /**
@@ -641,31 +624,9 @@ public class AsyncCollection {
    * @return the future which completes once a response has been received.
    */
   public CompletableFuture<Void> unlock(final String id, final long cas, final UnlockOptions options) {
-    return UnlockAccessor.unlock(id, core, unlockRequest(id, cas, options));
-  }
-
-  /**
-   * Helper method to create the unlock request.
-   *
-   * @param id the id of the document.
-   * @param cas the CAS value which is needed to unlock it.
-   * @param options the options to customize.
-   * @return the unlock request.
-   */
-  UnlockRequest unlockRequest(final String id, final long cas, final UnlockOptions options) {
-    notNullOrEmpty(id, "Id", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
-    notNull(options, "UnlockOptions", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier));
-    if (cas == 0) {
-      throw new InvalidArgumentException("CAS cannot be 0", null, ReducedKeyValueErrorContext.create(id, collectionIdentifier));
-    }
+    notNull(options, "UnlockOptions", () -> ReducedKeyValueErrorContext.create(id, collectionIdentifier()));
     UnlockOptions.Built opts = options.build();
-
-    Duration timeout = opts.timeout().orElse(environment.timeoutConfig().kvTimeout());
-    RetryStrategy retryStrategy = opts.retryStrategy().orElse(environment.retryStrategy());
-    RequestSpan span = environment.requestTracer().requestSpan(TracingIdentifiers.SPAN_REQUEST_KV_UNLOCK, opts.parentSpan().orElse(null));
-    UnlockRequest request = new UnlockRequest(timeout, coreContext, collectionIdentifier, retryStrategy, id, cas, span);
-    request.context().clientContext(opts.clientContext());
-    return request;
+    return kvOps.unlockAsync(opts, id, cas).toFuture();
   }
 
   /**

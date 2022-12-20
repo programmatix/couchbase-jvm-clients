@@ -27,7 +27,6 @@ import com.couchbase.client.core.error.DefaultErrorUtil
 import com.couchbase.client.core.error.DocumentExistsException
 import com.couchbase.client.core.error.DocumentNotFoundException
 import com.couchbase.client.core.error.DocumentUnretrievableException
-import com.couchbase.client.core.error.InvalidArgumentException
 import com.couchbase.client.core.error.context.KeyValueErrorContext.completedRequest
 import com.couchbase.client.core.error.context.ReducedKeyValueErrorContext
 import com.couchbase.client.core.io.CollectionIdentifier
@@ -42,9 +41,6 @@ import com.couchbase.client.core.msg.kv.KeyValueRequest
 import com.couchbase.client.core.msg.kv.MutationToken
 import com.couchbase.client.core.msg.kv.SubdocGetRequest
 import com.couchbase.client.core.msg.kv.SubdocMutateRequest
-import com.couchbase.client.core.msg.kv.TouchRequest
-import com.couchbase.client.core.msg.kv.UnlockRequest
-import com.couchbase.client.core.service.kv.ReplicaHelper
 import com.couchbase.client.kotlin.annotations.VolatileCouchbaseApi
 import com.couchbase.client.kotlin.codec.Content
 import com.couchbase.client.kotlin.codec.JsonSerializer
@@ -331,15 +327,10 @@ public class Collection internal constructor(
     public fun getAllReplicas(
         id: String,
         common: CommonOptions = CommonOptions.Default,
-    ): Flow<GetReplicaResult> = ReplicaHelper.getAllReplicasReactive(
-        core,
-        collectionId,
-        id,
-        common.actualKvTimeout(Durability.none()),
-        common.actualRetryStrategy(),
-        common.clientContext,
-        common.parentSpan,
-    ).asFlow().map { GetReplicaResult(id, it, defaultTranscoder) }
+    ): Flow<GetReplicaResult> {
+        return kvOps.getAllReplicasReactive(common.toCore(), id)
+            .asFlow().map { GetReplicaResult(id, it, defaultTranscoder) }
+    }
 
     /**
      * @throws DocumentUnretrievableException if the document could not be
@@ -362,15 +353,8 @@ public class Collection internal constructor(
         id: String,
         common: CommonOptions = CommonOptions.Default,
     ): GetReplicaResult? {
-        val response = ReplicaHelper.getAnyReplicaReactive(
-            core,
-            collectionId,
-            id,
-            common.actualKvTimeout(Durability.none()),
-            common.actualRetryStrategy(),
-            common.clientContext,
-            common.parentSpan,
-        ).awaitFirstOrNull() ?: return null
+        val response = kvOps.getAnyReplicaReactive(common.toCore(), id)
+            .awaitFirstOrNull() ?: return null
 
         return GetReplicaResult(id, response, defaultTranscoder)
     }
@@ -546,17 +530,11 @@ public class Collection internal constructor(
         expiry: Expiry,
         common: CommonOptions = CommonOptions.Default,
     ): MutationResult {
-        val request = TouchRequest(
-            common.actualKvTimeout(Durability.none()),
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            validateDocumentId(id),
-            expiry.encode(),
-            common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_TOUCH),
-        )
-
-        return exec(request, common) {
+        return kvOps.touchAsync(
+            common.toCore(),
+            id,
+            expiry.encode()
+        ).await().let {
             MutationResult(it.cas(), it.mutationToken().orElse(null))
         }
     }
@@ -566,18 +544,11 @@ public class Collection internal constructor(
         cas: Long,
         common: CommonOptions = CommonOptions.Default,
     ) {
-        if (cas == 0L) throw InvalidArgumentException("Unlock CAS must be non-zero.", null, ReducedKeyValueErrorContext.create(id, collectionId))
-
-        val request = UnlockRequest(
-            common.actualKvTimeout(Durability.none()),
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            validateDocumentId(id),
+        kvOps.unlockAsync(
+            common.toCore(),
+            id,
             cas,
-            common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_UNLOCK)
-        )
-        exec(request, common) {}
+        ).await()
     }
 
     /**

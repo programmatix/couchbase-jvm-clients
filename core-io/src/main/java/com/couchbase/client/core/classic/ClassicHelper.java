@@ -16,12 +16,18 @@
 
 package com.couchbase.client.core.classic;
 
+import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.kv.CoreAsyncResponse;
+import com.couchbase.client.core.api.kv.CoreDurability;
+import com.couchbase.client.core.api.kv.CoreMutationResult;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.msg.Request;
 import com.couchbase.client.core.msg.Response;
+import com.couchbase.client.core.msg.kv.KeyValueRequest;
+import com.couchbase.client.core.service.kv.Observe;
+import com.couchbase.client.core.service.kv.ObserveContext;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -31,7 +37,7 @@ public class ClassicHelper {
     throw new AssertionError("not instantiable");
   }
 
-  public static void setClientContext(CoreCommonOptions common, Request<?> request) {
+  public static void setClientContext(Request<?> request, CoreCommonOptions common) {
     request.context().clientContext(common.clientContext());
   }
 
@@ -46,5 +52,36 @@ public class ClassicHelper {
         future,
         () -> request.cancel(CancellationReason.STOPPED_LISTENING)
     );
+  }
+
+  /**
+   * Helper method to wrap a mutation result to perform legacy durability requirements if needed.
+   */
+  public static <T extends CoreMutationResult> CompletableFuture<T> maybeWrapWithLegacyDurability(
+      CompletableFuture<T> input,
+      String key,
+      CoreDurability durability,
+      Core core,
+      KeyValueRequest<?> request
+  ) {
+    if (!durability.isLegacy()) {
+      return input;
+    }
+
+    return input.thenCompose(result -> {
+        final ObserveContext ctx = new ObserveContext(
+            core.context(),
+            durability.legacyPersistTo(),
+            durability.legacyReplicateTo(),
+            result.mutationToken(),
+            result.cas(),
+            request.collectionIdentifier(),
+            key,
+            false, // TODO this parameter became unused after JVMCBC-731 removed CAS-based observability. Clean it up!
+            request.timeout(),
+            request.requestSpan()
+        );
+        return Observe.poll(ctx).toFuture().thenApply(v -> result);
+      });
   }
 }

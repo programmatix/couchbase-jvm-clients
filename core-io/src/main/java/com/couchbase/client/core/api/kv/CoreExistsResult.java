@@ -17,41 +17,28 @@
 package com.couchbase.client.core.api.kv;
 
 import com.couchbase.client.core.CoreKeyspace;
-import com.couchbase.client.core.annotation.Stability;
 import reactor.util.annotation.Nullable;
-
-import java.time.Instant;
 
 import static java.util.Objects.requireNonNull;
 
-@Stability.Internal
-public final class CoreGetResult extends CoreKvResult {
+public class CoreExistsResult extends CoreKvResult {
   private final CoreKeyspace keyspace;
   private final String key;
-  private final byte[] content;
-  private final int flags;
   private final long cas;
-  @Nullable private final Instant expiry;
-  private final boolean replica;
+  private final boolean exists;
 
-  public CoreGetResult(
+  public CoreExistsResult(
       @Nullable CoreKvResponseMetadata meta,
       CoreKeyspace keyspace,
       String key,
-      byte[] content,
-      int flags,
       long cas,
-      @Nullable Instant expiry,
-      boolean replica
+      boolean exists
   ) {
     super(meta);
     this.keyspace = requireNonNull(keyspace);
     this.key = requireNonNull(key);
-    this.content = requireNonNull(content);
-    this.flags = flags;
     this.cas = cas;
-    this.expiry = expiry;
-    this.replica = replica;
+    this.exists = exists;
   }
 
   public CoreKeyspace keyspace() {
@@ -62,24 +49,11 @@ public final class CoreGetResult extends CoreKvResult {
     return key;
   }
 
-  public byte[] content() {
-    return content;
-  }
-
-  public int flags() {
-    return flags;
-  }
-
   public long cas() {
     return cas;
   }
 
-  @Nullable
-  public Instant expiry() {
-    return expiry;
-  }
-
-  public boolean replica() {
-    return replica;
+  public boolean exists() {
+    return exists;
   }
 }

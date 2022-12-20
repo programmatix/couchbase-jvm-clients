@@ -12,9 +12,6 @@ WORKDIR /app/transactions-fit-performer
 RUN mvn -T6 -q --projects gRPC/jvm --also-make install -Dcheckstyle.skip -Dmaven.test.skip -Dmaven.javadoc.skip
 
 WORKDIR /app/couchbase-jvm-clients
-# Problems here as the repo is currently private - so temporarily 'solved' by copying the stellar-nebula source into the couchbase-jvm-clients repo
-# RUN git submodule init || true
-# RUN git submodule update
 RUN mvn -T6 -q -f protostellar/pom.xml clean install -Dcheckstyle.skip -Dmaven.test.skip -Dmaven.javadoc.skip
 RUN mvn -T6 -q -f core-io-deps/pom.xml clean install -Dcheckstyle.skip -Dmaven.test.skip -Dmaven.javadoc.skip
 RUN mvn -T6 package -q -pl java-fit-performer -am -Dcheckstyle.skip -Dmaven.test.skip -Dmaven.javadoc.skip

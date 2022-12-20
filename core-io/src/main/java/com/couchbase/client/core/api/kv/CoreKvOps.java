@@ -19,11 +19,11 @@ package com.couchbase.client.core.api.kv;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.error.InvalidArgumentException;
-import com.couchbase.client.core.msg.kv.SubdocGetRequest;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Stability.Internal
 public interface CoreKvOps {
@@ -112,10 +112,147 @@ public interface CoreKvOps {
     return Mono.defer(() -> getAndTouchAsync(common, key, expiration).toMono());
   }
 
-  CoreAsyncResponse<CoreSubdocGetResult> subdocGet(
+  CoreAsyncResponse<CoreMutationResult> insertAsync(
       CoreCommonOptions common,
       String key,
-      byte flags,
-      List<SubdocGetRequest.Command> commands
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry
   );
+
+  default CoreMutationResult insertBlocking(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry
+  ) {
+    return insertAsync(common, key, content, durability, expiry).toBlocking();
+  }
+
+  default Mono<CoreMutationResult> insertReactive(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry
+  ) {
+    return Mono.defer(() -> insertAsync(common, key, content, durability, expiry).toMono());
+  }
+
+  CoreAsyncResponse<CoreMutationResult> upsertAsync(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  );
+
+  default CoreMutationResult upsertBlocking(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  ) {
+    return upsertAsync(common, key, content, durability, expiry, preserveExpiry).toBlocking();
+  }
+
+  default Mono<CoreMutationResult> upsertReactive(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  ) {
+    return Mono.defer(() -> upsertAsync(common, key, content, durability, expiry, preserveExpiry).toMono());
+  }
+
+  CoreAsyncResponse<CoreMutationResult> replaceAsync(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      long cas,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  );
+
+  default CoreMutationResult replaceBlocking(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      long cas,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  ) {
+    return replaceAsync(common, key, content, cas, durability, expiry, preserveExpiry).toBlocking();
+  }
+
+  default Mono<CoreMutationResult> replaceReactive(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      long cas,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  ) {
+    return Mono.defer(() -> replaceAsync(common, key, content, cas, durability, expiry, preserveExpiry).toMono());
+  }
+
+  CoreAsyncResponse<CoreMutationResult> removeAsync(
+      CoreCommonOptions common,
+      String key,
+      long cas,
+      CoreDurability durability
+  );
+
+  default CoreMutationResult removeBlocking(
+      CoreCommonOptions common,
+      String key,
+      long cas,
+      CoreDurability durability
+  ) {
+    return removeAsync(common, key, cas, durability).toBlocking();
+  }
+
+  default Mono<CoreMutationResult> removeReactive(
+      CoreCommonOptions common,
+      String key,
+      long cas,
+      CoreDurability durability
+  ) {
+    return Mono.defer(() -> removeAsync(common, key, cas, durability).toMono());
+  }
+
+  CoreAsyncResponse<CoreExistsResult> existsAsync(
+      CoreCommonOptions common,
+      String key
+  );
+
+  default CoreExistsResult existsBlocking(
+      CoreCommonOptions common,
+      String key
+  ) {
+    return existsAsync(common, key).toBlocking();
+  }
+
+  default Mono<CoreExistsResult> existsReactive(
+      CoreCommonOptions common,
+      String key
+  ) {
+    return Mono.defer(() -> existsAsync(common, key).toMono());
+  }
+
+//  CoreAsyncResponse<CoreSubdocGetResult> subdocGet(
+//      CoreCommonOptions common,
+//      String key,
+//      byte flags,
+//      List<SubdocGetRequest.Command> commands
+//  );
 }

@@ -21,29 +21,39 @@ import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.kv.CoreAsyncResponse;
+import com.couchbase.client.core.api.kv.CoreDurability;
+import com.couchbase.client.core.api.kv.CoreEncodedContent;
+import com.couchbase.client.core.api.kv.CoreExistsResult;
 import com.couchbase.client.core.api.kv.CoreGetResult;
 import com.couchbase.client.core.api.kv.CoreKvOps;
 import com.couchbase.client.core.api.kv.CoreKvResponseMetadata;
 import com.couchbase.client.core.api.kv.CoreLookupInMacro;
-import com.couchbase.client.core.api.kv.CoreSubdocGetResult;
+import com.couchbase.client.core.api.kv.CoreMutationResult;
+import com.couchbase.client.core.classic.ClassicHelper;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.RequestTracer;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.error.CouchbaseException;
+import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
+import com.couchbase.client.core.error.context.KeyValueErrorContext;
 import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.BaseResponse;
-import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.msg.kv.CodecFlags;
 import com.couchbase.client.core.msg.kv.GetAndLockRequest;
 import com.couchbase.client.core.msg.kv.GetAndTouchRequest;
+import com.couchbase.client.core.msg.kv.GetMetaRequest;
 import com.couchbase.client.core.msg.kv.GetRequest;
+import com.couchbase.client.core.msg.kv.InsertRequest;
 import com.couchbase.client.core.msg.kv.KeyValueRequest;
+import com.couchbase.client.core.msg.kv.RemoveRequest;
+import com.couchbase.client.core.msg.kv.ReplaceRequest;
 import com.couchbase.client.core.msg.kv.SubDocumentField;
 import com.couchbase.client.core.msg.kv.SubdocCommandType;
 import com.couchbase.client.core.msg.kv.SubdocGetRequest;
 import com.couchbase.client.core.msg.kv.SubdocGetResponse;
+import com.couchbase.client.core.msg.kv.UpsertRequest;
 import com.couchbase.client.core.projections.ProjectionsApplier;
 import com.couchbase.client.core.retry.RetryStrategy;
 
@@ -53,10 +63,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-import static com.couchbase.client.core.classic.ClassicHelper.newAsyncResponse;
+import static com.couchbase.client.core.classic.ClassicHelper.maybeWrapWithLegacyDurability;
 import static com.couchbase.client.core.classic.ClassicHelper.setClientContext;
 import static com.couchbase.client.core.error.DefaultErrorUtil.keyValueStatusToException;
+import static com.couchbase.client.core.msg.ResponseStatus.EXISTS;
+import static com.couchbase.client.core.msg.ResponseStatus.NOT_FOUND;
+import static com.couchbase.client.core.msg.ResponseStatus.NOT_STORED;
+import static com.couchbase.client.core.msg.ResponseStatus.SUBDOC_FAILURE;
 import static com.couchbase.client.core.util.Validators.notNull;
 import static com.couchbase.client.core.util.Validators.notNullOrEmpty;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -67,6 +84,7 @@ public final class ClassicCoreKvOps implements CoreKvOps {
   private final Core core;
   private final CoreContext ctx;
   private final Duration defaultKvTimeout;
+  private final Duration defaultKvDurableTimeout;
   private final RetryStrategy defaultRetryStrategy;
   private final CollectionIdentifier collectionIdentifier;
   private final CoreKeyspace keyspace;
@@ -76,6 +94,7 @@ public final class ClassicCoreKvOps implements CoreKvOps {
     this.core = requireNonNull(core);
     this.ctx = core.context();
     this.defaultKvTimeout = ctx.environment().timeoutConfig().kvTimeout();
+    this.defaultKvDurableTimeout = ctx.environment().timeoutConfig().kvDurableTimeout();
     this.defaultRetryStrategy = ctx.environment().retryStrategy();
     this.requestTracer = ctx.environment().requestTracer();
     this.keyspace = requireNonNull(keyspace);
@@ -86,40 +105,38 @@ public final class ClassicCoreKvOps implements CoreKvOps {
   public CoreAsyncResponse<CoreGetResult> getAsync(CoreCommonOptions common, String key, List<String> projections, boolean withExpiry) {
     notNullOrEmpty(key, "Document ID");
 
-    Duration timeout = common.timeout().orElse(defaultKvTimeout);
-    RetryStrategy retryStrategy = common.retryStrategy().orElse(defaultRetryStrategy);
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
 
     if (!withExpiry && projections.isEmpty()) {
       RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_GET);
       GetRequest request = new GetRequest(key, timeout, ctx, collectionIdentifier, retryStrategy, span);
-      setClientContext(common, request);
+      setClientContext(request, common);
 
       return newAsyncResponse(
           request,
-          execute(request).thenApply(it -> new CoreGetResult(
+          it -> new CoreGetResult(
               CoreKvResponseMetadata.from(it.flexibleExtras()),
               keyspace,
               key,
               it.content(),
               it.flags(),
               it.cas(),
-              null)
+              null,
+              false
           )
       );
     }
 
     SubdocGetRequest request = getWithProjectionsOrExpiryRequest(common, key, projections, withExpiry);
-    core.send(request);
     return newAsyncResponse(
         request,
-        request.response()
-            .thenApply(response -> {
-              if (response.status().success() || response.status() == ResponseStatus.SUBDOC_FAILURE) {
-                return parseGetWithProjectionsOrExpiry(key, response);
-              }
-              throw keyValueStatusToException(request, response);
-            })
-            .whenComplete((response, failure) -> markComplete(request, failure))
+        (req, res) -> {
+          if (res.status() != SUBDOC_FAILURE) {
+            throw keyValueStatusToException(request, res);
+          }
+        },
+        it -> parseGetWithProjectionsOrExpiry(key, it)
     );
   }
 
@@ -132,8 +149,8 @@ public final class ClassicCoreKvOps implements CoreKvOps {
     notNullOrEmpty(key, "Document ID");
     checkProjectionLimits(projections, withExpiry);
 
-    Duration timeout = common.timeout().orElse(defaultKvTimeout);
-    RetryStrategy retryStrategy = common.retryStrategy().orElse(defaultRetryStrategy);
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
     RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_LOOKUP_IN);
     List<SubdocGetRequest.Command> commands = new ArrayList<>(16);
 
@@ -221,7 +238,8 @@ public final class ClassicCoreKvOps implements CoreKvOps {
         content,
         convertedFlags,
         cas,
-        expiration.orElse(null)
+        expiration.orElse(null),
+        false
     );
   }
 
@@ -234,23 +252,24 @@ public final class ClassicCoreKvOps implements CoreKvOps {
     notNull(lockTime, "lockTime");
     notNullOrEmpty(key, "Document ID");
 
-    Duration timeout = common.timeout().orElse(defaultKvTimeout);
-    RetryStrategy retryStrategy = common.retryStrategy().orElse(defaultRetryStrategy);
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
     RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_GET_AND_LOCK);
 
     GetAndLockRequest request = new GetAndLockRequest(key, timeout, ctx, collectionIdentifier, retryStrategy, lockTime, span);
-    setClientContext(common, request);
+    setClientContext(request, common);
 
-    return newAsyncResponse(request, execute(request)
-        .thenApply(it -> new CoreGetResult(
-                CoreKvResponseMetadata.from(it.flexibleExtras()),
-                keyspace,
-                key,
-                it.content(),
-                it.flags(),
-                it.cas(),
-                null
-            )
+    return newAsyncResponse(
+        request,
+        it -> new CoreGetResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.content(),
+            it.flags(),
+            it.cas(),
+            null,
+            false
         )
     );
   }
@@ -263,78 +282,348 @@ public final class ClassicCoreKvOps implements CoreKvOps {
   ) {
     notNullOrEmpty(key, "Document ID");
 
-    Duration timeout = common.timeout().orElse(defaultKvTimeout);
-    RetryStrategy retryStrategy = common.retryStrategy().orElse(defaultRetryStrategy);
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
     RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_GET_AND_TOUCH);
 
     GetAndTouchRequest request = new GetAndTouchRequest(key, timeout, ctx, collectionIdentifier, retryStrategy, expiration, span);
-    setClientContext(common, request);
+    setClientContext(request, common);
 
-    return newAsyncResponse(request, execute(request)
-        .thenApply(it ->
-            new CoreGetResult(
-                CoreKvResponseMetadata.from(it.flexibleExtras()),
-                keyspace,
-                key,
-                it.content(),
-                it.flags(),
-                it.cas(),
-                null
-            )
+    return newAsyncResponse(
+        request,
+        it -> new CoreGetResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.content(),
+            it.flags(),
+            it.cas(),
+            null,
+            false
         )
     );
   }
 
   @Override
-  public CoreAsyncResponse<CoreSubdocGetResult> subdocGet(
+  public CoreAsyncResponse<CoreMutationResult> insertAsync(
       CoreCommonOptions common,
       String key,
-      byte flags,
-      List<SubdocGetRequest.Command> commands
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry
   ) {
     notNullOrEmpty(key, "Document ID");
 
-    Duration timeout = common.timeout().orElse(defaultKvTimeout);
-    RetryStrategy retryStrategy = common.retryStrategy().orElse(defaultRetryStrategy);
-    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_LOOKUP_IN);
+    Duration timeout = timeout(common, durability);
+    RetryStrategy retryStrategy = retryStrategy(common);
 
-    SubdocGetRequest request = new SubdocGetRequest(timeout, ctx, collectionIdentifier, retryStrategy, key, flags, commands, span);
-    setClientContext(common, request);
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_INSERT);
+    RequestSpan encodingSpan = span(span, TracingIdentifiers.SPAN_REQUEST_ENCODING);
 
-    core.send(request);
-    return newAsyncResponse(request, request
-        .response()
-        .thenApply(response -> {
-          if (response.status().success() || response.status() == ResponseStatus.SUBDOC_FAILURE) {
-            return new CoreSubdocGetResult(
-                CoreKvResponseMetadata.from(response.flexibleExtras()),
-                response.values(),
-                response.cas(),
-                response.error().orElse(null),
-                response.isDeleted()
-            );
+    long encodingStartNanos = System.nanoTime();
+    CoreEncodedContent coreContent;
+    try {
+      coreContent = content.get();
+    } finally {
+      encodingSpan.end();
+    }
+    long encodingNanos = System.nanoTime() - encodingStartNanos;
+
+    InsertRequest request = new InsertRequest(
+        key,
+        coreContent.encoded(),
+        expiry,
+        coreContent.flags(),
+        timeout,
+        ctx,
+        collectionIdentifier,
+        retryStrategy,
+        durability.levelIfSynchronous(),
+        span
+    );
+
+    request.context()
+        .clientContext(common.clientContext())
+        .encodeLatency(encodingNanos);
+
+    CompletableFuture<CoreMutationResult> future = executeWithoutMarkingComplete(
+        request,
+        (req, res) -> {
+          if (res.status() == EXISTS || res.status() == NOT_STORED) {
+            throw new DocumentExistsException(KeyValueErrorContext.completedRequest(req, res));
           }
-          throw keyValueStatusToException(request, response);
-        })
-        .whenComplete((response, failure) -> markComplete(request, failure))
+          throw res.errorIfNeeded(request);
+        },
+        it -> new CoreMutationResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.cas(),
+            it.mutationToken()
+        )
+    );
+
+    future = maybeWrapWithLegacyDurability(future, key, durability, core, request)
+        .whenComplete((response, failure) -> markComplete(request, failure));
+
+    return ClassicHelper.newAsyncResponse(request, future);
+  }
+
+  @Override
+  public CoreAsyncResponse<CoreMutationResult> upsertAsync(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  ) {
+    notNullOrEmpty(key, "Document ID");
+
+    Duration timeout = timeout(common, durability);
+    RetryStrategy retryStrategy = retryStrategy(common);
+
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_UPSERT);
+    RequestSpan encodingSpan = span(span, TracingIdentifiers.SPAN_REQUEST_ENCODING);
+
+    long encodingStartNanos = System.nanoTime();
+    CoreEncodedContent coreContent;
+    try {
+      coreContent = content.get();
+    } finally {
+      encodingSpan.end();
+    }
+    long encodingNanos = System.nanoTime() - encodingStartNanos;
+
+    UpsertRequest request = new UpsertRequest(
+        key,
+        coreContent.encoded(),
+        expiry,
+        preserveExpiry,
+        coreContent.flags(),
+        timeout,
+        ctx,
+        collectionIdentifier,
+        retryStrategy,
+        durability.levelIfSynchronous(),
+        span
+    );
+
+    request.context()
+        .clientContext(common.clientContext())
+        .encodeLatency(encodingNanos);
+
+    CompletableFuture<CoreMutationResult> future = executeWithoutMarkingComplete(
+        request,
+        it -> new CoreMutationResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.cas(),
+            it.mutationToken()
+        )
+    );
+
+    future = maybeWrapWithLegacyDurability(future, key, durability, core, request)
+        .whenComplete((response, failure) -> markComplete(request, failure));
+
+    return ClassicHelper.newAsyncResponse(request, future);
+  }
+
+  @Override
+  public CoreAsyncResponse<CoreMutationResult> replaceAsync(
+      CoreCommonOptions common,
+      String key,
+      Supplier<CoreEncodedContent> content,
+      long cas,
+      CoreDurability durability,
+      long expiry,
+      boolean preserveExpiry
+  ) {
+    notNullOrEmpty(key, "Document ID");
+
+    Duration timeout = timeout(common, durability);
+    RetryStrategy retryStrategy = retryStrategy(common);
+
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_REPLACE);
+    RequestSpan encodingSpan = span(span, TracingIdentifiers.SPAN_REQUEST_ENCODING);
+
+    long encodingStartNanos = System.nanoTime();
+    CoreEncodedContent coreContent;
+    try {
+      coreContent = content.get();
+    } finally {
+      encodingSpan.end();
+    }
+    long encodingNanos = System.nanoTime() - encodingStartNanos;
+
+    ReplaceRequest request = new ReplaceRequest(
+        key,
+        coreContent.encoded(),
+        expiry,
+        preserveExpiry,
+        coreContent.flags(),
+        timeout,
+        cas,
+        ctx,
+        collectionIdentifier,
+        retryStrategy,
+        durability.levelIfSynchronous(),
+        span
+    );
+
+    request.context()
+        .clientContext(common.clientContext())
+        .encodeLatency(encodingNanos);
+
+    CompletableFuture<CoreMutationResult> future = executeWithoutMarkingComplete(
+        request,
+        it -> new CoreMutationResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.cas(),
+            it.mutationToken()
+        )
+    );
+
+    future = maybeWrapWithLegacyDurability(future, key, durability, core, request)
+        .whenComplete((response, failure) -> markComplete(request, failure));
+
+    return ClassicHelper.newAsyncResponse(request, future);
+  }
+
+  @Override
+  public CoreAsyncResponse<CoreMutationResult> removeAsync(
+      CoreCommonOptions common,
+      String key,
+      long cas,
+      CoreDurability durability
+  ) {
+    notNullOrEmpty(key, "Document ID");
+
+    Duration timeout = timeout(common, durability);
+    RetryStrategy retryStrategy = retryStrategy(common);
+
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_REMOVE);
+
+    RemoveRequest request = new RemoveRequest(
+        key,
+        cas,
+        timeout,
+        ctx,
+        collectionIdentifier,
+        retryStrategy,
+        durability.levelIfSynchronous(),
+        span
+    );
+
+    request.context()
+        .clientContext(common.clientContext());
+
+    CompletableFuture<CoreMutationResult> future = executeWithoutMarkingComplete(
+        request,
+        it -> new CoreMutationResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.cas(),
+            it.mutationToken()
+        )
+    );
+
+    future = maybeWrapWithLegacyDurability(future, key, durability, core, request)
+        .whenComplete((response, failure) -> markComplete(request, failure));
+
+    return ClassicHelper.newAsyncResponse(request, future);
+  }
+
+  @Override
+  public CoreAsyncResponse<CoreExistsResult> existsAsync(CoreCommonOptions common, String key) {
+    notNullOrEmpty(key, "Document ID");
+
+    Duration timeout = timeout(common);
+    RetryStrategy retryStrategy = retryStrategy(common);
+    RequestSpan span = span(common, TracingIdentifiers.SPAN_REQUEST_KV_EXISTS);
+
+    GetMetaRequest request = new GetMetaRequest(key, timeout, ctx, collectionIdentifier, retryStrategy, span);
+    setClientContext(request, common);
+
+    return newAsyncResponse(
+        request,
+        (req, res) -> {
+          if (res.status() != NOT_FOUND) {
+            throw keyValueStatusToException(req, res);
+          }
+        },
+        it -> new CoreExistsResult(
+            CoreKvResponseMetadata.from(it.flexibleExtras()),
+            keyspace,
+            key,
+            it.cas(),
+            it.status().success() && !it.deleted() // exists?
+        )
     );
   }
 
-  private <T extends BaseResponse> CompletableFuture<T> execute(KeyValueRequest<T> request) {
-    core.send(request);
-    return handleResponse(request);
+  private <T extends BaseResponse, R> CompletableFuture<R> execute(
+      KeyValueRequest<T> request,
+      Function<T, R> responseTransformer
+  ) {
+    return execute(request, ClassicCoreKvOps::commonKvResponseCheck, responseTransformer);
   }
 
-  private static <T extends BaseResponse> CompletableFuture<T> handleResponse(KeyValueRequest<T> request) {
+  private <T extends BaseResponse, R> CompletableFuture<R> execute(
+      KeyValueRequest<T> request,
+      BiConsumer<KeyValueRequest<T>, T> responseChecker,
+      Function<T, R> responseTransformer
+  ) {
+    return executeWithoutMarkingComplete(request, responseChecker, responseTransformer)
+        .whenComplete((response, failure) -> markComplete(request, failure));
+  }
+
+  private <T extends BaseResponse, R> CompletableFuture<R> executeWithoutMarkingComplete(
+      KeyValueRequest<T> request,
+      Function<T, R> responseTransformer
+  ) {
+    return executeWithoutMarkingComplete(request, ClassicCoreKvOps::commonKvResponseCheck, responseTransformer);
+  }
+
+  private <T extends BaseResponse, R> CompletableFuture<R> executeWithoutMarkingComplete(
+      KeyValueRequest<T> request,
+      BiConsumer<KeyValueRequest<T>, T> responseChecker,
+      Function<T, R> responseTransformer
+  ) {
+    core.send(request);
     return request
         .response()
         .thenApply(response -> {
-          if (response.status().success()) {
-            return response;
-          }
-          throw keyValueStatusToException(request, response);
-        })
-        .whenComplete((response, failure) -> markComplete(request, failure));
+              if (!response.status().success()) {
+                responseChecker.accept(request, response);
+              }
+              return responseTransformer.apply(response);
+            }
+        );
+  }
+
+  private static <T extends BaseResponse> void commonKvResponseCheck(KeyValueRequest<T> request, T response) {
+    throw keyValueStatusToException(request, response);
+  }
+
+  private <T extends BaseResponse, R> CoreAsyncResponse<R> newAsyncResponse(
+      KeyValueRequest<T> request,
+      Function<T, R> responseTransformer
+  ) {
+    return newAsyncResponse(request, ClassicCoreKvOps::commonKvResponseCheck, responseTransformer);
+  }
+
+  private <T extends BaseResponse, R> CoreAsyncResponse<R> newAsyncResponse(
+      KeyValueRequest<T> request,
+      BiConsumer<KeyValueRequest<T>, T> responseChecker,
+      Function<T, R> responseTransformer
+  ) {
+    CompletableFuture<R> response = execute(request, responseChecker, responseTransformer);
+    return ClassicHelper.newAsyncResponse(request, response);
   }
 
   private static void markComplete(KeyValueRequest<?> request, Throwable failure) {
@@ -345,7 +634,23 @@ public final class ClassicCoreKvOps implements CoreKvOps {
     }
   }
 
+  private Duration timeout(CoreCommonOptions common) {
+    return common.timeout().orElse(defaultKvTimeout);
+  }
+
+  private Duration timeout(CoreCommonOptions common, CoreDurability durability) {
+    return common.timeout().orElse(durability.isPersistent() ? defaultKvDurableTimeout : defaultKvTimeout);
+  }
+
+  private RetryStrategy retryStrategy(CoreCommonOptions common) {
+    return common.retryStrategy().orElse(defaultRetryStrategy);
+  }
+
   private RequestSpan span(CoreCommonOptions common, String spanName) {
-    return requestTracer.requestSpan(spanName, common.parentSpan().orElse(null));
+    return span(common.parentSpan().orElse(null), spanName);
+  }
+
+  private RequestSpan span(RequestSpan parent, String spanName) {
+    return requestTracer.requestSpan(spanName, parent);
   }
 }

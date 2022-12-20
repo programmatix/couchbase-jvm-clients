@@ -17,6 +17,7 @@
 package com.couchbase.client.java.kv;
 
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.api.kv.CoreMutationResult;
 import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.msg.kv.MutationToken;
 
@@ -46,10 +47,14 @@ public class MutationResult {
    * @param cas the CAS value of the document after the mutation.
    * @param mutationToken the mutation token of the document after the mutation.
    */
-  @Stability.Internal
-  public MutationResult(final long cas, final Optional<MutationToken> mutationToken) {
+  MutationResult(final long cas, final Optional<MutationToken> mutationToken) {
     this.cas = cas;
     this.mutationToken = mutationToken;
+  }
+
+  @Stability.Internal
+  public MutationResult(CoreMutationResult core) {
+    this(core.cas(), core.mutationToken());
   }
 
   /**

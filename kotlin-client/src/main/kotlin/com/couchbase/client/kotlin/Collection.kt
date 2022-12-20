@@ -20,7 +20,6 @@ import com.couchbase.client.core.Core
 import com.couchbase.client.core.CoreKeyspace
 import com.couchbase.client.core.annotation.SinceCouchbase
 import com.couchbase.client.core.api.kv.CoreAsyncResponse
-import com.couchbase.client.core.classic.kv.ClassicCoreKvOps
 import com.couchbase.client.core.cnc.TracingIdentifiers
 import com.couchbase.client.core.env.TimeoutConfig
 import com.couchbase.client.core.error.CasMismatchException
@@ -36,21 +35,15 @@ import com.couchbase.client.core.kv.CoreRangeScanItem
 import com.couchbase.client.core.kv.RangeScanOrchestrator
 import com.couchbase.client.core.msg.Request
 import com.couchbase.client.core.msg.Response
-import com.couchbase.client.core.msg.ResponseStatus
 import com.couchbase.client.core.msg.ResponseStatus.EXISTS
 import com.couchbase.client.core.msg.ResponseStatus.NOT_STORED
 import com.couchbase.client.core.msg.ResponseStatus.SUBDOC_FAILURE
-import com.couchbase.client.core.msg.kv.GetMetaRequest
-import com.couchbase.client.core.msg.kv.InsertRequest
 import com.couchbase.client.core.msg.kv.KeyValueRequest
 import com.couchbase.client.core.msg.kv.MutationToken
-import com.couchbase.client.core.msg.kv.RemoveRequest
-import com.couchbase.client.core.msg.kv.ReplaceRequest
 import com.couchbase.client.core.msg.kv.SubdocGetRequest
 import com.couchbase.client.core.msg.kv.SubdocMutateRequest
 import com.couchbase.client.core.msg.kv.TouchRequest
 import com.couchbase.client.core.msg.kv.UnlockRequest
-import com.couchbase.client.core.msg.kv.UpsertRequest
 import com.couchbase.client.core.service.kv.ReplicaHelper
 import com.couchbase.client.kotlin.annotations.VolatileCouchbaseApi
 import com.couchbase.client.kotlin.codec.Content
@@ -81,7 +74,6 @@ import com.couchbase.client.kotlin.kv.MutationResult
 import com.couchbase.client.kotlin.kv.ScanSort
 import com.couchbase.client.kotlin.kv.ScanType
 import com.couchbase.client.kotlin.kv.StoreSemantics
-import com.couchbase.client.kotlin.kv.internal.encodeInSpan
 import com.couchbase.client.kotlin.kv.internal.levelIfSynchronous
 import com.couchbase.client.kotlin.kv.internal.observe
 import com.couchbase.client.kotlin.util.StorageSize
@@ -387,26 +379,11 @@ public class Collection internal constructor(
         id: String,
         common: CommonOptions = CommonOptions.Default,
     ): ExistsResult {
-        val request = GetMetaRequest(
-            validateDocumentId(id),
-            common.actualKvTimeout(Durability.none()),
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_EXISTS),
-        )
-
-        try {
-            val response = core.exec(request, common)
-            val success = response.status().success()
-
-            return when {
-                success && !response.deleted() -> ExistsResult(true, response.cas())
-                success || response.status() == ResponseStatus.NOT_FOUND -> ExistsResult.NotFound
-                else -> throw DefaultErrorUtil.keyValueStatusToException(request, response)
-            }
-        } finally {
-            request.logicallyComplete()
+        return kvOps.existsAsync(
+            common.toCore(),
+            id,
+        ).await().let {
+            if (it.exists()) ExistsResult(it.exists(), it.cas()) else ExistsResult.NotFound
         }
     }
 
@@ -420,21 +397,12 @@ public class Collection internal constructor(
         durability: Durability = Durability.none(),
         cas: Long = 0,
     ): MutationResult {
-        val request = RemoveRequest(
-            validateDocumentId(id),
+        return kvOps.removeAsync(
+            common.toCore(),
+            id,
             cas,
-            common.actualKvTimeout(durability),
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            durability.levelIfSynchronous(),
-            common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_REMOVE),
-        )
-
-        return exec(request, common) {
-            if (durability is Durability.ClientVerified) {
-                observe(request, id, durability, it.cas(), it.mutationToken())
-            }
+            durability.toCore(),
+        ).await().let {
             MutationResult(it.cas(), it.mutationToken().orElse(null))
         }
     }
@@ -479,34 +447,14 @@ public class Collection internal constructor(
         durability: Durability,
         expiry: Expiry,
     ): MutationResult {
-        val span = common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_INSERT)
-        val (encodedContent, encodingNanos) = encodeInSpan(transcoder, content, contentType, span)
-
-        val request = InsertRequest(
-            validateDocumentId(id),
-            encodedContent.bytes,
+        return kvOps.insertAsync(
+            common.toCore(),
+            id,
+            { (transcoder ?: defaultTranscoder).encode(content, contentType).toCore() },
+            durability.toCore(),
             expiry.encode(),
-            encodedContent.flags,
-            common.actualKvTimeout(durability),
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            durability.levelIfSynchronous(),
-            span,
-        )
-        request.context().encodeLatency(encodingNanos)
-
-        try {
-            return exec(request, common) {
-                if (durability is Durability.ClientVerified) {
-                    observe(request, id, durability, it.cas(), it.mutationToken())
-                }
-                MutationResult(it.cas(), it.mutationToken().orElse(null))
-            }
-        } catch (t: CasMismatchException) {
-            throw DocumentExistsException(t.context())
-        } catch (t: DocumentNotFoundException) { // Map NOT_STORED
-            throw DocumentExistsException(t.context())
+        ).await().let {
+            MutationResult(it.cas(), it.mutationToken().orElse(null))
         }
     }
 
@@ -541,28 +489,14 @@ public class Collection internal constructor(
         expiry: Expiry,
         preserveExpiry: Boolean,
     ): MutationResult {
-        val span = common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_UPSERT)
-        val (encodedContent, encodingNanos) = encodeInSpan(transcoder, content, contentType, span)
-
-        val request = UpsertRequest(
-            validateDocumentId(id),
-            encodedContent.bytes,
+        return kvOps.upsertAsync(
+            common.toCore(),
+            id,
+            { (transcoder ?: defaultTranscoder).encode(content, contentType).toCore() },
+            durability.toCore(),
             expiry.encode(),
             preserveExpiry,
-            encodedContent.flags,
-            common.actualKvTimeout(durability),
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            durability.levelIfSynchronous(),
-            span,
-        )
-        request.context().encodeLatency(encodingNanos)
-
-        return exec(request, common) {
-            if (durability is Durability.ClientVerified) {
-                observe(request, id, durability, it.cas(), it.mutationToken())
-            }
+        ).await().let {
             MutationResult(it.cas(), it.mutationToken().orElse(null))
         }
     }
@@ -594,29 +528,15 @@ public class Collection internal constructor(
         preserveExpiry: Boolean,
         cas: Long,
     ): MutationResult {
-        val span = common.actualSpan(TracingIdentifiers.SPAN_REQUEST_KV_REPLACE)
-        val (encodedContent, encodingNanos) = encodeInSpan(transcoder, content, contentType, span)
-
-        val request = ReplaceRequest(
-            validateDocumentId(id),
-            encodedContent.bytes,
+        return kvOps.replaceAsync(
+            common.toCore(),
+            id,
+            { (transcoder ?: defaultTranscoder).encode(content, contentType).toCore() },
+            cas,
+            durability.toCore(),
             expiry.encode(),
             preserveExpiry,
-            encodedContent.flags,
-            common.actualKvTimeout(durability),
-            cas,
-            core.context(),
-            collectionId,
-            common.actualRetryStrategy(),
-            durability.levelIfSynchronous(),
-            span,
-        )
-        request.context().encodeLatency(encodingNanos)
-
-        return exec(request, common) {
-            if (durability is Durability.ClientVerified) {
-                observe(request, id, durability, it.cas(), it.mutationToken())
-            }
+        ).await().let {
             MutationResult(it.cas(), it.mutationToken().orElse(null))
         }
     }

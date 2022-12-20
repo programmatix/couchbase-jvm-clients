@@ -18,40 +18,33 @@ package com.couchbase.client.core.api.kv;
 
 import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.msg.kv.MutationToken;
 import reactor.util.annotation.Nullable;
 
-import java.time.Instant;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
+@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 @Stability.Internal
-public final class CoreGetResult extends CoreKvResult {
+public class CoreMutationResult extends CoreKvResult {
   private final CoreKeyspace keyspace;
   private final String key;
-  private final byte[] content;
-  private final int flags;
   private final long cas;
-  @Nullable private final Instant expiry;
-  private final boolean replica;
+  private final Optional<MutationToken> mutationToken;
 
-  public CoreGetResult(
+  public CoreMutationResult(
       @Nullable CoreKvResponseMetadata meta,
       CoreKeyspace keyspace,
       String key,
-      byte[] content,
-      int flags,
       long cas,
-      @Nullable Instant expiry,
-      boolean replica
+      Optional<MutationToken> mutationToken
   ) {
     super(meta);
     this.keyspace = requireNonNull(keyspace);
     this.key = requireNonNull(key);
-    this.content = requireNonNull(content);
-    this.flags = flags;
     this.cas = cas;
-    this.expiry = expiry;
-    this.replica = replica;
+    this.mutationToken = requireNonNull(mutationToken);
   }
 
   public CoreKeyspace keyspace() {
@@ -62,24 +55,11 @@ public final class CoreGetResult extends CoreKvResult {
     return key;
   }
 
-  public byte[] content() {
-    return content;
-  }
-
-  public int flags() {
-    return flags;
-  }
-
   public long cas() {
     return cas;
   }
 
-  @Nullable
-  public Instant expiry() {
-    return expiry;
-  }
-
-  public boolean replica() {
-    return replica;
+  public Optional<MutationToken> mutationToken() {
+    return mutationToken;
   }
 }

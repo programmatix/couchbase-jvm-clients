@@ -61,7 +61,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.jar.Attributes;
@@ -168,11 +170,28 @@ public class CoreEnvironment implements AutoCloseable {
       );
     // todo sn will want to give user configurable control over the executor
     // todo sn experiment with different executors and thread counts for a good performant out-of-the-box setup.
-    // Creates `Runtime.getRuntime().availableProcessors()` threads.
-    this.executor = new OwnedSupplier<>(new ForkJoinPool(Runtime.getRuntime().availableProcessors(),
-      new CouchbaseThreadFactory("cb-exec"),
-      null,
-      true));
+
+    String executorType = System.getProperty("com.couchbase.protostellar.executorType");
+    String executorMaxThreadCountRaw = System.getProperty("com.couchbase.protostellar.executorMaxThreadCount");
+    int maxThreadCount = Runtime.getRuntime().availableProcessors();
+    if (executorMaxThreadCountRaw != null) {
+      maxThreadCount = Integer.parseInt(executorMaxThreadCountRaw);
+    }
+
+    if (executorType != null || executorMaxThreadCountRaw != null) {
+      System.out.printf("executorType=%s executorMaxThreadCount=%s maxThreadCount=%d%n", executorType, executorMaxThreadCountRaw, maxThreadCount);
+    }
+
+    if (executorType != null && executorType.equals("ThreadPool")) {
+      this.executor = new OwnedSupplier<>(new ThreadPoolExecutor(0, maxThreadCount,
+        60L, TimeUnit.SECONDS,
+        new SynchronousQueue<>(),
+        new CouchbaseThreadFactory("cb-exec")));
+    } else {
+      // Creates `maxThreadCount` threads.
+      this.executor = new OwnedSupplier<>(new ForkJoinPool(maxThreadCount, new CouchbaseForkPoolThreadFactory("cb-exec"), null, true));
+    }
+
     this.eventBus = Optional
       .ofNullable(builder.eventBus)
       .orElse(new OwnedSupplier<>(DefaultEventBus.create(scheduler.get())));

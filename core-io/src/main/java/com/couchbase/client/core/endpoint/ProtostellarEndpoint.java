@@ -75,8 +75,13 @@ public class ProtostellarEndpoint {
   private final CoreEnvironment environment;
   private final CoreContext coreContext;
 
-  public ProtostellarEndpoint(final CoreContext coreContext, final CoreEnvironment environment, final String hostname, final int port) {
-    logger.info("creating {} {}", hostname, port);
+  public ProtostellarEndpoint(final CoreContext coreContext, final CoreEnvironment environment, String hostname, final int port) {
+    // todo sn temporary hack to get performance testing working
+    String override = System.getProperty("com.couchbase.protostellar.overrideHostname");
+    logger.info("creating {} {}, override={}", hostname, port, override);
+    if (override != null) {
+      hostname = override;
+    }
     this.hostname = hostname;
     this.port = port;
     this.environment = environment;

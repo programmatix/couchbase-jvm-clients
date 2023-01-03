@@ -75,7 +75,7 @@ abstract public class CorePerformer extends PerformerServiceGrpc.PerformerServic
                                      StreamObserver<com.couchbase.client.protocol.run.Result> responseObserver) {
         try {
             request.getTunablesMap().forEach((k, v) -> {
-                logger.info("Setting property {}={}", k, v);
+                logger.info("Setting tunable {}={}", k, v);
                 if (v != null) {
                     System.setProperty(k, v);
                 }

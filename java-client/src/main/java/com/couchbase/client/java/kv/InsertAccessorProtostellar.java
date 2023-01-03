@@ -86,12 +86,14 @@ public class InsertAccessorProtostellar {
                                                            Core core,
                                                            ClusterEnvironment environment,
                                                            CollectionIdentifier collectionIdentifier) {
+
     Duration timeout = CoreProtostellarUtil.kvDurableTimeout(opts.timeout(), opts.durabilityLevel(), core);
     ProtostellarRequest<InsertRequest> out = new ProtostellarRequest<>(core,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, opts.durabilityLevel(), opts.parentSpan().orElse(null)),
-      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_INSERT, timeout, id, collectionIdentifier));
+      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_INSERT, timeout, id, collectionIdentifier),
+      (ProtostellarRequest<InsertRequest> req) -> blocking(core, opts, req));
 
-    Transcoder transcoder = opts.transcoder() == null ? environment.transcoder() : opts.transcoder();
+      Transcoder transcoder = opts.transcoder() == null ? environment.transcoder() : opts.transcoder();
     final RequestSpan encodeSpan = CbTracing.newSpan(core.context(), TracingIdentifiers.SPAN_REQUEST_ENCODING, out.span());
     long start = System.nanoTime();
     Transcoder.EncodedValue encoded;

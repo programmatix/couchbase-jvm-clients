@@ -16,6 +16,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Think we need this as there's so much to hold onto outside of the basic GRPC request.
@@ -30,6 +33,13 @@ public class ProtostellarRequest<TGrpcRequest> {
   private @Nullable RequestSpan span;
 
   /**
+   * Sends the request and handles errors/success.
+   * <p>
+   * Not certain if we're going to need it, but seems very useful for retries.
+   */
+  private final Consumer<ProtostellarRequest<TGrpcRequest>> send;
+
+  /**
    * The time it took to encode the payload (if any).
    */
   private long encodeLatency;
@@ -37,14 +47,26 @@ public class ProtostellarRequest<TGrpcRequest> {
   public ProtostellarRequest(Core core,
                              RequestSpan span,
                              ProtostellarRequestContext context) {
+    this(core, span, context, null);
+  }
+
+  public ProtostellarRequest(Core core,
+                             RequestSpan span,
+                             ProtostellarRequestContext context,
+                             Consumer<ProtostellarRequest<TGrpcRequest>> send) {
     this.core = core;
     this.span = span;
     this.context = context;
+    this.send = send;
   }
 
   public ProtostellarRequest<TGrpcRequest> request(TGrpcRequest request) {
     this.request = request;
     return this;
+  }
+
+  public Consumer<ProtostellarRequest<TGrpcRequest>> send() {
+    return send;
   }
 
   public TGrpcRequest request() {

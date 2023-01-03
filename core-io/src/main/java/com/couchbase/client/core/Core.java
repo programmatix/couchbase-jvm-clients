@@ -803,8 +803,8 @@ public class Core implements AutoCloseable {
             .then(Mono.fromRunnable(() -> {
                 logger.info("shutdown: reconfiguring from empty config");
               currentConfig = new ClusterConfig();
-            reconfigure();
-          }))
+              reconfigure();
+            }))
             .then(Mono.defer(() -> {
               if (protostellar != null) {
                 return Mono.fromRunnable(() -> {
@@ -816,11 +816,10 @@ public class Core implements AutoCloseable {
                 return Mono.empty();
               }
             }))
-//            .then(Flux.interval(Duration.ofMillis(500), coreContext.environment().scheduler()).takeUntil(i -> {
-//              logger.info("shutdown:nodes = {} {}", nodes.size(), nodes);
-//              return nodes.isEmpty();
-//            }).then())
-//                  .doOnNext(v -> logger.info("shutdown: done"))
+            // every 10ms check if all nodes have been cleared, and then move on.
+            // this links the config provider shutdown with our core reconfig logic
+            // Nb this check is probably redundant with the empty config now pushed for JVMCBC-1161.
+            .then(Flux.interval(Duration.ofMillis(10), coreContext.environment().scheduler()).takeUntil(i -> nodes.isEmpty()).then())
             .doOnTerminate(() -> {
               NUM_INSTANCES.decrementAndGet();
               eventBus.publish(new ShutdownCompletedEvent(start.elapsed(), coreContext));

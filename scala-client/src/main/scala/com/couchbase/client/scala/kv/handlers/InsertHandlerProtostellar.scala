@@ -88,8 +88,7 @@ private[scala] object InsertHandlerProtostellar {
     if (validations.isFailure) {
       validations
     } else {
-      val timeout: Duration = if (timeout == Duration.MinusInf) kvTimeout(core, durability) else timeout
-      val actualTimeout: Duration = if (timeout != Duration.MinusInf) timeout else core.context.environment.timeoutConfig.kvTimeout
+      val actualTimeout: Duration = if (timeout == Duration.MinusInf) kvTimeout(core, durability) else timeout
       val out = new ProtostellarRequest[InsertRequest](core,
         // todo sn create this span correctly
         core.context.environment.requestTracer.requestSpan(TracingIdentifiers.SPAN_REQUEST_KV_INSERT, parentSpan.orNull),

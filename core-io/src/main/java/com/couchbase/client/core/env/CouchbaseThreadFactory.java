@@ -20,15 +20,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CouchbaseThreadFactory implements ForkJoinPool.ForkJoinWorkerThreadFactory {
+public class CouchbaseThreadFactory implements ThreadFactory {
   private final Logger logger = LoggerFactory.getLogger(CouchbaseThreadFactory.class);
-  static class CouchbaseThread extends ForkJoinWorkerThread {
-    public CouchbaseThread(ForkJoinPool pool) {
-      super(pool);
-    }
-  }
 
   private final String namePrefix;
   private final AtomicInteger threadNumber = new AtomicInteger();
@@ -38,11 +34,11 @@ public class CouchbaseThreadFactory implements ForkJoinPool.ForkJoinWorkerThread
   }
 
   @Override
-  public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
-    CouchbaseThread t = new CouchbaseThread(pool);
+  public Thread newThread(Runnable r) {
+    Thread t = new Thread(r);
     t.setName(namePrefix + threadNumber.getAndIncrement());
     t.setDaemon(true);
-    logger.info("Created thread {}, currently {} threads in pool, {} running", t.getName(), pool.getActiveThreadCount(), pool.getRunningThreadCount());
+    logger.info("Created thread {}", t.getName());
     return t;
   }
 }

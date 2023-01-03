@@ -52,8 +52,10 @@ public class AccessorKeyValueProtostellar {
     handleShutdownBlocking(core, request.context());
     final RequestSpan dispatchSpan = createDispatchSpan(core, request);
     try {
+      // Make the Protostellar call.
       // todo sn check this is blocking just this user thread, not also an executor thread
       TGrpcResponse response = executeBlockingGrpcCall.get();
+
       if (dispatchSpan != null) {
         dispatchSpan.end();
       }
@@ -99,16 +101,17 @@ public class AccessorKeyValueProtostellar {
 
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   void asyncInternal(CompletableFuture<TSdkResult> ret,
-                                              Core core,
-                                              ProtostellarRequest<TGrpcRequest>         request,
-                                              Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
-                                              Function<TGrpcResponse, TSdkResult>       convertResponse,
-                                              Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+                    Core core,
+                    ProtostellarRequest<TGrpcRequest>         request,
+                    Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                    Function<TGrpcResponse, TSdkResult>       convertResponse,
+                    Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
     if (handleShutdownAsync(core, ret, request.context())) {
       return;
     }
     final RequestSpan dispatchSpan = createDispatchSpan(core, request);
 
+    // Make the Protostellar call.
     ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.get();
 
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {
@@ -133,9 +136,12 @@ public class AccessorKeyValueProtostellar {
         }
         if (converted.shouldRetry()) {
           // todo sn CancellationReason.TOO_MANY_REQUESTS_IN_RETRY
+          // todo sn more generally, do we need to be able to cancel at any point?  If so, need to put the CompletableFuture/Sink inside the ProtostellarRequest. How would blocking work?
+          // todo sn even more generally, do we need to be able to retry at any point?  If so, need to teach the ProtostellarRequest how to execute itself.
           Duration backoff = Duration.ofMillis(50);
           request.incrementRetryAttempts(backoff, converted.retry());
           core.context().environment().timer().schedule(() -> {
+            // note this won't work - it'll create a new CompletableFuture - request.send().accept(request);
             asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
           }, backoff);
         }
@@ -172,6 +178,8 @@ public class AccessorKeyValueProtostellar {
     }
 
     final RequestSpan dispatchSpan = createDispatchSpan(core, request);
+
+    // Make the Protostellar call.
     ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.get();
 
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {

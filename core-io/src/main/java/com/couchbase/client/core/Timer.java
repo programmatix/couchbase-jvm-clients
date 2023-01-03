@@ -124,9 +124,7 @@ public class Timer {
       return;
     }
 
-    outstandingForRetry.incrementAndGet();
     schedule(() -> {
-      outstandingForRetry.decrementAndGet();
       if (!request.completed()) {
         core.send(request, false);
       }
@@ -140,7 +138,12 @@ public class Timer {
     if (stopped) {
       return null;
     }
-    return wheelTimer.newTimeout(timeout -> callback.run(), runAfter.toNanos(), TimeUnit.NANOSECONDS);
+    outstandingForRetry.incrementAndGet();
+
+    return wheelTimer.newTimeout(timeout -> {
+      outstandingForRetry.decrementAndGet();
+      callback.run();
+    }, runAfter.toNanos(), TimeUnit.NANOSECONDS);
   }
 
   /**

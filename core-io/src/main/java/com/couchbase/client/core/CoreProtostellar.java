@@ -36,7 +36,9 @@ public class CoreProtostellar {
   private static final int DEFAULT_PROTOSTELLAR_TLS_PORT = 18098;
 
 
-  private final ProtostellarEndpoint endpoint;
+  private ProtostellarEndpoint endpoint;
+  private final Set<SeedNode> seedNodes;
+  private final Core core;
 
 
   /**
@@ -58,15 +60,22 @@ public class CoreProtostellar {
       throw new IllegalStateException("Have no seed nodes");
     }
 
-    SeedNode first = seedNodes.stream().findFirst().get();
-    this.endpoint = new ProtostellarEndpoint(core.context(), core.context().environment(), first.address(), first.protostellarPort().orElse(DEFAULT_PROTOSTELLAR_TLS_PORT));
+    this.seedNodes = seedNodes;
+    this.core = core;
   }
 
   public void shutdown(final Duration timeout) {
     endpoint.shutdown(timeout);
   }
 
-  public ProtostellarEndpoint endpoint() {
+  public synchronized ProtostellarEndpoint endpoint() {
+    // todo sn this is synchronized only because we're deferring creating the endpoint until we have a request, and we're only doing that to support the "com.couchbase.protostellar.overrideHostname" temporary hack
+    // (which is set after the creation of Core).
+    // Will go back to initialising the endpoint in the ctor at some point.
+    if (endpoint == null) {
+      SeedNode first = seedNodes.stream().findFirst().get();
+      this.endpoint = new ProtostellarEndpoint(core.context(), core.context().environment(), first.address(), first.protostellarPort().orElse(DEFAULT_PROTOSTELLAR_TLS_PORT));
+    }
     return endpoint;
   }
 }

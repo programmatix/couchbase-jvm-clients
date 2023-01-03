@@ -77,6 +77,9 @@ public class ProtostellarEndpoint {
 
   public ProtostellarEndpoint(final CoreContext coreContext, final CoreEnvironment environment, String hostname, final int port) {
     // todo sn temporary hack to get performance testing working
+    // The issue is that we send in protostellar://cbs as a connection string because the Couchbase cluster is running in a Docker container named "cbs", and the performer is also running in a Docker container.
+    // However, Stellar Nebula is running normally, not in a container, so must be accessed with "localhost" instead.
+    // So we pass a connection string of "protostellar://cbs" and "com.couchbase.protostellar.overrideHostname"="localhost".
     String override = System.getProperty("com.couchbase.protostellar.overrideHostname");
     logger.info("creating {} {}, override={}", hostname, port, override);
     if (override != null) {

@@ -16,6 +16,7 @@
 
 package com.couchbase.client.core.endpoint;
 
+import com.couchbase.client.core.Core;
 import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.cnc.events.endpoint.EndpointStateChangedEvent;
 import com.couchbase.client.core.deps.io.grpc.Attributes;
@@ -54,9 +55,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Wraps a GRPC ManagedChannel.
- * <p>
- * Currently only have a single ProtostellarEndpoint per CoreProtostellar.
- * May eventually end up with a pool of them.
  */
 public class ProtostellarEndpoint {
   private final Logger logger = LoggerFactory.getLogger(ProtostellarEndpoint.class);
@@ -72,10 +70,9 @@ public class ProtostellarEndpoint {
   private final QueryGrpc.QueryStub queryStub;
   private final String hostname;
   private final int port;
-  private final CoreEnvironment environment;
-  private final CoreContext coreContext;
+  private final Core core;
 
-  public ProtostellarEndpoint(final CoreContext coreContext, final CoreEnvironment environment, String hostname, final int port) {
+  public ProtostellarEndpoint(Core core, String hostname, final int port) {
     // todo sn temporary hack to get performance testing working
     // The issue is that we send in protostellar://cbs as a connection string because the Couchbase cluster is running in a Docker container named "cbs", and the performer is also running in a Docker container.
     // However, Stellar Nebula is running normally, not in a container, so must be accessed with "localhost" instead.
@@ -87,8 +84,7 @@ public class ProtostellarEndpoint {
     }
     this.hostname = hostname;
     this.port = port;
-    this.environment = environment;
-    this.coreContext = coreContext;
+    this.core = core;
     this.managedChannel = channel();
 
 
@@ -103,7 +99,7 @@ public class ProtostellarEndpoint {
         executor.execute(() -> {
           try {
             Metadata headers = new Metadata();
-            coreContext.authenticator().authProtostellarRequest(headers);
+            core.context().authenticator().authProtostellarRequest(headers);
             applier.apply(headers);
           } catch (Throwable e) {
             applier.fail(Status.UNAUTHENTICATED.withCause(e));
@@ -208,8 +204,8 @@ public class ProtostellarEndpoint {
 
     // todo snbrett we're using unverified TLS for now - presumably we can eventually use the same Capella cert bundling approach and use TLS properly
     return NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())
-      .executor(environment.executor())
-      .withOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) environment.timeoutConfig().connectTimeout().toMillis())
+      .executor(core.context().environment().executor())
+      .withOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) core.context().environment().timeoutConfig().connectTimeout().toMillis())
       // Retry strategies to be determined, but presumably we will need something custom rather than what GRPC provides
       .disableRetry()
       .build();
@@ -220,7 +216,7 @@ public class ProtostellarEndpoint {
       ConnectivityState now = this.managedChannel.getState(false);
       logger.info("channel has changed state from {}/{} to {}/{}", current, convert(current), now, convert(now));
 
-      EndpointContext ec = new EndpointContext(coreContext,
+      EndpointContext ec = new EndpointContext(core.context(),
         new HostAndPort(hostname, port),
         null,
         null,
@@ -228,15 +224,11 @@ public class ProtostellarEndpoint {
         Optional.empty(),
         Optional.empty());
 
-      environment.eventBus().publish(new EndpointStateChangedEvent(ec, convert(current), convert(now)));
+      core.context().environment().eventBus().publish(new EndpointStateChangedEvent(ec, convert(current), convert(now)));
 
       notifyOnChannelStateChange(now);
     });
   }
-
-  // todo sn Each gRPC channel uses 0 or more HTTP/2 connections and each connection usually has a limit on the number of concurrent streams. When the number of active RPCs on the connection reaches this limit, additional RPCs are queued in the client and must wait for active RPCs to finish before they are sent. Applications with high load or long-lived streaming RPCs might see performance issues because of this queueing.
-  // https://github.com/grpc/grpc/issues/21386 indicates limit is quite low, maybe 100 concurrent rpcs
-  // inspiration: https://github.com/googleapis/gax-java/blob/main/gax-grpc/src/main/java/com/google/api/gax/grpc/ChannelPool.java
 
   private static EndpointState convert(ConnectivityState state) {
     switch (state) {

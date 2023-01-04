@@ -18,6 +18,7 @@ package com.couchbase.client.core;
 
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.endpoint.ProtostellarEndpoint;
+import com.couchbase.client.core.endpoint.ProtostellarPool;
 import com.couchbase.client.core.env.Authenticator;
 import com.couchbase.client.core.env.SeedNode;
 import com.couchbase.client.core.error.InvalidArgumentException;
@@ -36,7 +37,7 @@ public class CoreProtostellar {
   private static final int DEFAULT_PROTOSTELLAR_TLS_PORT = 18098;
 
 
-  private ProtostellarEndpoint endpoint;
+  private final ProtostellarPool pool;
   private final Set<SeedNode> seedNodes;
   private final Core core;
 
@@ -49,7 +50,7 @@ public class CoreProtostellar {
    * @param seedNodes the seed nodes to initially connect to.
    * @param connectionString if provided, the original connection string from the user.
    */
-  protected CoreProtostellar(final Core core, final Authenticator authenticator, final Set<SeedNode> seedNodes) {
+  public CoreProtostellar(final Core core, final Authenticator authenticator, final Set<SeedNode> seedNodes) {
     if (core.context().environment().securityConfig().tlsEnabled() && !authenticator.supportsTls()) {
       throw new InvalidArgumentException("TLS enabled but the Authenticator does not support TLS!", null, null);
     } else if (!core.context().environment().securityConfig().tlsEnabled() && !authenticator.supportsNonTls()) {
@@ -62,20 +63,15 @@ public class CoreProtostellar {
 
     this.seedNodes = seedNodes;
     this.core = core;
+    SeedNode first = seedNodes.stream().findFirst().get();
+    this.pool = new ProtostellarPool(core, first.address(), first.protostellarPort().orElse(DEFAULT_PROTOSTELLAR_TLS_PORT));
   }
 
   public void shutdown(final Duration timeout) {
-    endpoint.shutdown(timeout);
+    pool.shutdown(timeout);
   }
 
-  public synchronized ProtostellarEndpoint endpoint() {
-    // todo sn this is synchronized only because we're deferring creating the endpoint until we have a request, and we're only doing that to support the "com.couchbase.protostellar.overrideHostname" temporary hack
-    // (which is set after the creation of Core).
-    // Will go back to initialising the endpoint in the ctor at some point.
-    if (endpoint == null) {
-      SeedNode first = seedNodes.stream().findFirst().get();
-      this.endpoint = new ProtostellarEndpoint(core.context(), core.context().environment(), first.address(), first.protostellarPort().orElse(DEFAULT_PROTOSTELLAR_TLS_PORT));
-    }
-    return endpoint;
+  public ProtostellarEndpoint endpoint() {
+    return pool.endpoint();
   }
 }

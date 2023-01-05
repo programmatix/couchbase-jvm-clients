@@ -164,6 +164,7 @@ public class ConnectionString {
   public enum Scheme {
     COUCHBASE,
     COUCHBASES,
+    PROTOSTELLAR
     ;
 
     private static Scheme parse(String s) {

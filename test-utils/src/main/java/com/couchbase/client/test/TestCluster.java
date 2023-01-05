@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
@@ -165,7 +166,7 @@ abstract class TestCluster implements ExtensionContext.Store.CloseableResource {
       if (services.containsKey("eventingSSL")) {
         ports.put(Services.EVENTING_TLS, services.get("eventingSSL"));
       }
-      result.add(new TestNodeConfig(hostname, ports, false));
+      result.add(new TestNodeConfig(hostname, ports, false, Optional.empty()));
     }
     return result;
   }

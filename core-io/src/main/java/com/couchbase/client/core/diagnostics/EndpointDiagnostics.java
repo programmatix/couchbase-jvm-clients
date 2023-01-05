@@ -19,6 +19,7 @@ import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.endpoint.CircuitBreaker;
 import com.couchbase.client.core.endpoint.EndpointState;
 import com.couchbase.client.core.service.ServiceType;
+import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -84,7 +85,7 @@ public class EndpointDiagnostics {
     private final Optional<Throwable> lastConnectAttemptFailure;
 
     @Stability.Internal
-    public EndpointDiagnostics(final ServiceType type,
+    public EndpointDiagnostics(@Nullable final ServiceType type,
                                final EndpointState state,
                                final CircuitBreaker.State circuitBreakerState,
                                final String local,
@@ -106,8 +107,10 @@ public class EndpointDiagnostics {
 
     /**
      * The service type for this endpoint.
+     *
+     * Null if this endpoint is not bound to any particular service - e.g. Protostellar connections can handle multiple services.
      */
-    public ServiceType type() {
+    public @Nullable ServiceType type() {
         return type;
     }
 
@@ -188,6 +191,7 @@ public class EndpointDiagnostics {
         return map;
     }
 
+    // todo sn how should PS look in diagnostics report?
     @Override
     public String toString() {
         return "EndpointDiagnostics{" +

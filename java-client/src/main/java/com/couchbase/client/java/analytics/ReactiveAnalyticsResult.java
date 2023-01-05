@@ -16,24 +16,20 @@
 
 package com.couchbase.client.java.analytics;
 
-import com.couchbase.client.core.msg.analytics.AnalyticsResponse;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.codec.TypeRef;
 import com.couchbase.client.java.json.JsonObject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class ReactiveAnalyticsResult {
-
-    private final AnalyticsResponse response;
+public abstract class ReactiveAnalyticsResult {
 
     /**
      * The default serializer to use.
      */
-    private final JsonSerializer serializer;
+    protected final JsonSerializer serializer;
 
-    ReactiveAnalyticsResult(final AnalyticsResponse response, final JsonSerializer serializer) {
-        this.response = response;
+    ReactiveAnalyticsResult(final JsonSerializer serializer) {
         this.serializer = serializer;
     }
 
@@ -47,15 +43,10 @@ public class ReactiveAnalyticsResult {
         return rowsAs(JsonObject.class);
     }
 
-    public <T> Flux<T> rowsAs(final Class<T> target) {
-        return response.rows().map(row -> serializer.deserialize(target, row.data()));
-    }
+    abstract public <T> Flux<T> rowsAs(final Class<T> target);
 
-    public <T> Flux<T> rowsAs(final TypeRef<T> target) {
-        return response.rows().map(row -> serializer.deserialize(target, row.data()));
-    }
+    abstract public <T> Flux<T> rowsAs(final TypeRef<T> target);
 
-    public Mono<AnalyticsMetaData> metaData() {
-        return response.trailer().map(t -> AnalyticsMetaData.from(response.header(), t));
-    }
+    abstract public Mono<AnalyticsMetaData> metaData();
 }
+

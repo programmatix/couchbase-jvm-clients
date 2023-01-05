@@ -25,6 +25,7 @@ import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.env.ClusterEnvironment;
 import com.couchbase.client.java.json.JsonArray;
 import com.couchbase.client.java.json.JsonObject;
+import com.couchbase.client.protostellar.analytics.v1.AnalyticsQueryRequest;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -239,6 +240,53 @@ public class AnalyticsOptions extends CommonOptions<AnalyticsOptions> {
 
     public int priority() {
       return priority;
+    }
+
+    public void injectParams(final com.couchbase.client.protostellar.analytics.v1.AnalyticsQueryRequest.Builder input) {
+      input.setClientContextId(clientContextId == null ? UUID.randomUUID().toString() : clientContextId);
+
+      if (scanConsistency != null) {
+        input.setScanConsistency(AnalyticsQueryRequest.ScanConsistency.valueOf(scanConsistency.name()));
+      }
+
+      if (scanWait != null && !scanWait.isEmpty() && scanConsistency != null
+        && AnalyticsScanConsistency.NOT_BOUNDED != scanConsistency) {
+        throw new UnsupportedOperationException();
+        // todo sn input.put("scan_wait", scanWait);
+      }
+
+      boolean positionalPresent = positionalParameters != null && !positionalParameters.isEmpty();
+      if (namedParameters != null && !namedParameters.isEmpty()) {
+        namedParameters.getNames().forEach(key -> {
+          Object value = namedParameters.get(key);
+          throw new UnsupportedOperationException();
+          // todo sn
+//          if (key.charAt(0) != '$') {
+//            input.putNamedParameters('$' + key, ByteString.copyFrom(value));
+//          } else {
+//            input.putNamedParameters(key, value);
+//          }
+        });
+      }
+
+      if (positionalPresent) {
+        throw new UnsupportedOperationException();
+        // todo sn
+//        input.addPositionalParameters(positionalParameters
+//        input.put("args", positionalParameters);
+      }
+
+      if (readonly) {
+        input.setReadOnly(true);
+      }
+
+      if (raw != null) {
+        throw new UnsupportedOperationException("Raw options cannot be used together with Protostellar");
+      }
+
+      if (priority < 0) {
+        input.setPriority(true);
+      }
     }
 
     public void injectParams(final JsonObject input) {

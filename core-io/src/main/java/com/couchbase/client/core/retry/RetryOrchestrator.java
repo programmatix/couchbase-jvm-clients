@@ -50,6 +50,7 @@ public class RetryOrchestrator {
    */
   public static void maybeRetry(final CoreContext ctx, final Request<? extends Response> request,
                                 final RetryReason reason) {
+    // todo sn emulate all behavours in maybeRetry
     if (request.completed()) {
       return;
     }

@@ -20,6 +20,7 @@ import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.core.error.FeatureNotAvailableException;
+import com.couchbase.client.core.error.RequestCanceledException;
 import com.couchbase.client.core.error.TimeoutException;
 import com.couchbase.client.core.error.ValueTooLargeException;
 import com.couchbase.client.core.retry.RetryReason;
@@ -91,7 +92,9 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
     Bucket bucket = cluster.bucket(config().bucketname());
     collection = bucket.defaultCollection();
 
-    bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // todo snbrett - what does it meant for this in SN?
+//     bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // cluster.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
   }
 
   @AfterAll
@@ -112,6 +115,19 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
     assertEquals("\"Hello, World\"", new String(getResult.contentAsBytes(), UTF_8));
     assertTrue(getResult.cas() != 0);
     assertFalse(getResult.expiryTime().isPresent());
+  }
+
+
+  @Test
+  void requestCancelledPostShutdown() {
+    Cluster cluster1 = createCluster();
+    Collection coll = cluster1.bucket(config().bucketname()).defaultCollection();
+    cluster1.disconnect();
+
+    assertThrows(RequestCanceledException.class, () -> {
+      String id = UUID.randomUUID().toString();
+      coll.insert(id, "Hello, World");
+    });
   }
 
   /**

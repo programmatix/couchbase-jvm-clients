@@ -38,13 +38,15 @@ public class CoreCreatedEvent extends AbstractEvent {
   private final CoreEnvironment environment;
 
   public CoreCreatedEvent(final CoreContext context, final CoreEnvironment environment, final Set<SeedNode> seedNodes,
-                          final int numCoreInstances, @Nullable final String connectionString) {
-    super(Severity.INFO, Category.CORE, Duration.ZERO, enrichContext(context, seedNodes, numCoreInstances, connectionString));
+                          final int numCoreInstances, @Nullable final String connectionString, final boolean protostellarMode) {
+    super(Severity.INFO, Category.CORE, Duration.ZERO, enrichContext(context, seedNodes, numCoreInstances, connectionString, protostellarMode));
     this.environment = environment;
+
   }
 
   private static Context enrichContext(final CoreContext context, final Set<SeedNode> seedNodes,
-                                       final int numCoreInstances, @Nullable final String connectionString) {
+                                       final int numCoreInstances, @Nullable final String connectionString,
+                                       final boolean protostellarMode) {
     return new CoreContext(context.core(), context.id(), context.environment(), context.authenticator()) {
       @Override
       public void injectExportableParams(final Map<String, Object> input) {
@@ -62,6 +64,7 @@ public class CoreCreatedEvent extends AbstractEvent {
         if (connectionString != null) {
           input.put("connectionString", connectionString);
         }
+        input.put("protostellar", protostellarMode);
       }
     };
   }

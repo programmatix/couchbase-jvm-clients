@@ -28,13 +28,14 @@ import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.analytics.AnalyticsRequest;
 import com.couchbase.client.core.msg.query.QueryRequest;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.java.analytics.AnalyticsAccessor;
+import com.couchbase.client.java.analytics.AnalyticsAccessorHttp;
 import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.AnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.env.ClusterEnvironment;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.query.QueryAccessor;
+import com.couchbase.client.java.query.QueryAccessorProtostellar;
 import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.QueryResult;
 import com.couchbase.client.java.transactions.internal.ErrorUtil;
@@ -223,8 +224,15 @@ public class AsyncScope {
     }
     else {
       JsonSerializer serializer = opts.serializer() == null ? environment.jsonSerializer() : opts.serializer();
-      return queryAccessor.queryAsync(queryRequest(bucketName(), scopeName, statement, opts, core, environment()), opts,
-              serializer);
+      if (core.isProtostellar()) {
+        return QueryAccessorProtostellar.async(core, opts,
+          QueryAccessorProtostellar.request(core(), statement, opts, environment(), bucketName, scopeName),
+          serializer);
+      }
+      else {
+        return queryAccessor.queryAsync(queryRequest(bucketName(), scopeName, statement, opts, core, environment()), opts,
+          serializer);
+      }
     }
   }
 
@@ -236,7 +244,7 @@ public class AsyncScope {
    * @return the constructed query request.
    */
    static QueryRequest queryRequest(final String bucketName, final String scopeName, final String statement,
-      final QueryOptions.Built options, final Core core, final ClusterEnvironment environment) {
+                                    final QueryOptions.Built options, final Core core, final ClusterEnvironment environment) {
     notNullOrEmpty(statement, "Statement", () -> new ReducedQueryErrorContext(statement));
     Duration timeout = options.timeout().orElse(environment.timeoutConfig().queryTimeout());
     RetryStrategy retryStrategy = options.retryStrategy().orElse(environment.retryStrategy());
@@ -279,7 +287,7 @@ public class AsyncScope {
     notNull(options, "AnalyticsOptions", () -> new ReducedAnalyticsErrorContext(statement));
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment.jsonSerializer() : opts.serializer();
-    return AnalyticsAccessor.analyticsQueryAsync(core, analyticsRequest(statement, opts), serializer);
+    return AnalyticsAccessorHttp.analyticsQueryAsync(core, analyticsRequest(statement, opts), serializer);
   }
 
   /**

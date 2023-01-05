@@ -90,9 +90,10 @@ class QueryCollectionIntegrationTest extends JavaIntegrationTest {
   static void beforeAll() {
     cluster = createCluster();
     Bucket bucket = cluster.bucket(config().bucketname());
-    bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
-    waitForService(bucket, ServiceType.QUERY);
-    waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
+    // todo sn
+    // bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+    // waitForService(bucket, ServiceType.QUERY);
+    // waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
     collectionManager = bucket.collections();
 
     // Create the scope.collection (borrowed from CollectionManagerIntegrationTest )

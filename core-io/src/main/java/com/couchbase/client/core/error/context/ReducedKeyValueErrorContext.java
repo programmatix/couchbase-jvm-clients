@@ -27,10 +27,11 @@ import static com.couchbase.client.core.logging.RedactableArgument.redactUser;
 @Stability.Uncommitted
 public class ReducedKeyValueErrorContext extends ErrorContext {
 
-  private final String id;
-  private final CollectionIdentifier collectionIdentifier;
+  // todo sn check if this needed to go to protected
+  protected final String id;
+  protected final CollectionIdentifier collectionIdentifier;
 
-  private ReducedKeyValueErrorContext(final String id, final CollectionIdentifier collectionIdentifier) {
+  protected ReducedKeyValueErrorContext(final String id, final CollectionIdentifier collectionIdentifier) {
     super(null);
     this.id = id;
     this.collectionIdentifier = collectionIdentifier;

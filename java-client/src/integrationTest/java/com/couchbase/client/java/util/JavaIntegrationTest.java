@@ -141,18 +141,25 @@ public class JavaIntegrationTest extends ClusterAwareIntegrationTest {
 
   protected static Set<SeedNode> seedNodes() {
     return config().nodes().stream().map(cfg -> {
-      int kvPort = cfg.ports().get(Services.KV);
-      int managerPort = cfg.ports().get(Services.MANAGER);
-
-      if (config().runWithTLS()) {
-        kvPort = cfg.ports().get(Services.KV_TLS);
-        managerPort = cfg.ports().get(Services.MANAGER_TLS);
+      if (cfg.protostellarPort().isPresent()) {
+        return SeedNode.protostellar(
+          cfg.hostname(),
+          cfg.protostellarPort().get());
       }
+      else {
+        int kvPort = cfg.ports().get(Services.KV);
+        int managerPort = cfg.ports().get(Services.MANAGER);
 
-      return SeedNode.create(
-        cfg.hostname(),
-        Optional.ofNullable(kvPort),
-        Optional.ofNullable(managerPort));
+        if (config().runWithTLS()) {
+          kvPort = cfg.ports().get(Services.KV_TLS);
+          managerPort = cfg.ports().get(Services.MANAGER_TLS);
+        }
+
+        return SeedNode.create(
+          cfg.hostname(),
+          Optional.ofNullable(kvPort),
+          Optional.ofNullable(managerPort));
+      }
     }).collect(Collectors.toSet());
   }
 

@@ -25,6 +25,11 @@
     <name>Couchbase JVM Core IO</name>
     <description>The official Couchbase JVM Core IO Library</description>
 
+    <properties>
+        <grpc.version>1.51.0</grpc.version>
+        <grpc.protoc.version>3.21.9</grpc.protoc.version>
+    </properties>
+
     <dependencies>
         <!-- External, Required Dependencies -->
         <dependency>

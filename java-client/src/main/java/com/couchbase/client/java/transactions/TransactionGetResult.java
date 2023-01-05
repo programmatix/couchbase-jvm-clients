@@ -33,7 +33,7 @@ public class TransactionGetResult {
     private final JsonSerializer serializer;
 
     @Stability.Internal
-    TransactionGetResult(CoreTransactionGetResult internal, JsonSerializer serializer) {
+    public TransactionGetResult(CoreTransactionGetResult internal, JsonSerializer serializer) {
         this.internal = Objects.requireNonNull(internal);
         this.serializer = Objects.requireNonNull(serializer);
     }

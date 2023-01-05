@@ -18,10 +18,22 @@ package com.couchbase.client.core.transaction.components;
 import com.couchbase.client.core.annotation.Stability;
 
 @Stability.Internal
-public class OperationTypes {
-    private OperationTypes() {}
+public enum OperationTypes {
+    INSERT("insert"),
+    REPLACE("replace"),
+    REMOVE("remove"),
+    GET("get");
 
-    public static final String INSERT = "insert";
-    public static final String REPLACE = "replace";
-    public static final String REMOVE = "remove";
+
+
+
+    private final String asString;
+
+    OperationTypes(String asString) {
+        this.asString = asString;
+    }
+
+    public String asString() {
+        return asString;
+    }
 }

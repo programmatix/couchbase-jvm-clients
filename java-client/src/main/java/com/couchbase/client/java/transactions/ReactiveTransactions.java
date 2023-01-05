@@ -18,18 +18,24 @@ package com.couchbase.client.java.transactions;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContextClassic;
 import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
+import com.couchbase.client.core.transaction.CoreTransactionAttemptContextStellarNebula;
 import com.couchbase.client.core.transaction.CoreTransactionContext;
 import com.couchbase.client.core.transaction.CoreTransactionsReactive;
 import com.couchbase.client.core.transaction.config.CoreMergedTransactionConfig;
 import com.couchbase.client.core.transaction.config.CoreTransactionOptions;
+import com.couchbase.client.core.transaction.support.SpanWrapper;
 import com.couchbase.client.core.transaction.threadlocal.TransactionMarker;
 import com.couchbase.client.core.transaction.threadlocal.TransactionMarkerOwner;
-import com.couchbase.client.core.transaction.util.CoreTransactionsSchedulers;
+import com.couchbase.client.core.transaction.util.CoreTransactionAttemptContextHooks;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.transactions.config.TransactionOptions;
 import com.couchbase.client.java.transactions.error.TransactionFailedException;
 import com.couchbase.client.java.transactions.internal.ErrorUtil;
+import com.couchbase.client.java.transactions.internal.TransactionAttemptContextOperations;
+import com.couchbase.client.java.transactions.internal.TransactionAttemptContextOperationsClassic;
+import com.couchbase.client.java.transactions.internal.TransactionAttemptContextOperationsStellarNebula;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -62,7 +68,7 @@ public class ReactiveTransactions {
      * <p>
      * This is the asynchronous version of {@link Transactions#run}, so to cover the differences:
      * <ul>
-     * <li>The transaction logic is supplied with a {@link CoreTransactionAttemptContext}, which contains asynchronous
+     * <li>The transaction logic is supplied with a {@link ReactiveTransactionAttemptContext}, which contains asynchronous
      * methods to allow it to read, mutate, insert and delete documents, as well as commit or rollback the
      * transactions.</li>
      * <li>The transaction logic should run these methods as a Reactor chain.</li>
@@ -110,7 +116,16 @@ public class ReactiveTransactions {
             });
 
             Function<CoreTransactionAttemptContext, Mono<Void>> newTransactionLogic = (ctx) -> Mono.defer(() -> {
-                TransactionAttemptContext ctxBlocking = new TransactionAttemptContext(ctx, serializer);
+                TransactionAttemptContextOperations strategy;
+                if (ctx instanceof CoreTransactionAttemptContextStellarNebula) {
+                    // todo sntxn make this cleaner
+                    strategy = new TransactionAttemptContextOperationsStellarNebula((CoreTransactionAttemptContextStellarNebula) ctx, serializer);
+                }
+                else {
+                    strategy = new TransactionAttemptContextOperationsClassic((CoreTransactionAttemptContextClassic) ctx, serializer);
+                }
+
+                TransactionAttemptContext ctxBlocking = new TransactionAttemptContext(ctx, serializer, strategy);
                 return Mono.fromRunnable(() -> {
                             TransactionMarkerOwner.set(new TransactionMarker(ctx));
                             try {

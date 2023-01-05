@@ -17,19 +17,18 @@
 package com.couchbase.client.core.error.transaction;
 
 import com.couchbase.client.core.error.CouchbaseException;
-import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
 import com.couchbase.client.core.transaction.CoreTransactionGetResult;
 import com.couchbase.client.core.transaction.util.DebugUtil;
 
 public class DocumentAlreadyInTransactionException extends CouchbaseException {
     private final CoreTransactionGetResult doc;
 
-    private DocumentAlreadyInTransactionException(CoreTransactionAttemptContext ctx, CoreTransactionGetResult doc, String msg) {
+    private DocumentAlreadyInTransactionException(CoreTransactionGetResult doc, String msg) {
         super(msg);
         this.doc = doc;
     }
 
-    static public DocumentAlreadyInTransactionException create(CoreTransactionAttemptContext ctx, CoreTransactionGetResult doc) {
+    static public DocumentAlreadyInTransactionException create(CoreTransactionGetResult doc) {
         StringBuilder msg = new StringBuilder();
         msg.append("Document ");
         msg.append(DebugUtil.docId(doc));
@@ -40,7 +39,7 @@ public class DocumentAlreadyInTransactionException extends CouchbaseException {
         msg.append(" attemptId=");
         msg.append(doc.links().stagedAttemptId().orElse("-"));
 
-        return new DocumentAlreadyInTransactionException(ctx, doc, msg.toString());
+        return new DocumentAlreadyInTransactionException(doc, msg.toString());
     }
 
     public String docId() {

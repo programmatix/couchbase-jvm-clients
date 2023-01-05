@@ -94,7 +94,7 @@ public class CoreTransactionsReactive {
                 // So, expiry checks only get done inside this block.
                 .doOnNext(ctx -> {
                     overall.incAttempts();
-                    ctx.LOGGER.info(ctx.attemptId(), "starting attempt %d/%s/%s", overall.numAttempts(), ctx.transactionId(), ctx.attemptId());
+                    ctx.logger().info(ctx.attemptId(), "starting attempt %d/%s/%s", overall.numAttempts(), ctx.transactionId(), ctx.attemptId());
                 })
 
                 .flatMap(ctx -> transactionLogic.apply(ctx)
@@ -117,7 +117,7 @@ public class CoreTransactionsReactive {
 
                         .then(ctx.lambdaEnd(core().transactionsCleanup(), null, singleQueryTransactionMode))
 
-                        .then(ctx.transactionEnd(null, singleQueryTransactionMode))
+                        .thenReturn(ctx.transactionEnd(null, singleQueryTransactionMode))
 
                         .onErrorResume(err -> {
                             if (err instanceof RetryTransactionException) {
@@ -128,7 +128,7 @@ public class CoreTransactionsReactive {
                                 return Mono.error(err);
                             }
 
-                            return ctx.transactionEnd(err, singleQueryTransactionMode);
+                            return Mono.just(ctx.transactionEnd(err, singleQueryTransactionMode));
                         }))
 
                 // Retry transaction if required - controlled by a RetryTransaction exception.
@@ -168,6 +168,7 @@ public class CoreTransactionsReactive {
                 .toReactorRetry();
     }
 
+
     public CoreTransactionAttemptContext createAttemptContext(CoreTransactionContext overall,
                                                               CoreMergedTransactionConfig config,
                                                               String attemptId) {
@@ -175,27 +176,6 @@ public class CoreTransactionsReactive {
                 .create(core, overall, config, attemptId, this, Optional.of(overall.span()));
     }
 
-    /**
-     * Runs the supplied transactional logic until success or failure.
-     * <ul>
-     * <li>The transaction logic is supplied with a {@link CoreTransactionAttemptContext}, which contains asynchronous
-     * methods to allow it to read, mutate, insert and delete documents, as well as commit or rollback the
-     * transactions.</li>
-     * <li>The transaction logic should run these methods as a Reactor chain.</li>
-     * <li>The transaction logic should return a <code>Mono{@literal <}Void{@literal >}</code>.  Any
-     * <code>Flux</code> or <code>Mono</code> can be converted to a <code>Mono{@literal <}Void{@literal >}</code> by
-     * calling <code>.then()</code> on it.</li>
-     * <li>This method returns a <code>Mono{@literal <}TransactionResult{@literal >}</code>, which should be handled
-     * as a normal Reactor Mono.</li>
-     * </ul>
-     *
-     * @param transactionLogic the application's transaction logic
-     * @param perConfig        the configuration to use for this transaction
-     * @return there is no need to check the returned {@link CoreTransactionResult}, as success is implied by the lack of a
-     * thrown exception.  It contains information useful only for debugging and logging.
-     * @throws CoreTransactionFailedException or a derived exception if the transaction fails to commit for any reason, possibly
-     *                           after multiple retries.  The exception contains further details of the error.  Not
-     */
     public Mono<CoreTransactionResult> run(Function<CoreTransactionAttemptContext, Mono<?>> transactionLogic,
                                            @Nullable CoreTransactionOptions perConfig) {
         return Mono.defer(() -> {
@@ -224,7 +204,7 @@ public class CoreTransactionsReactive {
 
     // Printing the stacktrace is expensive in terms of log noise, but has been a life saver on many debugging
     // encounters.  Strike a balance by eliding the more useless elements.
-    private void logElidedStacktrace(CoreTransactionAttemptContext ctx, Throwable err) {
+    private void logElidedStacktrace(CoreTransactionAttemptContextClassic ctx, Throwable err) {
         ctx.LOGGER.info(ctx.attemptId(), DebugUtil.createElidedStacktrace(err));
     }
 
@@ -291,26 +271,28 @@ public class CoreTransactionsReactive {
             AtomicReference<QueryResponse> qr = new AtomicReference<>();
 
             Function<CoreTransactionAttemptContext, Mono<Void>> runLogic = (ctx) -> Mono.defer(() -> {
-                return ctx.doQueryOperation("single query streaming", statement, parentSpan.map(SpanWrapper::new).orElse(null),
-                                (sidx, lockToken, span) -> {
-                                    span.attribute(TracingIdentifiers.ATTR_TRANSACTION_SINGLE_QUERY, true);
-                                    return ctx.queryWrapperLocked(0,
-                                                    bucketName,
-                                                    scopeName,
-                                                    statement,
-                                                    queryOptions,
-                                                    CoreTransactionAttemptContextHooks.HOOK_QUERY,
-                                                    false,
-                                                    true,
-                                                    null,
-                                                    null,
-                                                    span,
-                                                    true,
-                                                    null,
-                                                    true)
-                                            .doOnNext(ret -> qr.set(ret));
-                                })
-                        .then();
+                // todo sntxn
+                return null;
+//                return ctx.doQueryOperation("single query streaming", statement, parentSpan.map(SpanWrapper::new).orElse(null),
+//                                (sidx, lockToken, span) -> {
+//                                    span.attribute(TracingIdentifiers.ATTR_TRANSACTION_SINGLE_QUERY, true);
+//                                    return ctx.queryWrapperLocked(0,
+//                                                    bucketName,
+//                                                    scopeName,
+//                                                    statement,
+//                                                    queryOptions,
+//                                                    CoreTransactionAttemptContextHooks.HOOK_QUERY,
+//                                                    false,
+//                                                    true,
+//                                                    null,
+//                                                    null,
+//                                                    span,
+//                                                    true,
+//                                                    null,
+//                                                    true)
+//                                            .doOnNext(ret -> qr.set(ret));
+//                                })
+//                        .then();
             });
 
             Consumer<Throwable> errorHandler = singleQueryHandleErrorDuringRowStreaming(overall, errorConverter);
@@ -377,11 +359,11 @@ public class CoreTransactionsReactive {
     }
 
     // Used only by single query transactions
-    public Mono<CoreTransactionAttemptContext.BufferedQueryResponse> queryBlocking(String statement,
-                                                                                   String bucketName,
-                                                                                   String scopeName,
-                                                                                   ObjectNode queryOptions,
-                                                                                   Optional<RequestSpan> parentSpan) {
+    public Mono<CoreTransactionAttemptContextClassic.BufferedQueryResponse> queryBlocking(String statement,
+                                                                                          String bucketName,
+                                                                                          String scopeName,
+                                                                                          ObjectNode queryOptions,
+                                                                                          Optional<RequestSpan> parentSpan) {
         return Mono.defer(() -> {
             queryOptions.put("tximplicit", true);
 
@@ -398,13 +380,15 @@ public class CoreTransactionsReactive {
                 return createAttemptContext(overall, merged, attemptId);
             });
 
-            AtomicReference<CoreTransactionAttemptContext.BufferedQueryResponse> qr = new AtomicReference<>();
+            AtomicReference<CoreTransactionAttemptContextClassic.BufferedQueryResponse> qr = new AtomicReference<>();
 
             Function<CoreTransactionAttemptContext, Mono<Void>> runLogic = (ctx) -> Mono.defer(() -> {
-                return ctx.queryBlocking(statement, bucketName, scopeName, queryOptions, true)
-                        // All rows have already been streamed and buffered, so it's ok to save this
-                        .doOnNext(ret -> qr.set(ret))
-                        .then();
+                return null;
+                // todo sntxn
+//                return ctx.queryBlocking(statement, bucketName, scopeName, queryOptions, true)
+//                        // All rows have already been streamed and buffered, so it's ok to save this
+//                        .doOnNext(ret -> qr.set(ret))
+//                        .then();
             });
 
             return executeTransaction(createAttempt, merged, overall, runLogic, true)

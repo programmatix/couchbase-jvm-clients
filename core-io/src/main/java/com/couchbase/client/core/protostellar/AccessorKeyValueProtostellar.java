@@ -16,6 +16,7 @@
 package com.couchbase.client.core.protostellar;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.api.kv.CoreAsyncResponse;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.RequestTracer;
@@ -85,6 +86,21 @@ public class AccessorKeyValueProtostellar {
         throw converted.exception();
       }
     }
+  }
+
+  public static <TSdkResult, TGrpcRequest, TGrpcResponse>
+  CoreAsyncResponse<TSdkResult> asyncCore(Core core,
+                                          ProtostellarRequest<TGrpcRequest>         request,
+                                          Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                                          Function<TGrpcResponse, TSdkResult>       convertResponse,
+                                          Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+
+    CompletableFuture<TSdkResult> ret = new CompletableFuture<>();
+    CoreAsyncResponse<TSdkResult> response = new CoreAsyncResponse<>(ret, () -> {
+      // todo sn what to do here?
+    });
+    asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
+    return response;
   }
 
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>

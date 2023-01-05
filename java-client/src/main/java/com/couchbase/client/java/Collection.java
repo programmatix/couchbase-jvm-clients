@@ -17,13 +17,17 @@
 package com.couchbase.client.java;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.api.kv.CoreKvOps;
+import com.couchbase.client.core.classic.kv.ClassicCoreKvOps;
 import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.error.CouchbaseException;
 import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.core.error.DocumentUnretrievableException;
 import com.couchbase.client.core.error.TimeoutException;
+import com.couchbase.client.core.protostellar.kv.ProtostellarCoreKvOps;
 import com.couchbase.client.java.codec.Transcoder;
 import com.couchbase.client.java.datastructures.CouchbaseArrayList;
 import com.couchbase.client.java.datastructures.CouchbaseArraySet;
@@ -34,6 +38,7 @@ import com.couchbase.client.java.kv.ArrayListOptions;
 import com.couchbase.client.java.kv.ArraySetOptions;
 import com.couchbase.client.java.kv.ExistsOptions;
 import com.couchbase.client.java.kv.ExistsResult;
+import com.couchbase.client.java.kv.Expiry;
 import com.couchbase.client.java.kv.GetAccessorProtostellar;
 import com.couchbase.client.java.kv.GetAllReplicasOptions;
 import com.couchbase.client.java.kv.GetAndLockOptions;
@@ -71,8 +76,11 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static com.couchbase.client.core.util.Validators.notNull;
 import static com.couchbase.client.java.AsyncUtils.block;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_GET_ALL_REPLICAS_OPTIONS;
+import static com.couchbase.client.java.ReactiveCollection.DEFAULT_GET_AND_LOCK_OPTIONS;
+import static com.couchbase.client.java.ReactiveCollection.DEFAULT_GET_AND_TOUCH_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_GET_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_INSERT_OPTIONS;
 import static com.couchbase.client.java.ReactiveCollection.DEFAULT_REMOVE_OPTIONS;
@@ -109,6 +117,11 @@ public class Collection {
   private final BinaryCollection binaryCollection;
 
   /**
+   * Strategy for performing KV operations.
+   */
+  private final CoreKvOps kvOps;
+
+  /**
    * Creates a new {@link Collection}.
    *
    * @param asyncCollection the underlying async collection.
@@ -117,6 +130,12 @@ public class Collection {
     this.asyncCollection = asyncCollection;
     reactiveCollection = new ReactiveCollection(asyncCollection);
     binaryCollection = new BinaryCollection(asyncCollection.binary());
+    if (core().isProtostellar()) {
+      this.kvOps = new ProtostellarCoreKvOps(asyncCollection.core(), CoreKeyspace.from(asyncCollection.collectionIdentifier()));
+    }
+    else {
+      this.kvOps = new ClassicCoreKvOps(asyncCollection.core(), CoreKeyspace.from(asyncCollection.collectionIdentifier()));
+    }
   }
 
   /**
@@ -209,7 +228,10 @@ public class Collection {
     if (core().isProtostellar()) {
       GetOptions.Built opts = options.build();
       Transcoder transcoder = opts.transcoder() == null ? environment().transcoder() : opts.transcoder();
-      return GetAccessorProtostellar.blocking(core(), opts, GetAccessorProtostellar.request(core(), opts, asyncCollection.collectionIdentifier(), id), transcoder);
+      return new GetResult(
+        kvOps.getBlocking(opts, id, opts.projections(), opts.withExpiry()),
+        transcoder
+      );
     }
     else {
       return block(async().get(id, options));
@@ -231,7 +253,7 @@ public class Collection {
    * @throws CouchbaseException for all other error reasons (acts as a base type and catch-all).
    */
   public GetResult getAndLock(final String id, final Duration lockTime) {
-    return block(async().getAndLock(id, lockTime));
+    return getAndLock(id, lockTime, DEFAULT_GET_AND_LOCK_OPTIONS);
   }
 
   /**
@@ -264,7 +286,7 @@ public class Collection {
    * @throws CouchbaseException for all other error reasons (acts as a base type and catch-all).
    */
   public GetResult getAndTouch(final String id, final Duration expiry) {
-    return block(async().getAndTouch(id, expiry));
+    return getAndTouch(id, expiry, DEFAULT_GET_AND_TOUCH_OPTIONS);
   }
 
   /**

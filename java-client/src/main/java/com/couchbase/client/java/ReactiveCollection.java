@@ -20,6 +20,7 @@ import com.couchbase.client.core.Core;
 import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.Reactor;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.api.kv.CoreKvOps;
 import com.couchbase.client.core.error.CouchbaseException;
 import com.couchbase.client.core.error.TimeoutException;
 import com.couchbase.client.core.error.context.ReducedKeyValueErrorContext;
@@ -137,6 +138,11 @@ public class ReactiveCollection {
   private final AsyncCollection asyncCollection;
 
   /**
+   * Strategy for performing KV operations.
+   */
+  private final CoreKvOps kvOps;
+
+  /**
    * Holds the core context of the attached core.
    */
   private final CoreContext coreContext;
@@ -156,6 +162,7 @@ public class ReactiveCollection {
     this.coreContext = asyncCollection.core().context();
     this.core = asyncCollection.core();
     this.reactiveBinaryCollection = new ReactiveBinaryCollection(core, asyncCollection.binary());
+    this.kvOps = asyncCollection.kvOps;
   }
 
   /**
@@ -235,7 +242,8 @@ public class ReactiveCollection {
 
       if (opts.projections().isEmpty() && !opts.withExpiry()) {
         if (core.isProtostellar()) {
-          return GetAccessorProtostellar.reactive(core(), opts, GetAccessorProtostellar.request(core, opts, asyncCollection.collectionIdentifier(), id), transcoder);
+          return kvOps.getReactive(opts, id, opts.projections(), opts.withExpiry())
+            .map(it -> new GetResult(it, transcoder));
         }
         else {
           GetRequest request = asyncCollection.fullGetRequest(id, opts);

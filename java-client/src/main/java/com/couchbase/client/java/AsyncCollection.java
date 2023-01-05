@@ -18,7 +18,10 @@ package com.couchbase.client.java;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.CoreContext;
+import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.api.kv.CoreKvOps;
+import com.couchbase.client.core.classic.kv.ClassicCoreKvOps;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
@@ -46,6 +49,7 @@ import com.couchbase.client.core.msg.kv.SubdocMutateRequest;
 import com.couchbase.client.core.msg.kv.TouchRequest;
 import com.couchbase.client.core.msg.kv.UnlockRequest;
 import com.couchbase.client.core.msg.kv.UpsertRequest;
+import com.couchbase.client.core.protostellar.kv.ProtostellarCoreKvOps;
 import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.service.kv.ReplicaHelper;
 import com.couchbase.client.core.util.BucketConfigUtil;
@@ -188,6 +192,11 @@ public class AsyncCollection {
   private final RangeScanOrchestrator rangeScanOrchestrator;
 
   /**
+   * Strategy for performing KV operations.
+   */
+  final CoreKvOps kvOps;
+
+  /**
    * Creates a new {@link AsyncCollection}.
    *
    * @param name the name of the collection.
@@ -206,6 +215,12 @@ public class AsyncCollection {
     this.collectionIdentifier = new CollectionIdentifier(bucket, Optional.of(scopeName), Optional.of(name));
     this.asyncBinaryCollection = new AsyncBinaryCollection(core, environment, collectionIdentifier);
     this.rangeScanOrchestrator = new RangeScanOrchestrator(core, collectionIdentifier);
+    if (core().isProtostellar()) {
+      this.kvOps = new ProtostellarCoreKvOps(core(), CoreKeyspace.from(collectionIdentifier()));
+    }
+    else {
+      this.kvOps = new ClassicCoreKvOps(core(), CoreKeyspace.from(collectionIdentifier()));
+    }
   }
 
   /**
@@ -284,7 +299,8 @@ public class AsyncCollection {
     final Transcoder transcoder = opts.transcoder() == null ? environment.transcoder() : opts.transcoder();
     if (opts.projections().isEmpty() && !opts.withExpiry()) {
       if (core.isProtostellar()) {
-        return GetAccessorProtostellar.async(core, opts, GetAccessorProtostellar.request(core, opts, collectionIdentifier, id), transcoder);
+        return kvOps.getAsync(opts, id, opts.projections(), opts.withExpiry())
+          .thenApply(coreGetResult -> new GetResult(coreGetResult, transcoder));
       }
       else {
         return GetAccessor.get(core, fullGetRequest(id, opts), transcoder);

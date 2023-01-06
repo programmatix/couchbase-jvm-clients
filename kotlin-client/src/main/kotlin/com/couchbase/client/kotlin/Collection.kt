@@ -131,8 +131,7 @@ public class Collection internal constructor(
     internal fun CommonOptions.actualRetryStrategy() = retryStrategy ?: env.retryStrategy()
     internal fun CommonOptions.actualSpan(name: String) = env.requestTracer().requestSpan(name, parentSpan)
 
-    // todo sn use ProtostellarCoreKvOps
-    private val kvOps = ClassicCoreKvOps(core, CoreKeyspace.from(collectionId))
+    private val kvOps = core.kvOps(CoreKeyspace.from(collectionId))
 
     /**
      * Gets a document from this collection.

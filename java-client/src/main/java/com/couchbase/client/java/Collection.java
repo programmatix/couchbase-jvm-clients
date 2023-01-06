@@ -130,12 +130,7 @@ public class Collection {
     this.asyncCollection = asyncCollection;
     reactiveCollection = new ReactiveCollection(asyncCollection);
     binaryCollection = new BinaryCollection(asyncCollection.binary());
-    if (core().isProtostellar()) {
-      this.kvOps = new ProtostellarCoreKvOps(asyncCollection.core(), CoreKeyspace.from(asyncCollection.collectionIdentifier()));
-    }
-    else {
-      this.kvOps = new ClassicCoreKvOps(asyncCollection.core(), CoreKeyspace.from(asyncCollection.collectionIdentifier()));
-    }
+    this.kvOps = asyncCollection.kvOps;
   }
 
   /**

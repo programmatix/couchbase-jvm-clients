@@ -215,12 +215,7 @@ public class AsyncCollection {
     this.collectionIdentifier = new CollectionIdentifier(bucket, Optional.of(scopeName), Optional.of(name));
     this.asyncBinaryCollection = new AsyncBinaryCollection(core, environment, collectionIdentifier);
     this.rangeScanOrchestrator = new RangeScanOrchestrator(core, collectionIdentifier);
-    if (core().isProtostellar()) {
-      this.kvOps = new ProtostellarCoreKvOps(core(), CoreKeyspace.from(collectionIdentifier()));
-    }
-    else {
-      this.kvOps = new ClassicCoreKvOps(core(), CoreKeyspace.from(collectionIdentifier()));
-    }
+    this.kvOps = core.kvOps(CoreKeyspace.from(collectionIdentifier()));
   }
 
   /**

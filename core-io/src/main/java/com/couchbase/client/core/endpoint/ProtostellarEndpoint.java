@@ -73,7 +73,7 @@ public class ProtostellarEndpoint {
   private final Core core;
 
   public ProtostellarEndpoint(Core core, String hostname, final int port) {
-    // todo sn temporary hack to get performance testing working
+    // todo snremove temporary hack to get performance testing working
     // The issue is that we send in protostellar://cbs as a connection string because the Couchbase cluster is running in a Docker container named "cbs", and the performer is also running in a Docker container.
     // However, Stellar Nebula is running normally, not in a container, so must be accessed with "localhost" instead.
     // So we pass a connection string of "protostellar://cbs" and "com.couchbase.protostellar.overrideHostname"="localhost".
@@ -119,7 +119,7 @@ public class ProtostellarEndpoint {
 
     // todo sn set idempotent flag wherever possible
 
-    // todo sn probably remove pre-release, just trying to understand the internals
+    // todo snremove probably remove pre-release, just trying to understand the internals
     ClientStreamTracer.Factory factory = new ClientStreamTracer.Factory() {
       public ClientStreamTracer newClientStreamTracer(ClientStreamTracer.StreamInfo info, Metadata headers) {
         return new ClientStreamTracer() {

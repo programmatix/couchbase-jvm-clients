@@ -98,7 +98,7 @@ public class RetryOrchestratorProtostellar {
       new RequestRetryScheduledEvent(cappedDuration, request.context(), request.getClass(), reason)
     );
     request.context().incrementRetryAttempts(cappedDuration, reason);
-    logger.info("Retrying op with duration {} reason {} attempts {}", duration, reason, request.context().retryAttempts());
+
     return ProtostellarRequestBehaviour.retry(cappedDuration);
   }
 

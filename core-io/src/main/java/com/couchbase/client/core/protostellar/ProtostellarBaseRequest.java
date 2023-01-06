@@ -39,8 +39,6 @@ import java.util.function.Function;
  */
 @Stability.Volatile
 public class ProtostellarBaseRequest implements Request<ProtostellarBaseRequest.ProtostellarResponse> {
-  private static final RuntimeException UNSUPPORTED = new UnsupportedOperationException("This method should not be called");
-
   private final ProtostellarRequest<?> request;
 
   @Stability.Internal
@@ -48,39 +46,43 @@ public class ProtostellarBaseRequest implements Request<ProtostellarBaseRequest.
     this.request = request;
   }
 
+  private static UnsupportedOperationException unsupported() {
+    return new UnsupportedOperationException("This method should not be called");
+  }
+
   @Override
   public long id() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public CompletableFuture<ProtostellarResponse> response() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public void succeed(ProtostellarResponse result) {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public void fail(Throwable error) {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public void cancel(CancellationReason reason, Function<Throwable, Throwable> exceptionTranslator) {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public void timeoutRegistration(Timeout registration) {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public RequestContext context() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
@@ -90,57 +92,57 @@ public class ProtostellarBaseRequest implements Request<ProtostellarBaseRequest.
 
   @Override
   public boolean timeoutElapsed() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public boolean completed() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public boolean succeeded() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public boolean failed() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public boolean cancelled() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public CancellationReason cancellationReason() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public ServiceType serviceType() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public Map<String, Object> serviceContext() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public RetryStrategy retryStrategy() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public RequestSpan requestSpan() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
   public long createdAt() {
-    throw UNSUPPORTED;
+    throw unsupported();
   }
 
   @Override
@@ -152,7 +154,7 @@ public class ProtostellarBaseRequest implements Request<ProtostellarBaseRequest.
   static class ProtostellarResponse implements Response {
     @Override
     public ResponseStatus status() {
-      throw UNSUPPORTED;
+      throw unsupported();
     }
   }
 }

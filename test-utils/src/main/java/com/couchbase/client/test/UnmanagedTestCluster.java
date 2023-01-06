@@ -68,10 +68,11 @@ public class UnmanagedTestCluster extends TestCluster {
   private final boolean isProtostellar;
 
   UnmanagedTestCluster(final Properties properties) {
-    // localhost:8091 or couchbases://localhost:8091 or
+    // localhost:8091 or couchbases://localhost:8091 or protostellar://localhost:8091
     String[] split = properties.getProperty("cluster.unmanaged.seed").split(":");
     isProtostellar = split[0].equals("protostellar");
     seedHost = split[split.length - 2].replace("//", "");
+    // todo sn handle missing port
     seedPort = Integer.parseInt(split[split.length - 1]);
     adminUsername = properties.getProperty("cluster.adminUsername");
     adminPassword = properties.getProperty("cluster.adminPassword");

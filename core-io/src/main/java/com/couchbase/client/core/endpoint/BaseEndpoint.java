@@ -603,7 +603,6 @@ public abstract class BaseEndpoint implements Endpoint {
             EndpointContext context = endpointContext.get();
             Event.Severity severity = disconnect.get() ? Event.Severity.DEBUG : Event.Severity.WARN;
             context.environment().eventBus().publish(new EndpointWriteFailedEvent(severity, context, f.cause()));
-            // todo sn emulate this in PS world
             RetryOrchestrator.maybeRetry(context, request, RetryReason.ENDPOINT_NOT_WRITABLE);
           }
         });

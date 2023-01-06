@@ -92,7 +92,9 @@ private[scala] object InsertHandlerProtostellar {
       val out = new ProtostellarRequest[InsertRequest](core,
         // todo sn create this span correctly
         core.context.environment.requestTracer.requestSpan(TracingIdentifiers.SPAN_REQUEST_KV_INSERT, parentSpan.orNull),
-        new ProtostellarKeyValueRequestContext(core, ServiceType.KV, "insert", actualTimeout, id, collectionIdentifier))
+        new ProtostellarKeyValueRequestContext(core, ServiceType.KV, "insert", actualTimeout, id, collectionIdentifier),
+        actualTimeout,
+        retryStrategy)
 
       val encodeSpan = CbTracing.newSpan(core.context.environment.requestTracer, TracingIdentifiers.SPAN_REQUEST_ENCODING, out.span)
       val start      = System.nanoTime()

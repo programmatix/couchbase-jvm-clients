@@ -280,7 +280,6 @@ public abstract class NonChunkedHttpMessageHandler extends ChannelDuplexHandler 
   @Override
   public void channelInactive(ChannelHandlerContext ctx) {
     if (currentRequest != null) {
-      // todo sn emulate this
       RetryOrchestrator.maybeRetry(ioContext, currentRequest, RetryReason.CHANNEL_CLOSED_WHILE_IN_FLIGHT);
     }
     ctx.fireChannelInactive();

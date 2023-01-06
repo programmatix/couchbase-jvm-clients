@@ -50,7 +50,6 @@ public class RetryOrchestrator {
    */
   public static void maybeRetry(final CoreContext ctx, final Request<? extends Response> request,
                                 final RetryReason reason) {
-    // todo sn emulate all behavours in maybeRetry
     if (request.completed()) {
       return;
     }
@@ -113,7 +112,8 @@ public class RetryOrchestrator {
    * @param retryAttempt the retry attempts for the request.
    * @return the retry duration.
    */
-  private static Duration controlledBackoff(int retryAttempt) {
+  @Stability.Internal
+  public static Duration controlledBackoff(int retryAttempt) {
     switch (retryAttempt) {
       case 0:
         return Duration.ofMillis(1);

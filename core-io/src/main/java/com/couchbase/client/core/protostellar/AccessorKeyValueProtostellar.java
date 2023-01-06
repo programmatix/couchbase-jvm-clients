@@ -25,6 +25,7 @@ import com.couchbase.client.core.deps.com.google.common.util.concurrent.FutureCa
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.Futures;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.ListenableFuture;
 import com.couchbase.client.core.error.context.ErrorContext;
+import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.annotation.Nullable;
@@ -70,15 +71,13 @@ public class AccessorKeyValueProtostellar {
         dispatchSpan.status(RequestSpan.StatusCode.ERROR);
         dispatchSpan.end();
       }
-      if (converted.shouldRetry()) {
-        // todo snbrett what kind of backoff do we want
-        Duration backoff = Duration.ofMillis(50);
+      Duration backoff = RetryOrchestratorProtostellar.shouldRetry(core, request, converted);
+      if (backoff != null) {
         try {
           Thread.sleep(backoff.toMillis());
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
-        request.incrementRetryAttempts(backoff, converted.retry());
         return blocking(core, request, executeBlockingGrpcCall, convertResponse, convertException);
       }
       else {
@@ -150,14 +149,10 @@ public class AccessorKeyValueProtostellar {
           dispatchSpan.status(RequestSpan.StatusCode.ERROR);
           dispatchSpan.end();
         }
-        if (converted.shouldRetry()) {
+        Duration backoff = RetryOrchestratorProtostellar.shouldRetry(core, request, converted);
+        if (backoff != null) {
           // todo sn CancellationReason.TOO_MANY_REQUESTS_IN_RETRY
-          // todo sn more generally, do we need to be able to cancel at any point?  If so, need to put the CompletableFuture/Sink inside the ProtostellarRequest. How would blocking work?
-          // todo sn even more generally, do we need to be able to retry at any point?  If so, need to teach the ProtostellarRequest how to execute itself.
-          Duration backoff = Duration.ofMillis(50);
-          request.incrementRetryAttempts(backoff, converted.retry());
           core.context().environment().timer().schedule(() -> {
-            // note this won't work - it'll create a new CompletableFuture - request.send().accept(request);
             asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
           }, backoff);
         }
@@ -217,9 +212,8 @@ public class AccessorKeyValueProtostellar {
           dispatchSpan.status(RequestSpan.StatusCode.ERROR);
           dispatchSpan.end();
         }
-        if (converted.shouldRetry()) {
-          Duration backoff = Duration.ofMillis(50);
-          request.incrementRetryAttempts(backoff, converted.retry());
+        Duration backoff = RetryOrchestratorProtostellar.shouldRetry(core, request, converted);
+        if (backoff != null) {
           core.context().environment().timer().schedule(() -> {
             reactiveInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
           }, backoff);

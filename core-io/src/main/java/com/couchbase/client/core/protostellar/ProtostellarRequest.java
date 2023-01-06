@@ -21,19 +21,11 @@ import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.cnc.metrics.NoopMeter;
-import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.retry.RetryReason;
-import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.retry.RetryStrategy;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * Think we need this as there's so much to hold onto outside of the basic GRPC request.
@@ -45,43 +37,30 @@ public class ProtostellarRequest<TGrpcRequest> {
   private final Core core;
   private TGrpcRequest request;
   private final ProtostellarRequestContext context;
-  private @Nullable RequestSpan span;
-
-  /**
-   * Sends the request and handles errors/success.
-   * <p>
-   * Not certain if we're going to need it, but seems very useful for retries.
-   */
-  private final Consumer<ProtostellarRequest<TGrpcRequest>> send;
+  private final @Nullable RequestSpan span;
+  private final long absoluteTimeout;
 
   /**
    * The time it took to encode the payload (if any).
    */
   private long encodeLatency;
-
-  public ProtostellarRequest(Core core,
-                             RequestSpan span,
-                             ProtostellarRequestContext context) {
-    this(core, span, context, null);
-  }
+  private final RetryStrategy retryStrategy;
 
   public ProtostellarRequest(Core core,
                              RequestSpan span,
                              ProtostellarRequestContext context,
-                             Consumer<ProtostellarRequest<TGrpcRequest>> send) {
+                             Duration timeout,
+                             RetryStrategy retryStrategy) {
     this.core = core;
     this.span = span;
     this.context = context;
-    this.send = send;
+    this.absoluteTimeout = System.nanoTime() + timeout.toNanos();
+    this.retryStrategy = retryStrategy;
   }
 
   public ProtostellarRequest<TGrpcRequest> request(TGrpcRequest request) {
     this.request = request;
     return this;
-  }
-
-  public Consumer<ProtostellarRequest<TGrpcRequest>> send() {
-    return send;
   }
 
   public TGrpcRequest request() {
@@ -101,37 +80,12 @@ public class ProtostellarRequest<TGrpcRequest> {
     return this;
   }
 
-//  public long logicallyCompletedAt() {
-//    return logicallyCompletedAt;
-//  }
-//
-//  public ProtostellarRequest<TGrpcRequest> logicallyCompletedAt(long logicallyCompletedAt) {
-//    this.logicallyCompletedAt = logicallyCompletedAt;
-//    return this;
-//  }
-
   public RequestSpan span() {
     return span;
   }
 
-  public ProtostellarRequest<TGrpcRequest> span(RequestSpan span) {
-    this.span = span;
-    return this;
-  }
-
   // todo sn throw FeatureUnavailableException on most management APIs - or should we fallback?
   // todo sn have another go at finding number of underlying streams and HTTP2 connections
-
-  /**
-   * Returns the request latency once logically completed (includes potential "inner" operations like observe
-   * calls).
-   */
-//  public long logicalRequestLatency() {
-//    if (logicallyCompletedAt == 0 || logicallyCompletedAt <= createdAt) {
-//      return 0;
-//    }
-//    return logicallyCompletedAt - createdAt;
-//  }
 
   public void logicallyComplete(@Nullable Throwable err) {
     if (span != null) {
@@ -161,5 +115,13 @@ public class ProtostellarRequest<TGrpcRequest> {
 
   public Duration timeout() {
     return context.timeout();
+  }
+
+  public long absoluteTimeout() {
+    return absoluteTimeout;
+  }
+
+  public RetryStrategy retryStrategy() {
+    return retryStrategy;
   }
 }

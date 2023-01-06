@@ -91,7 +91,8 @@ public class InsertAccessorProtostellar {
     ProtostellarRequest<InsertRequest> out = new ProtostellarRequest<>(core,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, opts.durabilityLevel(), opts.parentSpan().orElse(null)),
       new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_INSERT, timeout, id, collectionIdentifier),
-      (ProtostellarRequest<InsertRequest> req) -> blocking(core, opts, req));
+      timeout,
+      opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
 
       Transcoder transcoder = opts.transcoder() == null ? environment.transcoder() : opts.transcoder();
     final RequestSpan encodeSpan = CbTracing.newSpan(core.context(), TracingIdentifiers.SPAN_REQUEST_ENCODING, out.span());

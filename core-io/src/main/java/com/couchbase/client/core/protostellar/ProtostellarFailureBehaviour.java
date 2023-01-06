@@ -21,11 +21,15 @@ import reactor.util.annotation.Nullable;
 
 public class ProtostellarFailureBehaviour {
   private final @Nullable RetryReason retry;
-  private final RuntimeException exception;
+
+  /*
+   * Nullable because if we're retrying the exception we don't want the expense of creating an exception.
+   */
+  private final @Nullable RuntimeException exception;
   private final ProtostellarErrorContext errorContext;
 
   public ProtostellarFailureBehaviour(@Nullable RetryReason retry,
-                                      RuntimeException exception,
+                                      @Nullable RuntimeException exception,
                                       ProtostellarErrorContext errorContext) {
     this.retry = retry;
     this.exception = exception;

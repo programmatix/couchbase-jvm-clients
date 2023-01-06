@@ -95,6 +95,9 @@ public class CoreProtostellarErrorHandlingUtil {
           return new ProtostellarFailureBehaviour(null, new DocumentExistsException(context), context);
         case NOT_FOUND:
           return new ProtostellarFailureBehaviour(null, new DocumentNotFoundException(context), context);
+        case UNAVAILABLE:
+          // todo sn can we better differentiate between SERVICE_NOT_AVAILABLE, ENDPOINT_NOT_AVAILABLE, NODE_NOT_AVAILABLE, ENDPOINT_NOT_WRITABLE, CHANNEL_CLOSED_WHILE_IN_FLIGHT?
+          return new ProtostellarFailureBehaviour(RetryReason.ENDPOINT_NOT_AVAILABLE, null, context);
         default:
           // TODO snbrett handle all codes
           return new ProtostellarFailureBehaviour(null, new UnsupportedOperationException("Unhandled error code " + code), context);

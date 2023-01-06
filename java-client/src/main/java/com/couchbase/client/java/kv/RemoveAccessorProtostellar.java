@@ -24,10 +24,10 @@ import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.core.protostellar.AccessorKeyValueProtostellar;
 import com.couchbase.client.core.protostellar.CoreProtostellarUtil;
-import com.couchbase.client.core.protostellar.ProtostellarFailureBehaviour;
 import com.couchbase.client.core.protostellar.ProtostellarKeyValueRequestContext;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
 import com.couchbase.client.core.protostellar.ProtostellarRequestContext;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.java.util.ProtostellarUtil;
 import com.couchbase.client.protostellar.kv.v1.RemoveRequest;
@@ -56,7 +56,7 @@ public class RemoveAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(req.timeout())).remove(request),
       (response) -> convertResponse(response),
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   public static CompletableFuture<MutationResult> async(Core core,
@@ -67,7 +67,7 @@ public class RemoveAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).remove(request),
       (response) -> convertResponse(response),
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   public static Mono<MutationResult> reactive(Core core,
@@ -78,15 +78,15 @@ public class RemoveAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).remove(request),
       (response) -> convertResponse(response),
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   private static MutationResult convertResponse(RemoveResponse response) {
     return ProtostellarUtil.convertMutationResult(response.getCas(), response.hasMutationToken() ? response.getMutationToken() : null);
   }
 
-  private static ProtostellarFailureBehaviour convertException(Throwable t, ProtostellarRequest<RemoveRequest> req) {
-    return CoreProtostellarUtil.convertKeyValueException(t, req);
+  private static ProtostellarRequestBehaviour convertException(Core core, ProtostellarRequest<RemoveRequest> req, Throwable t) {
+    return CoreProtostellarUtil.convertKeyValueException(core, req, t);
   }
 
   public static ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> request(String id,

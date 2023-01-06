@@ -20,6 +20,7 @@ import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.deps.io.grpc.Deadline;
 import com.couchbase.client.core.error.context.ProtostellarErrorContext;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -43,7 +44,7 @@ public class CoreInsertAccessorProtostellar {
       // Measure the impact to decide if it's worth tracking if it's a non-default timeout
       () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   public static <TSdkResult> CompletableFuture<TSdkResult> async(Core core,
@@ -55,7 +56,7 @@ public class CoreInsertAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   public static <TSdkResult> Mono<TSdkResult> reactive(Core core,
@@ -67,10 +68,10 @@ public class CoreInsertAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
-  private static ProtostellarFailureBehaviour convertException(Throwable t, ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.InsertRequest> req) {
-    return CoreProtostellarUtil.convertKeyValueException(t, req);
+  private static ProtostellarRequestBehaviour convertException(Core core, ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.InsertRequest> req, Throwable t) {
+    return CoreProtostellarUtil.convertKeyValueException(core, req, t);
   }
 }

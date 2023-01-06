@@ -82,7 +82,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
       // Measure the impact to decide if it's worth tracking if it's a non-default timeout
       () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> this.convertGetResponse(key, response),
-      (err) ->      CoreProtostellarUtil.convertKeyValueException(err, req));
+      (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }
 
   @Override
@@ -97,7 +97,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> this.convertGetResponse(key, response),
-      (err) ->      CoreProtostellarUtil.convertKeyValueException(err, req));
+      (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }
 
   @Override
@@ -109,7 +109,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> this.convertGetResponse(key, response),
-      (err) ->      CoreProtostellarUtil.convertKeyValueException(err, req));
+      (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }
 
   private CoreGetResult convertGetResponse(String key, GetResponse response) {

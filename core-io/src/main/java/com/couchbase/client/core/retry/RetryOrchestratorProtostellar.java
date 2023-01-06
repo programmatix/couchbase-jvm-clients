@@ -22,8 +22,10 @@ import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.cnc.Event;
 import com.couchbase.client.core.cnc.events.request.RequestNotRetriedEvent;
 import com.couchbase.client.core.cnc.events.request.RequestRetryScheduledEvent;
-import com.couchbase.client.core.msg.UnmonitoredRequest;
-import com.couchbase.client.core.protostellar.ProtostellarFailureBehaviour;
+import com.couchbase.client.core.error.AmbiguousTimeoutException;
+import com.couchbase.client.core.error.UnambiguousTimeoutException;
+import com.couchbase.client.core.error.context.CancellationErrorContext;
+import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
 import com.couchbase.client.core.protostellar.ProtostellarBaseRequest;
 import org.slf4j.Logger;
@@ -39,19 +41,15 @@ import static com.couchbase.client.core.retry.RetryOrchestrator.controlledBackof
 public class RetryOrchestratorProtostellar {
   private final static Logger logger = LoggerFactory.getLogger(RetryOrchestratorProtostellar.class);
 
-  /**
-   * Returns non-null iff it should retry.  The retry itself must be performed by the calling code.
-   */
-  public static @Nullable Duration shouldRetry(Core core, ProtostellarRequest<?> request, ProtostellarFailureBehaviour behaviour) {
+  public static ProtostellarRequestBehaviour shouldRetry(Core core, ProtostellarRequest<?> request, RetryReason reason) {
     CoreContext ctx = core.context();
 
-    if (behaviour.retry() == null) {
-      return null;
+    if (request.timeoutElapsed()) {
+      // todo sn handle ambiguous timeouts - need idempotency first
+      // RuntimeException exception = request.idempotent() ? new UnambiguousTimeoutException(msg, ctx) : new AmbiguousTimeoutException(msg, ctx);
+      CancellationErrorContext cancelContext = new CancellationErrorContext(request.context());
+      return ProtostellarRequestBehaviour.fail(new AmbiguousTimeoutException("Request timed out", cancelContext));
     }
-
-    // todo sn handle timeouts here
-
-    RetryReason reason = behaviour.retry();
 
     if (reason.alwaysRetry()) {
       return retryWithDuration(ctx, request, controlledBackoff(request.context().retryAttempts()), reason);
@@ -69,7 +67,7 @@ public class RetryOrchestratorProtostellar {
       else {
         ProtostellarBaseRequest wrapper = new ProtostellarBaseRequest(request);
 
-        retryAction = request.retryStrategy().shouldRetry(wrapper, behaviour.retry()).get();
+        retryAction = request.retryStrategy().shouldRetry(wrapper, reason).get();
       }
 
       Optional<Duration> duration = retryAction.duration();
@@ -79,8 +77,8 @@ public class RetryOrchestratorProtostellar {
       } else {
         // todo sn do we need to emulate this? "unmonitored request's severity is downgraded to debug to not spam the info-level logs"
         ctx.environment().eventBus().publish(new RequestNotRetriedEvent(Event.Severity.DEBUG, request.getClass(), request.context(), reason, null));
-        // todo sn how to cancel the request now?
-        // request.cancel(CancellationReason.noMoreRetries(reason), retryAction.exceptionTranslator());
+        // todo sn retryAction.exceptionTranslator() is part of RetryStrategy interface, what does it do, do we need to pass it along?
+        return request.cancel(CancellationReason.noMoreRetries(reason));
       }
     }
     catch (Throwable throwable) {
@@ -89,10 +87,11 @@ public class RetryOrchestratorProtostellar {
       );
     }
 
-    return null;
+    // If we're retrying we're either going to do that or fail the request due to timeout.
+    throw new IllegalStateException("Internal bug - should not reach here");
   }
 
-  private static Duration retryWithDuration(final CoreContext ctx, final ProtostellarRequest<?> request,
+  private static ProtostellarRequestBehaviour retryWithDuration(final CoreContext ctx, final ProtostellarRequest<?> request,
                                         final Duration duration, final RetryReason reason) {
     Duration cappedDuration = capDuration(duration, request);
     ctx.environment().eventBus().publish(
@@ -100,7 +99,7 @@ public class RetryOrchestratorProtostellar {
     );
     request.context().incrementRetryAttempts(cappedDuration, reason);
     logger.info("Retrying op with duration {} reason {} attempts {}", duration, reason, request.context().retryAttempts());
-    return cappedDuration;
+    return ProtostellarRequestBehaviour.retry(cappedDuration);
   }
 
   @Stability.Internal

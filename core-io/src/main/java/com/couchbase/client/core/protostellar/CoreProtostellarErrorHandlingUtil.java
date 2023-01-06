@@ -15,6 +15,7 @@
  */
 package com.couchbase.client.core.protostellar;
 
+import com.couchbase.client.core.Core;
 import com.couchbase.client.core.deps.com.google.protobuf.Any;
 import com.couchbase.client.core.deps.com.google.protobuf.InvalidProtocolBufferException;
 import com.couchbase.client.core.deps.com.google.rpc.PreconditionFailure;
@@ -30,6 +31,8 @@ import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.msg.ResponseStatus;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
+import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import com.couchbase.client.core.retry.RetryReason;
 
 import java.util.concurrent.ExecutionException;
@@ -42,10 +45,12 @@ public class CoreProtostellarErrorHandlingUtil {
   private static final String TYPE_URL_PRECONDITION_FAILURE = "type.googleapis.com/google.rpc.PreconditionFailure";
   private static final String TYPE_URL_RESOURCE_INFO = "type.googleapis.com/google.rpc.ResourceInfo";
 
-  public static <TResponse> ProtostellarFailureBehaviour convertKeyValueException(Throwable t,
-                                                                                  ProtostellarRequest<TResponse> request) {
+  public static <TResponse> ProtostellarRequestBehaviour convertKeyValueException(Core core,
+                                                                                  ProtostellarRequest<TResponse> request,
+                                                                                  Throwable t) {
+    // Handle wrapped CompletableFuture failures.
     if (t instanceof ExecutionException) {
-      return convertKeyValueException(t.getCause(), request);
+      return convertKeyValueException(core, request, t.getCause());
     }
 
     ProtostellarErrorContext context = new ProtostellarErrorContext(request.context());
@@ -70,11 +75,12 @@ public class CoreProtostellarErrorHandlingUtil {
               PreconditionFailure.Violation violation = info.getViolations(0);
               String type = violation.getType();
 
+              // todo snbrett many details of error handling left to sort out
               if (type.equals(PRECONDITION_CAS)) {
-                return new ProtostellarFailureBehaviour(null, new CasMismatchException(context), context);
+                return ProtostellarRequestBehaviour.fail(new CasMismatchException(context));
               }
               else if (type.equals(PRECONDITION_LOCKED)) {
-                return new ProtostellarFailureBehaviour(RetryReason.KV_LOCKED, new DocumentLockedException(context), context);
+                return RetryOrchestratorProtostellar.shouldRetry(core, request, RetryReason.KV_LOCKED);
               }
             }
           } else if (typeUrl.equals(TYPE_URL_RESOURCE_INFO)) {
@@ -84,7 +90,7 @@ public class CoreProtostellarErrorHandlingUtil {
             context.put("resourceType", info.getResourceType());
           }
         } catch (InvalidProtocolBufferException e) {
-          return new ProtostellarFailureBehaviour(null, new DecodingFailureException("Failed to decode GRPC response", e), context);
+          return ProtostellarRequestBehaviour.fail(new DecodingFailureException("Failed to decode GRPC response", e));
         }
       }
 
@@ -92,20 +98,20 @@ public class CoreProtostellarErrorHandlingUtil {
 
       switch (code) {
         case ALREADY_EXISTS:
-          return new ProtostellarFailureBehaviour(null, new DocumentExistsException(context), context);
+          return ProtostellarRequestBehaviour.fail(new DocumentExistsException(context));
         case NOT_FOUND:
-          return new ProtostellarFailureBehaviour(null, new DocumentNotFoundException(context), context);
+          return ProtostellarRequestBehaviour.fail(new DocumentNotFoundException(context));
         case UNAVAILABLE:
           // todo sn can we better differentiate between SERVICE_NOT_AVAILABLE, ENDPOINT_NOT_AVAILABLE, NODE_NOT_AVAILABLE, ENDPOINT_NOT_WRITABLE, CHANNEL_CLOSED_WHILE_IN_FLIGHT?
-          return new ProtostellarFailureBehaviour(RetryReason.ENDPOINT_NOT_AVAILABLE, null, context);
+          return RetryOrchestratorProtostellar.shouldRetry(core, request, RetryReason.ENDPOINT_NOT_AVAILABLE);
         default:
           // TODO snbrett handle all codes
-          return new ProtostellarFailureBehaviour(null, new UnsupportedOperationException("Unhandled error code " + code), context);
+          return ProtostellarRequestBehaviour.fail(new UnsupportedOperationException("Unhandled error code " + code));
       }
     } else if (t instanceof RuntimeException) {
-      return new ProtostellarFailureBehaviour(null, (RuntimeException) t, context);
+      return ProtostellarRequestBehaviour.fail((RuntimeException) t);
     } else {
-      return new ProtostellarFailureBehaviour(null, new RuntimeException(t), context);
+      return ProtostellarRequestBehaviour.fail(new RuntimeException(t));
     }
   }
 }

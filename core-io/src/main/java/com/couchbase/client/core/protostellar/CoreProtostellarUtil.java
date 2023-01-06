@@ -26,6 +26,7 @@ import com.couchbase.client.core.error.context.ErrorContext;
 import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.msg.Request;
 import com.couchbase.client.core.msg.kv.CodecFlags;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.protostellar.kv.v1.DocumentContentType;
 import com.couchbase.client.protostellar.kv.v1.DurabilityLevel;
 import reactor.core.publisher.Sinks;
@@ -145,9 +146,10 @@ public class CoreProtostellarUtil {
     throw new IllegalArgumentException("Unknown durability level " + dl);
   }
 
-  public static <TResponse> ProtostellarFailureBehaviour convertKeyValueException(Throwable t,
-                                                                                  ProtostellarRequest<TResponse> request) {
-    return CoreProtostellarErrorHandlingUtil.convertKeyValueException(t, request);
+  public static <TResponse> ProtostellarRequestBehaviour convertKeyValueException(Core core,
+                                                                                  ProtostellarRequest<TResponse> request,
+                                                                                  Throwable t) {
+    return CoreProtostellarErrorHandlingUtil.convertKeyValueException(core, request, t);
   }
 
   public static RequestSpan createSpan(Core core,

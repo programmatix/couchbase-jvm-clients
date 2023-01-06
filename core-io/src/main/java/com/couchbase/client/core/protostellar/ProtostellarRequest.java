@@ -21,6 +21,12 @@ import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.cnc.metrics.NoopMeter;
+import com.couchbase.client.core.error.AmbiguousTimeoutException;
+import com.couchbase.client.core.error.RequestCanceledException;
+import com.couchbase.client.core.error.UnambiguousTimeoutException;
+import com.couchbase.client.core.error.context.CancellationErrorContext;
+import com.couchbase.client.core.msg.CancellationReason;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryReason;
 import com.couchbase.client.core.retry.RetryStrategy;
 import reactor.util.annotation.Nullable;
@@ -123,5 +129,17 @@ public class ProtostellarRequest<TGrpcRequest> {
 
   public RetryStrategy retryStrategy() {
     return retryStrategy;
+  }
+
+  public boolean timeoutElapsed() {
+    return (this.absoluteTimeout - System.nanoTime()) <= 0;
+  }
+
+  public ProtostellarRequestBehaviour cancel(CancellationReason reason) {
+    String msg = this.getClass().getSimpleName() + ", Reason: " + reason;
+    CancellationErrorContext ctx = new CancellationErrorContext(context());
+    RuntimeException exception = new RequestCanceledException(msg, reason, ctx);
+
+    return ProtostellarRequestBehaviour.fail(exception);
   }
 }

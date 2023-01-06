@@ -23,10 +23,10 @@ import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.protostellar.AccessorKeyValueProtostellar;
 import com.couchbase.client.core.protostellar.CoreProtostellarUtil;
-import com.couchbase.client.core.protostellar.ProtostellarFailureBehaviour;
 import com.couchbase.client.core.protostellar.ProtostellarKeyValueRequestContext;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
 import com.couchbase.client.core.protostellar.ProtostellarRequestContext;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.java.codec.Transcoder;
 import com.couchbase.client.java.util.ProtostellarUtil;
@@ -56,7 +56,7 @@ public class GetAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> convertResponse(response, transcoder),
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   public static CompletableFuture<GetResult> async(Core core,
@@ -68,7 +68,7 @@ public class GetAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> convertResponse(response, transcoder),
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   public static Mono<GetResult> reactive(Core core,
@@ -80,7 +80,7 @@ public class GetAccessorProtostellar {
       req,
       () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> convertResponse(response, transcoder),
-      (err) ->      convertException(err, req));
+      (err) ->      convertException(core, req, err));
   }
 
   private static GetResult convertResponse(GetResponse response, Transcoder transcoder) {
@@ -91,8 +91,8 @@ public class GetAccessorProtostellar {
       transcoder);
   }
 
-  private static ProtostellarFailureBehaviour convertException(Throwable t, ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> req) {
-    return CoreProtostellarUtil.convertKeyValueException(t, req);
+  private static ProtostellarRequestBehaviour convertException(Core core, ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> req, Throwable t) {
+    return CoreProtostellarUtil.convertKeyValueException(core, req, t);
   }
 
   public static ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> request(Core core,

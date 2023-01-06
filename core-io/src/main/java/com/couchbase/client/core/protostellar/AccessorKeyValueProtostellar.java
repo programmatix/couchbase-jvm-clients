@@ -25,6 +25,7 @@ import com.couchbase.client.core.deps.com.google.common.util.concurrent.FutureCa
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.Futures;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.ListenableFuture;
 import com.couchbase.client.core.error.context.ErrorContext;
+import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -50,7 +51,7 @@ public class AccessorKeyValueProtostellar {
                       ProtostellarRequest<TGrpcRequest>     request,
                       Supplier<TGrpcResponse>               executeBlockingGrpcCall,
                       Function<TGrpcResponse, TSdkResult>   convertResponse,
-                      Function<Throwable, ProtostellarFailureBehaviour> convertException) {
+                      Function<Throwable, ProtostellarRequestBehaviour> convertException) {
     handleShutdownBlocking(core, request.context());
     final RequestSpan dispatchSpan = createDispatchSpan(core, request);
     try {
@@ -65,24 +66,20 @@ public class AccessorKeyValueProtostellar {
       request.logicallyComplete(null);
       return result;
     } catch (Throwable t) {
-      ProtostellarFailureBehaviour converted = convertException.apply(t);
-      if (dispatchSpan != null) {
-        dispatchSpan.recordException(converted.exception());
-        dispatchSpan.status(RequestSpan.StatusCode.ERROR);
-        dispatchSpan.end();
-      }
-      Duration backoff = RetryOrchestratorProtostellar.shouldRetry(core, request, converted);
-      if (backoff != null) {
+      ProtostellarRequestBehaviour behaviour = convertException.apply(t);
+      handleDispatchSpan(behaviour, dispatchSpan);
+      if (behaviour.retryDuration() != null) {
         try {
-          Thread.sleep(backoff.toMillis());
+          Thread.sleep(behaviour.retryDuration().toMillis());
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
+        // todo sn probably convert this to a loop to avoid stack overflow issues
         return blocking(core, request, executeBlockingGrpcCall, convertResponse, convertException);
       }
       else {
-        request.logicallyComplete(converted.exception());
-        throw converted.exception();
+        request.logicallyComplete(behaviour.exception());
+        throw behaviour.exception();
       }
     }
   }
@@ -92,7 +89,7 @@ public class AccessorKeyValueProtostellar {
                                           ProtostellarRequest<TGrpcRequest>         request,
                                           Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                                           Function<TGrpcResponse, TSdkResult>       convertResponse,
-                                          Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+                                          Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
 
     CompletableFuture<TSdkResult> ret = new CompletableFuture<>();
     CoreAsyncResponse<TSdkResult> response = new CoreAsyncResponse<>(ret, () -> {
@@ -107,7 +104,7 @@ public class AccessorKeyValueProtostellar {
                                       ProtostellarRequest<TGrpcRequest>         request,
                                       Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                                       Function<TGrpcResponse, TSdkResult>       convertResponse,
-                                      Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+                                      Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
 
     CompletableFuture<TSdkResult> ret = new CompletableFuture<>();
     asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
@@ -120,7 +117,7 @@ public class AccessorKeyValueProtostellar {
                     ProtostellarRequest<TGrpcRequest>         request,
                     Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                     Function<TGrpcResponse, TSdkResult>       convertResponse,
-                    Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+                    Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
     if (handleShutdownAsync(core, ret, request.context())) {
       return;
     }
@@ -143,22 +140,17 @@ public class AccessorKeyValueProtostellar {
 
       @Override
       public void onFailure(Throwable t) {
-        ProtostellarFailureBehaviour converted = convertException.apply(t);
-        if (dispatchSpan != null) {
-          dispatchSpan.recordException(converted.exception());
-          dispatchSpan.status(RequestSpan.StatusCode.ERROR);
-          dispatchSpan.end();
-        }
-        Duration backoff = RetryOrchestratorProtostellar.shouldRetry(core, request, converted);
-        if (backoff != null) {
+        ProtostellarRequestBehaviour behaviour = convertException.apply(t);
+        handleDispatchSpan(behaviour, dispatchSpan);
+        if (behaviour.retryDuration() != null) {
           // todo sn CancellationReason.TOO_MANY_REQUESTS_IN_RETRY
           core.context().environment().timer().schedule(() -> {
             asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
-          }, backoff);
+          }, behaviour.retryDuration());
         }
         else {
-          request.logicallyComplete(converted.exception());
-          ret.completeExceptionally(converted.exception());
+          request.logicallyComplete(behaviour.exception());
+          ret.completeExceptionally(behaviour.exception());
         }
       }
     }, core.context().environment().executor());
@@ -169,7 +161,7 @@ public class AccessorKeyValueProtostellar {
                             ProtostellarRequest<TGrpcRequest>         request,
                             Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                             Function<TGrpcResponse, TSdkResult>       convertResponse,
-                            Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+                            Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
     return Mono.defer(() -> {
       Sinks.One<TSdkResult> ret = Sinks.one();
       reactiveInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
@@ -183,7 +175,7 @@ public class AccessorKeyValueProtostellar {
                         ProtostellarRequest<TGrpcRequest>         request,
                         Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                         Function<TGrpcResponse, TSdkResult>       convertResponse,
-                        Function<Throwable, ProtostellarFailureBehaviour>     convertException) {
+                        Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
     if (handleShutdownReactive(ret, core, request.context())) {
       return;
     }
@@ -206,24 +198,29 @@ public class AccessorKeyValueProtostellar {
 
       @Override
       public void onFailure(Throwable t) {
-        ProtostellarFailureBehaviour converted = convertException.apply(t);
-        if (dispatchSpan != null) {
-          dispatchSpan.recordException(converted.exception());
-          dispatchSpan.status(RequestSpan.StatusCode.ERROR);
-          dispatchSpan.end();
-        }
-        Duration backoff = RetryOrchestratorProtostellar.shouldRetry(core, request, converted);
-        if (backoff != null) {
+        ProtostellarRequestBehaviour behaviour = convertException.apply(t);
+        handleDispatchSpan(behaviour, dispatchSpan);
+        if (behaviour.retryDuration() != null) {
           core.context().environment().timer().schedule(() -> {
             reactiveInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
-          }, backoff);
+          }, behaviour.retryDuration());
         }
         else {
-          request.logicallyComplete(converted.exception());
-          ret.tryEmitError(converted.exception()).orThrow();
+          request.logicallyComplete(behaviour.exception());
+          ret.tryEmitError(behaviour.exception()).orThrow();
         }
       }
     }, core.context().environment().executor());
+  }
+
+  private static void handleDispatchSpan(ProtostellarRequestBehaviour behaviour, @Nullable RequestSpan dispatchSpan) {
+    if (dispatchSpan != null) {
+      if (behaviour.exception() != null) {
+        dispatchSpan.recordException(behaviour.exception());
+      }
+      dispatchSpan.status(RequestSpan.StatusCode.ERROR);
+      dispatchSpan.end();
+    }
   }
 
   private static <TGrpcRequest> @Nullable RequestSpan createDispatchSpan(Core core, ProtostellarRequest<TGrpcRequest> request) {

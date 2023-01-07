@@ -332,7 +332,7 @@ public class Collection internal constructor(
             validateDocumentId(id),
             expiry.encode(),
         ).await().let {
-            GetResult.withUnknownExpiry(id, it.cas(), Content(it.content(), it.flags()), defaultTranscoder)
+            GetResult.withKnownExpiry(id, it.cas(), Content(it.content(), it.flags()), defaultTranscoder, expiry)
         }
     }
 

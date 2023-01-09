@@ -180,7 +180,7 @@ public class ProtostellarEndpoint {
       public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
         // logger.info("{}", method.getFullMethodName());
 
-        // todo sn an interceptor seems to be the only way of setting this option.  remove pre-release.
+        // todo snremove an interceptor seems to be the only way of setting this option.  remove pre-release.
         return next.newCall(method, callOptions.withStreamTracerFactory(factory));
       }
     };
@@ -200,7 +200,7 @@ public class ProtostellarEndpoint {
   private ManagedChannel channel() {
     logger.info("making channel {} {}", hostname, port);
 
-    // todo sn what to do with tcpKeepAlivesEnabled
+    // todo sn what to do with tcpKeepAlivesEnabled and rest of connection options (kvNumConnections etc.)
 
     // todo snbrett we're using unverified TLS for now - presumably we can eventually use the same Capella cert bundling approach and use TLS properly
     return NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())

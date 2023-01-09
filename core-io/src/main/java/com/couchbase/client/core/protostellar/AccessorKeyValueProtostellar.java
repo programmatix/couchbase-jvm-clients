@@ -27,6 +27,7 @@ import com.couchbase.client.core.deps.com.google.common.util.concurrent.Listenab
 import com.couchbase.client.core.endpoint.ProtostellarEndpoint;
 import com.couchbase.client.core.error.context.ErrorContext;
 import com.couchbase.client.core.io.netty.TracingUtils;
+import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import reactor.core.publisher.Mono;
@@ -78,6 +79,7 @@ public class AccessorKeyValueProtostellar {
           throw new RuntimeException(e);
         }
         // todo sn probably convert this to a loop to avoid stack overflow issues
+        // todo sn do we want to handle CancellationReason.TOO_MANY_REQUESTS_IN_RETRY here?
         return blocking(core, request, executeBlockingGrpcCall, convertResponse, convertException);
       }
       else {
@@ -147,10 +149,15 @@ public class AccessorKeyValueProtostellar {
         ProtostellarRequestBehaviour behaviour = convertException.apply(t);
         handleDispatchSpan(behaviour, dispatchSpan);
         if (behaviour.retryDuration() != null) {
-          // todo sn CancellationReason.TOO_MANY_REQUESTS_IN_RETRY
-          core.context().environment().timer().schedule(() -> {
+          boolean unableToSchedule = core.context().environment().timer().schedule(() -> {
             asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
-          }, behaviour.retryDuration());
+          }, behaviour.retryDuration(), true) == null;
+
+          if (unableToSchedule) {
+            RuntimeException err = request.cancel(CancellationReason.TOO_MANY_REQUESTS_IN_RETRY).exception();
+            request.logicallyComplete(err);
+            ret.completeExceptionally(err);
+          }
         }
         else {
           request.logicallyComplete(behaviour.exception());
@@ -206,9 +213,15 @@ public class AccessorKeyValueProtostellar {
         ProtostellarRequestBehaviour behaviour = convertException.apply(t);
         handleDispatchSpan(behaviour, dispatchSpan);
         if (behaviour.retryDuration() != null) {
-          core.context().environment().timer().schedule(() -> {
+          boolean unableToSchedule = core.context().environment().timer().schedule(() -> {
             reactiveInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
-          }, behaviour.retryDuration());
+          }, behaviour.retryDuration(), true) == null;
+
+          if (unableToSchedule) {
+            RuntimeException err = request.cancel(CancellationReason.TOO_MANY_REQUESTS_IN_RETRY).exception();
+            request.logicallyComplete(err);
+            ret.tryEmitError(err).orThrow();
+          }
         }
         else {
           request.logicallyComplete(behaviour.exception());

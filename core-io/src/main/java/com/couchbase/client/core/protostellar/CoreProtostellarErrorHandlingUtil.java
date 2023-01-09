@@ -104,6 +104,7 @@ public class CoreProtostellarErrorHandlingUtil {
         case UNAVAILABLE:
           // todo sn can we better differentiate between SERVICE_NOT_AVAILABLE, ENDPOINT_NOT_AVAILABLE, NODE_NOT_AVAILABLE, ENDPOINT_NOT_WRITABLE, CHANNEL_CLOSED_WHILE_IN_FLIGHT?
           return RetryOrchestratorProtostellar.shouldRetry(core, request, RetryReason.ENDPOINT_NOT_AVAILABLE);
+          // todo sn see lots of INTERNAL errors during start of perf testing and unclear why.  Debug why (has SN just not finished warming up? If so, still need to handle cleanly)
         default:
           // TODO snbrett handle all codes
           return ProtostellarRequestBehaviour.fail(new UnsupportedOperationException("Unhandled error code " + code));

@@ -24,6 +24,7 @@ import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.FutureCallback;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.Futures;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.ListenableFuture;
+import com.couchbase.client.core.endpoint.ProtostellarEndpoint;
 import com.couchbase.client.core.error.context.ErrorContext;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
@@ -49,15 +50,16 @@ public class AccessorKeyValueProtostellar {
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   TSdkResult blocking(Core core,
                       ProtostellarRequest<TGrpcRequest>     request,
-                      Supplier<TGrpcResponse>               executeBlockingGrpcCall,
+                      Function<ProtostellarEndpoint, TGrpcResponse> executeBlockingGrpcCall,
                       Function<TGrpcResponse, TSdkResult>   convertResponse,
                       Function<Throwable, ProtostellarRequestBehaviour> convertException) {
     handleShutdownBlocking(core, request.context());
-    final RequestSpan dispatchSpan = createDispatchSpan(core, request);
+    ProtostellarEndpoint endpoint = core.protostellar().endpoint();
+    RequestSpan dispatchSpan = createDispatchSpan(core, request);
     try {
       // Make the Protostellar call.
       // todo sn check this is blocking just this user thread, not also an executor thread
-      TGrpcResponse response = executeBlockingGrpcCall.get();
+      TGrpcResponse response = executeBlockingGrpcCall.apply(endpoint);
 
       if (dispatchSpan != null) {
         dispatchSpan.end();
@@ -87,7 +89,7 @@ public class AccessorKeyValueProtostellar {
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   CoreAsyncResponse<TSdkResult> asyncCore(Core core,
                                           ProtostellarRequest<TGrpcRequest>         request,
-                                          Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                                          Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                                           Function<TGrpcResponse, TSdkResult>       convertResponse,
                                           Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
 
@@ -102,7 +104,7 @@ public class AccessorKeyValueProtostellar {
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   CompletableFuture<TSdkResult> async(Core core,
                                       ProtostellarRequest<TGrpcRequest>         request,
-                                      Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                                      Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                                       Function<TGrpcResponse, TSdkResult>       convertResponse,
                                       Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
 
@@ -115,16 +117,17 @@ public class AccessorKeyValueProtostellar {
   void asyncInternal(CompletableFuture<TSdkResult> ret,
                     Core core,
                     ProtostellarRequest<TGrpcRequest>         request,
-                    Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                    Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                     Function<TGrpcResponse, TSdkResult>       convertResponse,
                     Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
     if (handleShutdownAsync(core, ret, request.context())) {
       return;
     }
-    final RequestSpan dispatchSpan = createDispatchSpan(core, request);
+    ProtostellarEndpoint endpoint = core.protostellar().endpoint();
+    RequestSpan dispatchSpan = createDispatchSpan(core, request);
 
     // Make the Protostellar call.
-    ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.get();
+    ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.apply(endpoint);
 
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {
       @Override
@@ -159,7 +162,7 @@ public class AccessorKeyValueProtostellar {
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   Mono<TSdkResult> reactive(Core core,
                             ProtostellarRequest<TGrpcRequest>         request,
-                            Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                            Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                             Function<TGrpcResponse, TSdkResult>       convertResponse,
                             Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
     return Mono.defer(() -> {
@@ -173,17 +176,18 @@ public class AccessorKeyValueProtostellar {
   void reactiveInternal(Sinks.One<TSdkResult> ret,
                         Core core,
                         ProtostellarRequest<TGrpcRequest>         request,
-                        Supplier<ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                        Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                         Function<TGrpcResponse, TSdkResult>       convertResponse,
                         Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
     if (handleShutdownReactive(ret, core, request.context())) {
       return;
     }
 
-    final RequestSpan dispatchSpan = createDispatchSpan(core, request);
+    ProtostellarEndpoint endpoint = core.protostellar().endpoint();
+    RequestSpan dispatchSpan = createDispatchSpan(core, request);
 
     // Make the Protostellar call.
-    ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.get();
+    ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.apply(endpoint);
 
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {
       @Override

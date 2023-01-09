@@ -42,7 +42,7 @@ public class CoreInsertAccessorProtostellar {
       req,
       // todo sn withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible
       // Measure the impact to decide if it's worth tracking if it's a non-default timeout
-      () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(timeout)).insert(request),
+      (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
       (err) ->      convertException(core, req, err));
   }
@@ -54,7 +54,7 @@ public class CoreInsertAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.InsertRequest request = req.request();
     return AccessorKeyValueProtostellar.async(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(timeout)).insert(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
       (err) ->      convertException(core, req, err));
   }
@@ -66,7 +66,7 @@ public class CoreInsertAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.InsertRequest request = req.request();
     return AccessorKeyValueProtostellar.reactive(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(timeout)).insert(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
       (err) ->      convertException(core, req, err));
   }

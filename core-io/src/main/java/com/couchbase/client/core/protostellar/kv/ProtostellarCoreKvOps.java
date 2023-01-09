@@ -80,7 +80,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
       req,
       // todo sn withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible
       // Measure the impact to decide if it's worth tracking if it's a non-default timeout
-      () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> this.convertGetResponse(key, response),
       (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }
@@ -95,7 +95,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
 
     return AccessorKeyValueProtostellar.asyncCore(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> this.convertGetResponse(key, response),
       (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }
@@ -107,7 +107,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
 
     return AccessorKeyValueProtostellar.reactive(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> this.convertGetResponse(key, response),
       (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }

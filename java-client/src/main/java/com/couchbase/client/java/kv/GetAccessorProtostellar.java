@@ -54,7 +54,7 @@ public class GetAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.GetRequest request = req.request();
     return AccessorKeyValueProtostellar.blocking(core,
       req,
-      () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> convertResponse(response, transcoder),
       (err) ->      convertException(core, req, err));
   }
@@ -66,7 +66,7 @@ public class GetAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.GetRequest request = req.request();
     return AccessorKeyValueProtostellar.async(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> convertResponse(response, transcoder),
       (err) ->      convertException(core, req, err));
   }
@@ -78,7 +78,7 @@ public class GetAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.GetRequest request = req.request();
     return AccessorKeyValueProtostellar.reactive(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(request),
       (response) -> convertResponse(response, transcoder),
       (err) ->      convertException(core, req, err));
   }

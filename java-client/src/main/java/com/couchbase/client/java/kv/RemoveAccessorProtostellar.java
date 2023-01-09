@@ -54,7 +54,7 @@ public class RemoveAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.RemoveRequest request = req.request();
     return AccessorKeyValueProtostellar.blocking(core,
       req,
-      () ->         core.protostellar().endpoint().kvBlockingStub().withDeadline(convertTimeout(req.timeout())).remove(request),
+      (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(req.timeout())).remove(request),
       (response) -> convertResponse(response),
       (err) ->      convertException(core, req, err));
   }
@@ -65,7 +65,7 @@ public class RemoveAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.RemoveRequest request = req.request();
     return AccessorKeyValueProtostellar.async(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).remove(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).remove(request),
       (response) -> convertResponse(response),
       (err) ->      convertException(core, req, err));
   }
@@ -76,7 +76,7 @@ public class RemoveAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.RemoveRequest request = req.request();
     return AccessorKeyValueProtostellar.reactive(core,
       req,
-      () ->         core.protostellar().endpoint().kvStub().withDeadline(convertTimeout(req.timeout())).remove(request),
+      (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).remove(request),
       (response) -> convertResponse(response),
       (err) ->      convertException(core, req, err));
   }

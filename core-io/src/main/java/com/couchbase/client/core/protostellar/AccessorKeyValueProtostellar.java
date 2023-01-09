@@ -55,36 +55,36 @@ public class AccessorKeyValueProtostellar {
                       Function<ProtostellarEndpoint, TGrpcResponse> executeBlockingGrpcCall,
                       Function<TGrpcResponse, TSdkResult>   convertResponse,
                       Function<Throwable, ProtostellarRequestBehaviour> convertException) {
-    handleShutdownBlocking(core, request.context());
-    ProtostellarEndpoint endpoint = core.protostellar().endpoint();
-    RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
-    try {
-      // Make the Protostellar call.
-      // todo sn check this is blocking just this user thread, not also an executor thread
-      TGrpcResponse response = executeBlockingGrpcCall.apply(endpoint);
+    while (true) {
+      handleShutdownBlocking(core, request.context());
+      ProtostellarEndpoint endpoint = core.protostellar().endpoint();
+      RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
+      try {
+        // Make the Protostellar call.
+        // todo sn check this is blocking just this user thread, not also an executor thread
+        TGrpcResponse response = executeBlockingGrpcCall.apply(endpoint);
 
-      if (dispatchSpan != null) {
-        dispatchSpan.end();
-      }
-      TSdkResult result = convertResponse.apply(response);
-      request.logicallyComplete(null);
-      return result;
-    } catch (Throwable t) {
-      ProtostellarRequestBehaviour behaviour = convertException.apply(t);
-      handleDispatchSpan(behaviour, dispatchSpan);
-      if (behaviour.retryDuration() != null) {
-        try {
-          Thread.sleep(behaviour.retryDuration().toMillis());
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
+        if (dispatchSpan != null) {
+          dispatchSpan.end();
         }
-        // todo sn probably convert this to a loop to avoid stack overflow issues
-        // todo sn do we want to handle CancellationReason.TOO_MANY_REQUESTS_IN_RETRY here?
-        return blocking(core, request, executeBlockingGrpcCall, convertResponse, convertException);
-      }
-      else {
-        request.logicallyComplete(behaviour.exception());
-        throw behaviour.exception();
+        TSdkResult result = convertResponse.apply(response);
+        request.logicallyComplete(null);
+        return result;
+      } catch (Throwable t) {
+        ProtostellarRequestBehaviour behaviour = convertException.apply(t);
+        handleDispatchSpan(behaviour, dispatchSpan);
+        if (behaviour.retryDuration() != null) {
+          try {
+            Thread.sleep(behaviour.retryDuration().toMillis());
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+          // todo sn do we want to handle CancellationReason.TOO_MANY_REQUESTS_IN_RETRY here?
+          // Loop round again for a retry.
+        } else {
+          request.logicallyComplete(behaviour.exception());
+          throw behaviour.exception();
+        }
       }
     }
   }

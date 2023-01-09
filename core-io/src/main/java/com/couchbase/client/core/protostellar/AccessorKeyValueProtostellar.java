@@ -26,6 +26,7 @@ import com.couchbase.client.core.deps.com.google.common.util.concurrent.Futures;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.ListenableFuture;
 import com.couchbase.client.core.endpoint.ProtostellarEndpoint;
 import com.couchbase.client.core.error.context.ErrorContext;
+import com.couchbase.client.core.io.netty.TracingUtils;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import reactor.core.publisher.Mono;
@@ -55,7 +56,7 @@ public class AccessorKeyValueProtostellar {
                       Function<Throwable, ProtostellarRequestBehaviour> convertException) {
     handleShutdownBlocking(core, request.context());
     ProtostellarEndpoint endpoint = core.protostellar().endpoint();
-    RequestSpan dispatchSpan = createDispatchSpan(core, request);
+    RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
     try {
       // Make the Protostellar call.
       // todo sn check this is blocking just this user thread, not also an executor thread
@@ -124,7 +125,7 @@ public class AccessorKeyValueProtostellar {
       return;
     }
     ProtostellarEndpoint endpoint = core.protostellar().endpoint();
-    RequestSpan dispatchSpan = createDispatchSpan(core, request);
+    RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
 
     // Make the Protostellar call.
     ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.apply(endpoint);
@@ -184,7 +185,7 @@ public class AccessorKeyValueProtostellar {
     }
 
     ProtostellarEndpoint endpoint = core.protostellar().endpoint();
-    RequestSpan dispatchSpan = createDispatchSpan(core, request);
+    RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
 
     // Make the Protostellar call.
     ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.apply(endpoint);
@@ -227,12 +228,15 @@ public class AccessorKeyValueProtostellar {
     }
   }
 
-  private static <TGrpcRequest> @Nullable RequestSpan createDispatchSpan(Core core, ProtostellarRequest<TGrpcRequest> request) {
+  private static <TGrpcRequest> @Nullable RequestSpan createDispatchSpan(Core core,
+                                                                         ProtostellarRequest<TGrpcRequest> request,
+                                                                         ProtostellarEndpoint endpoint) {
     RequestTracer tracer = core.context().environment().requestTracer();
     final RequestSpan dispatchSpan;
     if (!CbTracing.isInternalTracer(tracer)) {
       dispatchSpan = tracer.requestSpan(TracingIdentifiers.SPAN_DISPATCH, request.span());
-      // todo sn setCommonDispatchSpanAttributes
+      // todo snbrett do we want to provide localId and operationId for Protostellar
+      TracingUtils.setCommonDispatchSpanAttributes(dispatchSpan, null, null, 0, endpoint.hostname(), endpoint.port(), null);
     } else {
       dispatchSpan = null;
     }

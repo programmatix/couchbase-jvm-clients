@@ -295,4 +295,12 @@ public class ProtostellarEndpoint {
   public synchronized boolean isShutdown() {
     return shutdown.get();
   }
+
+  public String hostname() {
+    return hostname;
+  }
+
+  public int port() {
+    return port;
+  }
 }

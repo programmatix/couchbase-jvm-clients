@@ -45,12 +45,16 @@ public class CoreProtostellarErrorHandlingUtil {
   private static final String TYPE_URL_PRECONDITION_FAILURE = "type.googleapis.com/google.rpc.PreconditionFailure";
   private static final String TYPE_URL_RESOURCE_INFO = "type.googleapis.com/google.rpc.ResourceInfo";
 
-  public static <TResponse> ProtostellarRequestBehaviour convertKeyValueException(Core core,
-                                                                                  ProtostellarRequest<TResponse> request,
-                                                                                  Throwable t) {
+  public static ProtostellarRequestBehaviour convertKeyValueException(Core core,
+                                                                      ProtostellarRequest<?> request,
+                                                                      Throwable t) {
     // Handle wrapped CompletableFuture failures.
     if (t instanceof ExecutionException) {
       return convertKeyValueException(core, request, t.getCause());
+    }
+
+    if (request.timeoutElapsed()) {
+      return request.createTimeout();
     }
 
     ProtostellarErrorContext context = new ProtostellarErrorContext(request.context());

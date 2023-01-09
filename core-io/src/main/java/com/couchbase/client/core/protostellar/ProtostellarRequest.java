@@ -142,4 +142,17 @@ public class ProtostellarRequest<TGrpcRequest> {
 
     return ProtostellarRequestBehaviour.fail(exception);
   }
+
+  public ProtostellarRequestBehaviour createTimeout() {
+    CancellationReason reason = CancellationReason.TIMEOUT;
+    String msg = this.getClass().getSimpleName() + ", Reason: " + reason;
+    CancellationErrorContext ctx = new CancellationErrorContext(context());
+    RuntimeException exception = idempotent() ? new UnambiguousTimeoutException(msg, ctx) : new AmbiguousTimeoutException(msg, ctx);
+    return ProtostellarRequestBehaviour.fail(exception);
+  }
+
+  public boolean idempotent() {
+    // todo sn need idempotency
+    return false;
+  }
 }

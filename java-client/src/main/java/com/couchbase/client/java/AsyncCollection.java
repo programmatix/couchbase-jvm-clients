@@ -62,7 +62,6 @@ import com.couchbase.client.java.kv.ExistsOptions;
 import com.couchbase.client.java.kv.ExistsResult;
 import com.couchbase.client.java.kv.Expiry;
 import com.couchbase.client.java.kv.GetAccessor;
-import com.couchbase.client.java.kv.GetAccessorProtostellar;
 import com.couchbase.client.java.kv.GetAllReplicasOptions;
 import com.couchbase.client.java.kv.GetAndLockOptions;
 import com.couchbase.client.java.kv.GetAndTouchOptions;

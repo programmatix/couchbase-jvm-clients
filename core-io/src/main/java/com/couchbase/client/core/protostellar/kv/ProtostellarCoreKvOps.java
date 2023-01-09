@@ -52,6 +52,15 @@ import static java.util.Objects.requireNonNull;
 
 @Stability.Internal
 public final class ProtostellarCoreKvOps implements CoreKvOps {
+  // todo snremove remove before release
+  private static final boolean reuseStubs;
+
+  static {
+    // withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible.
+    // Measuring the impact here to decide if it's worth tracking if it's a non-default timeout.
+    reuseStubs = Boolean.parseBoolean(System.getProperty("com.couchbase.protostellar.reuseStubs", "true"));
+  }
+
   private final Core core;
   private final CoreContext ctx;
   // todo sn use these
@@ -80,7 +89,19 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
       req,
       // todo sn withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible
       // Measure the impact to decide if it's worth tracking if it's a non-default timeout
-      (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request),
+      (endpoint) -> {
+        // todo sn brett how do client and server timeouts interact
+        // todo snremove this is only for performance testing, will be removed pre-GA
+        if (reuseStubs &&
+          (!common.timeout().isPresent()
+            || (common.timeout().get() == defaultKvTimeout))) {
+          // Don't get a client-side timeout here of course, but only temporary perf testing code
+          return endpoint.kvBlockingStub().get(request);
+        }
+        else {
+          return endpoint.kvBlockingStub().withDeadline(convertTimeout(req.timeout())).get(request);
+        }
+      },
       (response) -> this.convertGetResponse(key, response),
       (err) ->      CoreProtostellarUtil.convertKeyValueException(core, req, err));
   }

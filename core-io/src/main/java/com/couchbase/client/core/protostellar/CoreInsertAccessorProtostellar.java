@@ -31,7 +31,8 @@ import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.conver
 
 @Stability.Internal
 public class CoreInsertAccessorProtostellar {
-  private CoreInsertAccessorProtostellar() {}
+  private CoreInsertAccessorProtostellar() {
+  }
 
   public static <TSdkResult> TSdkResult blocking(Core core,
                                                  Duration timeout,
@@ -40,8 +41,6 @@ public class CoreInsertAccessorProtostellar {
     com.couchbase.client.protostellar.kv.v1.InsertRequest request = req.request();
     return AccessorKeyValueProtostellar.blocking(core,
       req,
-      // todo sn withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible
-      // Measure the impact to decide if it's worth tracking if it's a non-default timeout
       (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(timeout)).insert(request),
       convertResponse,
       (err) ->      convertException(core, req, err));

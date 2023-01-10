@@ -73,6 +73,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// todo sn make tests run in SN mode also
+// todo sn tag tests as runnable or not in SN mode
+
+// todo sn look at all places where Requests get cancelled and check we're modelling them
+
 /**
  * This integration test makes sure the various KV-based APIs work as they are intended to.
  *

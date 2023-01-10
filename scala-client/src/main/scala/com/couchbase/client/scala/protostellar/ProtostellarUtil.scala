@@ -28,6 +28,16 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 
 object ProtostellarUtil {
+  def durabilityToCore(durability: Durability): Optional[DurabilityLevel] = {
+    durability match {
+      case Durability.Disabled => Optional.empty()
+      case Durability.ClientVerified(_, _) => Optional.empty()
+      case Durability.Majority => Optional.of(DurabilityLevel.MAJORITY)
+      case Durability.MajorityAndPersistToActive => Optional.of(DurabilityLevel.MAJORITY_AND_PERSIST_TO_ACTIVE)
+      case Durability.PersistToMajority => Optional.of(DurabilityLevel.PERSIST_TO_MAJORITY)
+    }
+  }
+
   def convert(durability: Durability): v1.DurabilityLevel = {
     durability match {
       case Durability.Majority => v1.DurabilityLevel.MAJORITY

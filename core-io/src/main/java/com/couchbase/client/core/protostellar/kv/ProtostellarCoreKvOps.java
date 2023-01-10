@@ -87,8 +87,6 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
 
     return AccessorKeyValueProtostellar.blocking(core,
       req,
-      // todo sn withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible
-      // Measure the impact to decide if it's worth tracking if it's a non-default timeout
       (endpoint) -> {
         // todo sn brett how do client and server timeouts interact
         // todo snremove this is only for performance testing, will be removed pre-GA

@@ -21,7 +21,7 @@ import com.couchbase.client.core.cnc.{CbTracing, RequestSpan, TracingIdentifiers
 import com.couchbase.client.core.deps.com.google.protobuf.ByteString
 import com.couchbase.client.core.error.EncodingFailureException
 import com.couchbase.client.core.io.CollectionIdentifier
-import com.couchbase.client.core.protostellar.CoreProtostellarUtil.convertFromFlags
+import com.couchbase.client.core.protostellar.CoreProtostellarUtil.{convertFromFlags, createSpan}
 import com.couchbase.client.core.protostellar.{CoreInsertAccessorProtostellar, CoreProtostellarUtil, ProtostellarKeyValueRequestContext, ProtostellarRequest, ProtostellarRequestContext}
 import com.couchbase.client.core.retry.RetryStrategy
 import com.couchbase.client.core.service.ServiceType
@@ -30,7 +30,7 @@ import com.couchbase.client.scala.codec._
 import com.couchbase.client.scala.durability.Durability
 import com.couchbase.client.scala.kv.{InsertOptions, MutationResult}
 import com.couchbase.client.scala.protostellar.ProtostellarUtil
-import com.couchbase.client.scala.protostellar.ProtostellarUtil.convertKvDurableTimeout
+import com.couchbase.client.scala.protostellar.ProtostellarUtil.{convertKvDurableTimeout, durabilityToCore}
 import com.couchbase.client.scala.util.Validate
 
 import scala.compat.java8.OptionConverters._
@@ -90,9 +90,8 @@ private[scala] object InsertHandlerProtostellar {
     } else {
       val actualTimeout: Duration = if (timeout == Duration.MinusInf) kvTimeout(core, durability) else timeout
       val out = new ProtostellarRequest[InsertRequest](core,
-        // todo sn create this span correctly
-        core.context.environment.requestTracer.requestSpan(TracingIdentifiers.SPAN_REQUEST_KV_INSERT, parentSpan.orNull),
-        new ProtostellarKeyValueRequestContext(core, ServiceType.KV, "insert", actualTimeout, id, collectionIdentifier),
+        createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, durabilityToCore(durability), parentSpan.orNull),
+        new ProtostellarKeyValueRequestContext(core, ServiceType.KV, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, actualTimeout, id, collectionIdentifier),
         actualTimeout,
         retryStrategy)
 

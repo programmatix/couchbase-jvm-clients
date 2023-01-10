@@ -90,6 +90,7 @@ public class Reactor {
     Mono<T> mono = MyLittleAssemblyFactory.callOnAssembly(new SilentMonoCompletionStage<>(response));
 
     mono = mono.doFinally(st -> {
+      // todo sn investigate what this is used for and if we need to emulate it in PS world
       if (st == SignalType.CANCEL) {
         cancellationTask.run();
       }

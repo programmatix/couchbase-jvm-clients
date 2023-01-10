@@ -48,8 +48,6 @@ import static com.couchbase.client.core.protostellar.ProtostellarRequestContext.
 import static com.couchbase.client.core.util.Validators.notNullOrEmpty;
 
 
-// todo sn figure out how to do a generic AccessorStreamingProtostellar
-
 @Stability.Internal
 public class QueryAccessorProtostellar {
   public static QueryResult blocking(Core core,
@@ -198,8 +196,6 @@ public class QueryAccessorProtostellar {
     opts.injectParams(request);
 
     out.request(request.build());
-
-    // todo sn handle SN being unavailable with retries
 
     // todo sn request.context().clientContext(opts.clientContext());
     return out;

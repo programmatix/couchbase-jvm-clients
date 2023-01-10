@@ -152,7 +152,6 @@ public class ProtostellarRequest<TGrpcRequest> {
   }
 
   public boolean idempotent() {
-    // todo sn need idempotency
-    return false;
+    return context.idempotent();
   }
 }

@@ -181,7 +181,7 @@ public class QueryAccessorProtostellar {
     span.attribute(TracingIdentifiers.ATTR_STATEMENT, statement);
     ProtostellarRequest<com.couchbase.client.protostellar.query.v1.QueryRequest> out = new ProtostellarRequest<>(core,
       span,
-      new ProtostellarRequestContext(core, ServiceType.QUERY, REQUEST_QUERY, timeout),
+      new ProtostellarRequestContext(core, ServiceType.QUERY, REQUEST_QUERY, timeout, opts.readonly()),
       timeout,
       opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
 

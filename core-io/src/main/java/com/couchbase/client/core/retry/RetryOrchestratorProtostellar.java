@@ -45,10 +45,11 @@ public class RetryOrchestratorProtostellar {
     CoreContext ctx = core.context();
 
     if (request.timeoutElapsed()) {
-      // todo sn handle ambiguous timeouts - need idempotency first
-      // RuntimeException exception = request.idempotent() ? new UnambiguousTimeoutException(msg, ctx) : new AmbiguousTimeoutException(msg, ctx);
       CancellationErrorContext cancelContext = new CancellationErrorContext(request.context());
-      return ProtostellarRequestBehaviour.fail(new AmbiguousTimeoutException("Request timed out", cancelContext));
+      RuntimeException exception = request.idempotent()
+        ? new UnambiguousTimeoutException("Request timed out", cancelContext)
+        : new AmbiguousTimeoutException("Request timed out", cancelContext);
+      return ProtostellarRequestBehaviour.fail(exception);
     }
 
     if (reason.alwaysRetry()) {

@@ -90,7 +90,7 @@ public class InsertAccessorProtostellar {
     Duration timeout = CoreProtostellarUtil.kvDurableTimeout(opts.timeout(), opts.durabilityLevel(), core);
     ProtostellarRequest<InsertRequest> out = new ProtostellarRequest<>(core,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, opts.durabilityLevel(), opts.parentSpan().orElse(null)),
-      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_INSERT, timeout, id, collectionIdentifier),
+      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_INSERT, timeout, id, collectionIdentifier, false),
       timeout,
       opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
 

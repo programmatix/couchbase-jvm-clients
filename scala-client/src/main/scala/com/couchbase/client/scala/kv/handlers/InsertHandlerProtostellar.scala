@@ -91,7 +91,7 @@ private[scala] object InsertHandlerProtostellar {
       val actualTimeout: Duration = if (timeout == Duration.MinusInf) kvTimeout(core, durability) else timeout
       val out = new ProtostellarRequest[InsertRequest](core,
         createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, durabilityToCore(durability), parentSpan.orNull),
-        new ProtostellarKeyValueRequestContext(core, ServiceType.KV, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, actualTimeout, id, collectionIdentifier),
+        new ProtostellarKeyValueRequestContext(core, ServiceType.KV, ProtostellarRequestContext.REQUEST_KV_INSERT, actualTimeout, id, collectionIdentifier, false),
         actualTimeout,
         retryStrategy)
 

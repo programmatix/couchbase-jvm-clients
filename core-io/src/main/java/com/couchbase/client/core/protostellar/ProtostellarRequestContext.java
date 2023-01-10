@@ -48,6 +48,7 @@ public class ProtostellarRequestContext extends AbstractContext {
   private int retryAttempts;
   private Set<RetryReason> retryReasons;
   private final Duration timeout;
+  private final boolean idempotent;
 
   /**
    * The time it took to encode the payload (if any).
@@ -58,12 +59,14 @@ public class ProtostellarRequestContext extends AbstractContext {
   public ProtostellarRequestContext(Core core,
                                     ServiceType serviceType,
                                     String requestName,
-                                    Duration timeout) {
+                                    Duration timeout,
+                                    boolean idempotent) {
     this.core = core;
     this.serviceType = serviceType;
     this.requestName = requestName;
     this.timeout = timeout;
     this.createdAt = System.nanoTime();
+    this.idempotent = idempotent;
   }
 
   public long encodeLatency() {
@@ -102,8 +105,7 @@ public class ProtostellarRequestContext extends AbstractContext {
 
     // todo sn is id important?
     // context.put("requestId", request.id());
-    // todo sn track idempotency
-    // context.put("idempotent", request.idempotent());
+    input.put("idempotent", idempotent);
     input.put("requestName", requestName);
     input.put("retried", retryAttempts);
     // todo sn track completion
@@ -173,5 +175,9 @@ public class ProtostellarRequestContext extends AbstractContext {
 
   public int retryAttempts() {
     return retryAttempts;
+  }
+
+  public boolean idempotent() {
+    return idempotent;
   }
 }

@@ -96,7 +96,7 @@ public class RemoveAccessorProtostellar {
     Duration timeout = CoreProtostellarUtil.kvDurableTimeout(opts.timeout(), opts.durabilityLevel(), core);
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> out = new ProtostellarRequest<>(core,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_REMOVE, opts.durabilityLevel(), opts.parentSpan().orElse(null)),
-      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_REMOVE, timeout, id, collectionIdentifier),
+      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_REMOVE, timeout, id, collectionIdentifier, false),
       timeout,
       opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
 

@@ -34,8 +34,9 @@ public class ProtostellarKeyValueRequestContext extends ProtostellarRequestConte
                                             String requestName,
                                             Duration timeout,
                                             String id,
-                                            CollectionIdentifier collectionIdentifier) {
-    super(core, serviceType, requestName, timeout);
+                                            CollectionIdentifier collectionIdentifier,
+                                            boolean idempotent) {
+    super(core, serviceType, requestName, timeout, idempotent);
     this.id = id;
     this.collectionIdentifier = collectionIdentifier;
   }

@@ -178,7 +178,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
     Duration timeout = CoreProtostellarUtil.kvTimeout(opts.timeout(), core);
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> out = new ProtostellarRequest<>(core,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_GET, Optional.empty(), opts.parentSpan().orElse(null)),
-      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_GET, timeout, id, collectionIdentifier),
+      new ProtostellarKeyValueRequestContext(core, ServiceType.KV, REQUEST_KV_GET, timeout, id, collectionIdentifier, true),
       timeout,
       opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
 

@@ -16,7 +16,6 @@
 package com.couchbase.client.java.query;
 
 import com.couchbase.client.java.analytics.AnalyticsMetaData;
-import com.couchbase.client.java.analytics.AnalyticsMetaDataProtostellar;
 import com.couchbase.client.java.analytics.ReactiveAnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.codec.TypeRef;

@@ -33,55 +33,104 @@ import java.util.stream.Collectors;
 /**
  * Holds associated metadata returned by the server for the performed analytics request.
  */
-public abstract class AnalyticsMetaData {
-    /**
-     * Get the request identifier of the query request
-     *
-     * @return request identifier
-     */
-    public abstract String requestId();
+public class AnalyticsMetaData {
 
-    /**
-     * Get the client context identifier as set by the client
-     *
-     * @return client context identifier
-     */
-    public abstract String clientContextId();
+  private final AnalyticsChunkHeader header;
+  private final AnalyticsChunkTrailer trailer;
 
-    /**
-     * Get the status of the response.
-     *
-     * @return the status of the response.
-     */
-    public abstract AnalyticsStatus status();
+  private AnalyticsMetaData(final AnalyticsChunkHeader header, final AnalyticsChunkTrailer trailer) {
+    this.header = header;
+    this.trailer = trailer;
+  }
 
-    /**
-     * Get the signature as the target type, if present.
-     *
-     * @return the decoded signature if present.
-     */
-    public abstract Optional<JsonObject> signature();
+  @Stability.Internal
+  static AnalyticsMetaData from(final AnalyticsChunkHeader header, final AnalyticsChunkTrailer trailer) {
+    return new AnalyticsMetaData(header, trailer);
+  }
 
-    /**
-     * Get the associated metrics for the response.
-     *
-     * @return the metrics for the analytics response.
-     */
-    public abstract AnalyticsMetrics metrics();
+  /**
+   * Get the request identifier of the query request
+   *
+   * @return request identifier
+   */
+  public String requestId() {
+    return header.requestId();
+  }
 
-    /**
-     * Returns warnings if present.
-     *
-     * @return warnings, if present.
-     */
-    public abstract List<AnalyticsWarning> warnings();
+  /**
+   * Get the client context identifier as set by the client
+   *
+   * @return client context identifier
+   */
+  public String clientContextId() {
+    return header.clientContextId().orElse("");
+  }
 
-    /**
-     * Returns plan information if present.
-     *
-     * @return plan information if present.
-     */
-    @Stability.Internal
-    public abstract Optional<JsonObject> plans();
+  /**
+   * Get the status of the response.
+   *
+   * @return the status of the response.
+   */
+  public AnalyticsStatus status() {
+    return AnalyticsStatus.from(trailer.status());
+  }
+
+  /**
+   * Get the signature as the target type, if present.
+   *
+   * @return the decoded signature if present.
+   */
+  public Optional<JsonObject> signature() {
+    return header.signature().map(bytes -> {
+      try {
+        return JacksonTransformers.MAPPER.readValue(bytes, JsonObject.class);
+      } catch (IOException e) {
+        throw new DecodingFailureException("Could not decode Analytics signature", e);
+      }
+    });
+  }
+
+  /**
+   * Get the associated metrics for the response.
+   *
+   * @return the metrics for the analytics response.
+   */
+  public AnalyticsMetrics metrics() {
+    return new AnalyticsMetrics(trailer.metrics());
+  }
+
+  /**
+   * Returns warnings if present.
+   *
+   * @return warnings, if present.
+   */
+  public List<AnalyticsWarning> warnings() {
+    return this.trailer.warnings().map(warnings ->
+      ErrorCodeAndMessage.fromJsonArray(warnings).stream().map(AnalyticsWarning::new).collect(Collectors.toList())
+    ).orElse(Collections.emptyList());
+  }
+
+  /**
+   * Returns plan information if present.
+   *
+   * @return plan information if present.
+   */
+  @Stability.Internal
+  public Optional<JsonObject> plans() {
+    return trailer.plans().map(bytes -> {
+      try {
+        return JacksonTransformers.MAPPER.readValue(bytes, JsonObject.class);
+      } catch (IOException e) {
+        throw new DecodingFailureException("Could not decode Analytics plan information", e);
+      }
+    });
+  }
+
+  @Override
+  public String toString() {
+    return "AnalyticsMetaData{" +
+      "header=" + header +
+      ", trailer=" + trailer +
+      '}';
+  }
 }
-

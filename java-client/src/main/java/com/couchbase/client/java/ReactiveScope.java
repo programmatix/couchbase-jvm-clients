@@ -21,7 +21,7 @@ import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.error.context.ReducedAnalyticsErrorContext;
 import com.couchbase.client.core.error.context.ReducedQueryErrorContext;
 import com.couchbase.client.core.io.CollectionIdentifier;
-import com.couchbase.client.java.analytics.AnalyticsAccessorHttp;
+import com.couchbase.client.java.analytics.AnalyticsAccessor;
 import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.ReactiveAnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
@@ -194,7 +194,7 @@ public class ReactiveScope {
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment().jsonSerializer() : opts.serializer();
     return Mono.defer(() -> {
-      return AnalyticsAccessorHttp.analyticsQueryReactive(
+      return AnalyticsAccessor.analyticsQueryReactive(
           asyncScope.core(),
           asyncScope.analyticsRequest(statement, opts),
           serializer

@@ -16,37 +16,46 @@
 
 package com.couchbase.client.java.analytics;
 
+import com.couchbase.client.core.msg.analytics.AnalyticsResponse;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.codec.TypeRef;
 import com.couchbase.client.java.json.JsonObject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public abstract class ReactiveAnalyticsResult {
+public class ReactiveAnalyticsResult {
 
-    /**
-     * The default serializer to use.
-     */
-    protected final JsonSerializer serializer;
+  private final AnalyticsResponse response;
 
-    ReactiveAnalyticsResult(final JsonSerializer serializer) {
-        this.serializer = serializer;
-    }
+  /**
+   * The default serializer to use.
+   */
+  private final JsonSerializer serializer;
 
-    /**
-     * Get a {@link Flux} which publishes the rows that were fetched by the query which are then decoded to
-     * {@link JsonObject}
-     *
-     * @return {@link Flux}
-     */
-    public Flux<JsonObject> rowsAsObject() {
-        return rowsAs(JsonObject.class);
-    }
+  ReactiveAnalyticsResult(final AnalyticsResponse response, final JsonSerializer serializer) {
+    this.response = response;
+    this.serializer = serializer;
+  }
 
-    abstract public <T> Flux<T> rowsAs(final Class<T> target);
+  /**
+   * Get a {@link Flux} which publishes the rows that were fetched by the query which are then decoded to
+   * {@link JsonObject}
+   *
+   * @return {@link Flux}
+   */
+  public Flux<JsonObject> rowsAsObject() {
+    return rowsAs(JsonObject.class);
+  }
 
-    abstract public <T> Flux<T> rowsAs(final TypeRef<T> target);
+  public <T> Flux<T> rowsAs(final Class<T> target) {
+    return response.rows().map(row -> serializer.deserialize(target, row.data()));
+  }
 
-    abstract public Mono<AnalyticsMetaData> metaData();
+  public <T> Flux<T> rowsAs(final TypeRef<T> target) {
+    return response.rows().map(row -> serializer.deserialize(target, row.data()));
+  }
+
+  public Mono<AnalyticsMetaData> metaData() {
+    return response.trailer().map(t -> AnalyticsMetaData.from(response.header(), t));
+  }
 }
-

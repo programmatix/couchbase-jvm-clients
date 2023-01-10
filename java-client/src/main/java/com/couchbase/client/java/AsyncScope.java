@@ -28,7 +28,7 @@ import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.analytics.AnalyticsRequest;
 import com.couchbase.client.core.msg.query.QueryRequest;
 import com.couchbase.client.core.retry.RetryStrategy;
-import com.couchbase.client.java.analytics.AnalyticsAccessorHttp;
+import com.couchbase.client.java.analytics.AnalyticsAccessor;
 import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.AnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
@@ -287,7 +287,7 @@ public class AsyncScope {
     notNull(options, "AnalyticsOptions", () -> new ReducedAnalyticsErrorContext(statement));
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment.jsonSerializer() : opts.serializer();
-    return AnalyticsAccessorHttp.analyticsQueryAsync(core, analyticsRequest(statement, opts), serializer);
+    return AnalyticsAccessor.analyticsQueryAsync(core, analyticsRequest(statement, opts), serializer);
   }
 
   /**

@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * @since 3.0.0
  */
-public class AnalyticsAccessorHttp {
+public class AnalyticsAccessor {
 
   public static CompletableFuture<AnalyticsResult> analyticsQueryAsync(final Core core,
                                                                        final AnalyticsRequest request,
@@ -41,14 +41,14 @@ public class AnalyticsAccessorHttp {
         .collectList()
         .flatMap(rows -> response
           .trailer()
-          .map(trailer -> (AnalyticsResult) new AnalyticsResultHttp(response.header(), rows, trailer, serializer))
+          .map(trailer -> new AnalyticsResult(response.header(), rows, trailer, serializer))
         )
       )
       .toFuture();
   }
 
   public static Mono<ReactiveAnalyticsResult> analyticsQueryReactive(final Core core, final AnalyticsRequest request, final JsonSerializer serializer) {
-    return analyticsQueryInternal(core, request).map(r -> new ReactiveAnalyticsResultHttp(r, serializer));
+    return analyticsQueryInternal(core, request).map(r -> new ReactiveAnalyticsResult(r, serializer));
   }
 
   private static Mono<AnalyticsResponse> analyticsQueryInternal(final Core core, final AnalyticsRequest request) {

@@ -40,8 +40,7 @@ import com.couchbase.client.core.msg.search.SearchRequest;
 import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.util.ConnectionString;
 import com.couchbase.client.core.util.ConnectionStringUtil;
-import com.couchbase.client.java.analytics.AnalyticsAccessorHttp;
-import com.couchbase.client.java.analytics.AnalyticsAccessorProtostellar;
+import com.couchbase.client.java.analytics.AnalyticsAccessor;
 import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.AnalyticsResult;
 import com.couchbase.client.java.codec.JsonSerializer;
@@ -426,12 +425,7 @@ public class AsyncCluster {
     notNull(options, "AnalyticsOptions", () -> new ReducedAnalyticsErrorContext(statement));
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment.get().jsonSerializer() : opts.serializer();
-    if (core().isProtostellar()) {
-      return AnalyticsAccessorProtostellar.analyticsQueryAsync(core.protostellar(), analyticsRequestProtostellar(statement, opts), serializer);
-    }
-    else {
-      return AnalyticsAccessorHttp.analyticsQueryAsync(core, analyticsRequestHttp(statement, opts), serializer);
-    }
+    return AnalyticsAccessor.analyticsQueryAsync(core, analyticsRequest(statement, opts), serializer);
   }
 
   /**
@@ -441,7 +435,7 @@ public class AsyncCluster {
    * @param opts the built analytics options.
    * @return the created analytics request.
    */
-  AnalyticsRequest analyticsRequestHttp(final String statement, final AnalyticsOptions.Built opts) {
+  AnalyticsRequest analyticsRequest(final String statement, final AnalyticsOptions.Built opts) {
     notNullOrEmpty(statement, "Statement", () -> new ReducedAnalyticsErrorContext(statement));
     Duration timeout = opts.timeout().orElse(environment.get().timeoutConfig().analyticsTimeout());
     RetryStrategy retryStrategy = opts.retryStrategy().orElse(environment.get().retryStrategy());
@@ -461,24 +455,6 @@ public class AsyncCluster {
     );
     request.context().clientContext(opts.clientContext());
     return request;
-  }
-
-  com.couchbase.client.protostellar.analytics.v1.AnalyticsQueryRequest analyticsRequestProtostellar(final String statement, final AnalyticsOptions.Built opts) {
-    notNullOrEmpty(statement, "Statement", () -> new ReducedAnalyticsErrorContext(statement));
-
-    // todo sn
-//    Duration timeout = opts.timeout().orElse(environment.get().timeoutConfig().analyticsTimeout());
-//    RetryStrategy retryStrategy = opts.retryStrategy().orElse(environment.get().retryStrategy());
-
-    final RequestSpan span = environment()
-      .requestTracer()
-      .requestSpan(TracingIdentifiers.SPAN_REQUEST_ANALYTICS, opts.parentSpan().orElse(null));
-
-    com.couchbase.client.protostellar.analytics.v1.AnalyticsQueryRequest.Builder request = com.couchbase.client.protostellar.analytics.v1.AnalyticsQueryRequest.newBuilder();
-    opts.injectParams(request);
-
-    // todo sn request.context().clientContext(opts.clientContext());
-    return request.build();
   }
 
   /**

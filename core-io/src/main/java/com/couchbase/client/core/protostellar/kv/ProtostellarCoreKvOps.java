@@ -88,7 +88,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
     return AccessorKeyValueProtostellar.blocking(core,
       req,
       (endpoint) -> {
-        // todo sn brett how do client and server timeouts interact
+        // todo snbrett how do client and server timeouts interact
         // todo snremove this is only for performance testing, will be removed pre-GA
         if (reuseStubs &&
           (!common.timeout().isPresent()

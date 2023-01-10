@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+// todo sn what exactly does maintaining a separate RequestContext bring to the table?  Could we move this into ProtostellarRequest and just create a ProtostellarErrorContext on the fly?
 @Stability.Internal
 public class ProtostellarRequestContext extends AbstractContext {
   public static final String REQUEST_KV_INSERT = "insert";
@@ -72,12 +73,6 @@ public class ProtostellarRequestContext extends AbstractContext {
   public long encodeLatency() {
     return encodeLatency;
   }
-//
-//  public ProtostellarRequestContext<TGrpcRequest> encodeLatency(long encodeLatency) {
-//    this.encodeLatency = encodeLatency;
-//    return this;
-//  }
-
 
   /**
    * Returns the request latency once logically completed (includes potential "inner" operations like observe

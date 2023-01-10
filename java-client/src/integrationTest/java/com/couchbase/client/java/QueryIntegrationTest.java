@@ -432,9 +432,8 @@ class QueryIntegrationTest extends JavaIntegrationTest {
         assertThrows(FeatureNotAvailableException.class, () ->  scope.query("select * from mycollection"));
     }
 
-    @Disabled // todo sn - missing get-with-expiry support
     @Test
-    @IgnoreWhen(missesCapabilities = Capabilities.QUERY_PRESERVE_EXPIRY)
+    @IgnoreWhen(missesCapabilities = Capabilities.QUERY_PRESERVE_EXPIRY, isProtostellarWillWorkLater = true)
     void preserveExpiry() {
         String id = UUID.randomUUID().toString();
         collection.insert(id, FOO_CONTENT, InsertOptions.insertOptions()

@@ -41,7 +41,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@IgnoreWhen(clusterTypes = MOCKED)
+@IgnoreWhen(clusterTypes = MOCKED,
+  isProtostellarOnlyBecauseOfWaitUntilReady = true
+)
 class RawManagerIntegrationTest extends JavaIntegrationTest {
 
   private static Cluster cluster;

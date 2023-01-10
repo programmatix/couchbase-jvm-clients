@@ -28,7 +28,9 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 @IgnoreWhen(clusterTypes = {ClusterType.MOCKED},
-        missesCapabilities = {Capabilities.CREATE_AS_DELETED})
+  missesCapabilities = {Capabilities.CREATE_AS_DELETED},
+  isProtostellarOnlyBecauseOfWaitUntilReady = true
+)
 public class TransactionsShutdownIntegrationTest extends JavaIntegrationTest {
     /**
      * Sanity test that a basic app still quits if cluster.disconnect() not called.

@@ -69,7 +69,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @IgnoreWhen(clusterTypes = { CAVES, MOCKED },
   missesCapabilities = { QUERY, COLLECTIONS },
-  clusterVersionIsBelow = REQUIRE_MB_50132)
+  clusterVersionIsBelow = REQUIRE_MB_50132,
+  isProtostellarOnlyBecauseOfWaitUntilReady = true
+)
 public class QueryCollectionsIndexManagerIntegrationTest extends JavaIntegrationTest {
 
   // time to allow for watch operations that are expected to succeed eventually

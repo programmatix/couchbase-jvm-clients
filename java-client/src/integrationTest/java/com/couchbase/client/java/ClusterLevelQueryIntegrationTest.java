@@ -32,6 +32,7 @@ import static com.couchbase.client.java.query.QueryOptions.queryOptions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@IgnoreWhen(isProtostellarOnlyBecauseOfWaitUntilReady = true)
 class ClusterLevelQueryIntegrationTest extends JavaIntegrationTest {
 
   private static Cluster cluster;

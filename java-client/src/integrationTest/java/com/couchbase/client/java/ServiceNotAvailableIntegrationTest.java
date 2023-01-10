@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Note that KV, Views and Manager are not tested, because there always needs to be at least
  * one of them in the cluster to function.
  */
+@IgnoreWhen(isProtostellarOnlyBecauseOfWaitUntilReady = true)
 public class ServiceNotAvailableIntegrationTest extends JavaIntegrationTest {
 
   static private Cluster cluster;

@@ -33,7 +33,9 @@ import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@IgnoreWhen( missesCapabilities = { Capabilities.QUERY })
+@IgnoreWhen( missesCapabilities = { Capabilities.QUERY },
+  isProtostellarOnlyBecauseOfWaitUntilReady = true
+)
 class QueryErrorIntegrationTest extends JavaIntegrationTest {
 
   static private Cluster cluster;

@@ -324,4 +324,12 @@ abstract class TestCluster implements ExtensionContext.Store.CloseableResource {
     }
   }
 
+  /**
+   * Whether the test config has asked to connect to the cluster over protostellar://
+   *
+   * (Not whether the cluster has Stellar Nebula enabled).
+   */
+  public boolean isProtostellar() {
+    return false;
+  }
 }

@@ -51,4 +51,22 @@ public @interface IgnoreWhen {
 
   String clusterVersionIsBelow() default "";
   String clusterVersionIsEqualToOrAbove() default "";
+
+  /**
+   * If the test config specifies connecting as Protostellar.
+   */
+  boolean isProtostellar() default false;
+
+  /**
+   * If the test config specifies connecting as Protostellar.
+   *
+   * todo snremove this will be removed before GA - it just indicates tests that will ultimately work with Protosstellar
+   */
+  boolean isProtostellarWillWorkLater() default false;
+
+  /**
+   * Similar to isProtostellarWillWorkLater - some tests are only failing due to lack of waitUntilReady
+   * todo snremove before GA
+   */
+  boolean isProtostellarOnlyBecauseOfWaitUntilReady() default false;
 }

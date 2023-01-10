@@ -297,4 +297,9 @@ public class UnmanagedTestCluster extends TestCluster {
     }
     return seedHost;
   }
+
+  @Override
+  public boolean isProtostellar() {
+    return isProtostellar;
+  }
 }

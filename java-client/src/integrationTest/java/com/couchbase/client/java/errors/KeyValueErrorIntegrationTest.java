@@ -57,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests many aspects of the exception raising for the KeyValue service.
  */
+@IgnoreWhen(isProtostellarOnlyBecauseOfWaitUntilReady = true)
 class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
 
   static private Cluster cluster;

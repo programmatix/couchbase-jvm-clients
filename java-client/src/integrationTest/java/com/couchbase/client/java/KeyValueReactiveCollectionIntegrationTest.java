@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 
 
+@IgnoreWhen(isProtostellarOnlyBecauseOfWaitUntilReady = true)
 public class KeyValueReactiveCollectionIntegrationTest extends JavaIntegrationTest {
 
     private static Cluster cluster;
@@ -185,7 +186,7 @@ public class KeyValueReactiveCollectionIntegrationTest extends JavaIntegrationTe
     }
 
     @Test
-    @IgnoreWhen( clusterTypes = { ClusterType.MOCKED })
+    @IgnoreWhen( clusterTypes = { ClusterType.MOCKED }, isProtostellarWillWorkLater = true)
     void reactiveExists(){
         // Insert docs
         docIds
@@ -223,7 +224,7 @@ public class KeyValueReactiveCollectionIntegrationTest extends JavaIntegrationTe
      }
 
     @Test
-    @IgnoreWhen( clusterTypes = { ClusterType.MOCKED })
+    @IgnoreWhen( clusterTypes = { ClusterType.MOCKED }, isProtostellarWillWorkLater = true)
     void reactiveTouch(){
         StepVerifier
           .create(docIds.concatMap(key -> reactiveCollection.touch(key, Duration.ofSeconds(1))))

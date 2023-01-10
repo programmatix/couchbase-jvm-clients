@@ -22,6 +22,7 @@ import com.couchbase.client.core.error.TimeoutException;
 import com.couchbase.client.java.util.JavaIntegrationTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -36,8 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A very basic benchmarking test.
- * todo sn remove this once we're done
+ * todo snremove remove this once we're done
  */
+@Disabled // Disabled as this is for manual testing only
 class BenchmarkIntegrationTest extends JavaIntegrationTest {
 
   static private Cluster cluster;

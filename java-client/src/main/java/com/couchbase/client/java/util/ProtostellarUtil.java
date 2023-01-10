@@ -34,17 +34,7 @@ public class ProtostellarUtil {
 
   public static Timestamp convertExpiry(Expiry expiry) {
     // todo snbrett expiry is going to change anyway
-    return Timestamp.newBuilder()
-//        .setSeconds()
-      .build();
-//    expiry.encode()
-  }
-
-  public static Optional<Instant> convertExpiry(boolean hasExpiry, Timestamp expiry) {
-    if (hasExpiry) {
-      return Optional.of(Instant.ofEpochSecond(expiry.getSeconds()));
-    }
-    return Optional.empty();
+    return Timestamp.newBuilder().setSeconds(expiry.encode()).build();
   }
 
   public static MutationResult convertMutationResult(long cas, @Nullable com.couchbase.client.protostellar.kv.v1.MutationToken mt) {

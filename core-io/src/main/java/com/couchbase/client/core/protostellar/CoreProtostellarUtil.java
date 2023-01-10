@@ -20,6 +20,7 @@ import com.couchbase.client.core.cnc.AbstractContext;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
+import com.couchbase.client.core.deps.com.google.protobuf.Timestamp;
 import com.couchbase.client.core.deps.io.grpc.Deadline;
 import com.couchbase.client.core.error.FeatureNotAvailableException;
 import com.couchbase.client.core.error.RequestCanceledException;
@@ -34,6 +35,7 @@ import reactor.core.publisher.Sinks;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -145,6 +147,13 @@ public class CoreProtostellarUtil {
 
     // NONE should be handled earlier, by not sending anything.
     throw new IllegalArgumentException("Unknown durability level " + dl);
+  }
+
+  public static @Nullable Instant convertExpiry(boolean hasExpiry, Timestamp expiry) {
+    if (hasExpiry) {
+      return Instant.ofEpochSecond(expiry.getSeconds());
+    }
+    return null;
   }
 
   public static <TResponse> ProtostellarRequestBehaviour convertKeyValueException(Core core,

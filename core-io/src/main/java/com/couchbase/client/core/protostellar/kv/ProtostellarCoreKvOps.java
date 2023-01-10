@@ -138,9 +138,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
       response.getContent().toByteArray(),
       convertToFlags(response.getContentType()),
       response.getCas(),
-      // todo sn expiry
-      null);
-      // ProtostellarUtil.convertExpiry(response.hasExpiry(), response.getExpiry()));
+      CoreProtostellarUtil.convertExpiry(response.hasExpiry(), response.getExpiry()));
   }
 
   @Override

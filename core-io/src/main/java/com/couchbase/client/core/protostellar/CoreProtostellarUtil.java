@@ -21,6 +21,7 @@ import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.io.grpc.Deadline;
+import com.couchbase.client.core.error.FeatureNotAvailableException;
 import com.couchbase.client.core.error.RequestCanceledException;
 import com.couchbase.client.core.error.context.ErrorContext;
 import com.couchbase.client.core.error.context.ProtostellarErrorContext;
@@ -173,5 +174,14 @@ public class CoreProtostellarUtil {
     }
 
     return span;
+  }
+
+  public static RuntimeException unsupportedInProtostellar(String feature) {
+    return new FeatureNotAvailableException("Feature '" + feature + "' is not supported when using protostellar:// to connect");
+  }
+
+  // todo snremove ultimately we will support all of these before GA
+  public static RuntimeException unsupportedCurrentlyInProtostellar() {
+    return new FeatureNotAvailableException("Feature is not supported when using protostellar:// to connect (but will be before GA)");
   }
 }

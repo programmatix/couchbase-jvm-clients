@@ -37,6 +37,7 @@ import com.couchbase.client.core.error.context.ReducedSearchErrorContext;
 import com.couchbase.client.core.msg.analytics.AnalyticsRequest;
 import com.couchbase.client.core.msg.query.QueryRequest;
 import com.couchbase.client.core.msg.search.SearchRequest;
+import com.couchbase.client.core.protostellar.CoreProtostellarUtil;
 import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.util.ConnectionString;
 import com.couchbase.client.core.util.ConnectionStringUtil;
@@ -422,6 +423,10 @@ public class AsyncCluster {
    * @return the {@link AnalyticsResult} once the response arrives successfully.
    */
   public CompletableFuture<AnalyticsResult> analyticsQuery(final String statement, final AnalyticsOptions options) {
+    if (core.isProtostellar()) {
+      throw CoreProtostellarUtil.unsupportedInProtostellar("analytics");
+    }
+
     notNull(options, "AnalyticsOptions", () -> new ReducedAnalyticsErrorContext(statement));
     AnalyticsOptions.Built opts = options.build();
     JsonSerializer serializer = opts.serializer() == null ? environment.get().jsonSerializer() : opts.serializer();
@@ -587,6 +592,10 @@ public class AsyncCluster {
    * @return the {@link DiagnosticsResult} once complete.
    */
   public CompletableFuture<DiagnosticsResult> diagnostics(final DiagnosticsOptions options) {
+    if (core.isProtostellar()) {
+      throw CoreProtostellarUtil.unsupportedCurrentlyInProtostellar();
+    }
+
     notNull(options, "DiagnosticsOptions");
     final DiagnosticsOptions.Built opts = options.build();
 
@@ -659,6 +668,10 @@ public class AsyncCluster {
    * @return a completable future that completes either once ready or timeout.
    */
   public CompletableFuture<Void> waitUntilReady(final Duration timeout, final WaitUntilReadyOptions options) {
+    if (core.isProtostellar()) {
+      throw CoreProtostellarUtil.unsupportedCurrentlyInProtostellar();
+    }
+
     notNull(options, "WaitUntilReadyOptions");
     final WaitUntilReadyOptions.Built opts = options.build();
     return WaitUntilReadyHelper.waitUntilReady(core, opts.serviceTypes(), timeout, opts.desiredState(), Optional.empty());

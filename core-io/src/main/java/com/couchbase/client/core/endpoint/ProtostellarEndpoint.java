@@ -27,8 +27,10 @@ import com.couchbase.client.core.deps.io.grpc.ClientCall;
 import com.couchbase.client.core.deps.io.grpc.ClientInterceptor;
 import com.couchbase.client.core.deps.io.grpc.ClientStreamTracer;
 import com.couchbase.client.core.deps.io.grpc.ConnectivityState;
+import com.couchbase.client.core.deps.io.grpc.EquivalentAddressGroup;
 import com.couchbase.client.core.deps.io.grpc.InsecureChannelCredentials;
 import com.couchbase.client.core.deps.io.grpc.ManagedChannel;
+import com.couchbase.client.core.deps.io.grpc.ManagedChannelBuilder;
 import com.couchbase.client.core.deps.io.grpc.Metadata;
 import com.couchbase.client.core.deps.io.grpc.MethodDescriptor;
 import com.couchbase.client.core.deps.io.grpc.Status;
@@ -43,8 +45,12 @@ import com.couchbase.client.protostellar.query.v1.QueryGrpc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -202,13 +208,46 @@ public class ProtostellarEndpoint {
 
     // todo sn what to do with tcpKeepAlivesEnabled and rest of connection options (kvNumConnections etc.)
 
-    // todo snbrett we're using unverified TLS for now - presumably we can eventually use the same Capella cert bundling approach and use TLS properly
-    return NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())
+    // todo snremove we're using unverified TLS for now - once STG has it we can use the same Capella cert bundling approach and use TLS properly
+    ManagedChannelBuilder builder = NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())
       .executor(core.context().environment().executor())
       .withOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) core.context().environment().timeoutConfig().connectTimeout().toMillis())
       // Retry strategies to be determined, but presumably we will need something custom rather than what GRPC provides
-      .disableRetry()
-      .build();
+      .disableRetry();
+
+    // todo snremove experimental performance testing code
+    String loadBalancingCount = System.getProperty("com.couchbase.protostellar.loadBalancing", "4");
+    String loadBalancingStrategy = System.getProperty("com.couchbase.protostellar.loadBalancingStrategy", "round_robin");
+    String loadBalancingSingle = System.getProperty("com.couchbase.protostellar.loadBalancingSingle", "true");
+    logger.info("loadBalancing={} loadBalancingStrategy={} loadBalancingSingle={}", loadBalancingCount, loadBalancingStrategy, loadBalancingSingle);
+
+    if (loadBalancingCount != null) {
+      List<EquivalentAddressGroup> addresses = new ArrayList<>();
+
+      int count = Integer.parseInt(loadBalancingCount);
+      boolean single = Boolean.parseBoolean(loadBalancingSingle);
+
+      if (single) {
+        List<SocketAddress> adds = new ArrayList<>();
+        for (int i = 0; i < count; i ++) {
+          adds.add(new InetSocketAddress(hostname, port));
+        }
+        addresses.add(new EquivalentAddressGroup(adds));
+      }
+      else {
+        for (int i = 0; i < count; i ++) {
+          addresses.add(new EquivalentAddressGroup(new InetSocketAddress(hostname, port)));
+        }
+      }
+
+      MultiAddressNameResolverFactory nameResolverFactory = new MultiAddressNameResolverFactory(addresses);
+
+      // Deprecated API but the replacement is unclear and this code may only be used during development.
+      builder.nameResolverFactory(nameResolverFactory)
+        .defaultLoadBalancingPolicy(loadBalancingStrategy);
+    }
+
+    return builder.build();
   }
 
   private void notifyOnChannelStateChange(ConnectivityState current) {

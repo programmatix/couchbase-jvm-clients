@@ -272,7 +272,8 @@ public class ConnectionString {
   @Stability.Internal
   public enum PortType {
     MANAGER,
-    KV;
+    KV,
+    PROTOSTELLAR;
 
     /**
      * Turn the raw representation into an enum.
@@ -288,6 +289,8 @@ public class ConnectionString {
         return PortType.MANAGER;
       } else if (input.equalsIgnoreCase("mcd") || input.equalsIgnoreCase("kv")) {
         return PortType.KV;
+      } else if (input.equalsIgnoreCase("protostellar")) {
+          return PortType.PROTOSTELLAR;
       } else {
         throw InvalidArgumentException.fromMessage("Unsupported port type \"" + input + "\"");
       }

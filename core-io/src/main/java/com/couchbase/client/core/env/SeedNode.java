@@ -16,6 +16,7 @@
 
 package com.couchbase.client.core.env;
 
+import com.couchbase.client.core.annotation.Stability;
 import reactor.util.annotation.Nullable;
 
 import java.util.Collections;
@@ -81,6 +82,15 @@ public class SeedNode {
     return new SeedNode(address, kvPort, clusterManagerPort, Optional.empty());
   }
 
+  @Stability.Volatile
+  public static SeedNode create(final String address,
+                                final Optional<Integer> kvPort,
+                                final Optional<Integer> clusterManagerPort,
+                                final Optional<Integer> protostellarPort) {
+    return new SeedNode(address, kvPort, clusterManagerPort, protostellarPort);
+  }
+
+  @Stability.Volatile
   public static SeedNode protostellar(final String address, final int protostellarPort) {
     return new SeedNode(address, Optional.empty(), Optional.empty(), Optional.of(protostellarPort));
   }
@@ -111,6 +121,16 @@ public class SeedNode {
    */
   public SeedNode withManagerPort(@Nullable Integer port) {
     return SeedNode.create(address(), kvPort(), Optional.ofNullable(port));
+  }
+
+  /**
+   * Returns a copy of this seed node, with the given Protostellar port.
+   *
+   * @param port (nullable) null means absent Protostellar port.
+   */
+  @Stability.Volatile
+  public SeedNode withProtostellarPort(@Nullable Integer port) {
+    return SeedNode.create(address(), kvPort(), clusterManagerPort(), Optional.ofNullable(port));
   }
 
   /**

@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 import static com.couchbase.client.core.logging.RedactableArgument.redactSystem;
 import static com.couchbase.client.core.util.ConnectionString.PortType.KV;
 import static com.couchbase.client.core.util.ConnectionString.PortType.MANAGER;
+import static com.couchbase.client.core.util.ConnectionString.PortType.PROTOSTELLAR;
 import static com.couchbase.client.core.util.ConnectionString.Scheme.COUCHBASES;
 import static java.util.stream.Collectors.groupingBy;
 
@@ -145,13 +146,15 @@ public class ConnectionStringUtil {
 
     groupedByHost.forEach((host, addresses) -> {
       Map<PortType, Integer> ports = new EnumMap<>(PortType.class);
+      PortType assumedPortType = connectionString.scheme() == ConnectionString.Scheme.PROTOSTELLAR ? PortType.PROTOSTELLAR : PortType.KV;
       addresses.stream()
-          .filter(it -> it.port() != 0)
-          .forEach(it -> ports.put(it.portType().orElse(KV), it.port()));
+        .filter(it -> it.port() != 0)
+        .forEach(it -> ports.put(it.portType().orElse(assumedPortType), it.port()));
 
       seedNodes.add(SeedNode.create(host)
           .withKvPort(ports.get(KV))
           .withManagerPort(ports.get(MANAGER))
+          .withProtostellarPort(ports.get(PROTOSTELLAR))
       );
     });
 

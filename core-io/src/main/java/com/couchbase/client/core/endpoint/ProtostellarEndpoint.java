@@ -195,12 +195,10 @@ public class ProtostellarEndpoint {
 //      .withStreamTracerFactory(factory)
 //      .withCallCredentials(creds);
 
-    kvStub = KvGrpc.newFutureStub(managedChannel).withInterceptors(ci);
-    kvBlockingStub = KvGrpc.newBlockingStub(managedChannel).withInterceptors(ci);
-    analyticsStub = AnalyticsGrpc.newStub(managedChannel).withCallCredentials(creds);
-    queryStub = QueryGrpc.newStub(managedChannel).withCallCredentials(creds);
-
-
+    kvStub = KvGrpc.newFutureStub(managedChannel).withInterceptors(ci).withWaitForReady();
+    kvBlockingStub = KvGrpc.newBlockingStub(managedChannel).withInterceptors(ci).withWaitForReady();
+    analyticsStub = AnalyticsGrpc.newStub(managedChannel).withCallCredentials(creds).withWaitForReady();
+    queryStub = QueryGrpc.newStub(managedChannel).withCallCredentials(creds).withWaitForReady();
   }
 
   private ManagedChannel channel() {

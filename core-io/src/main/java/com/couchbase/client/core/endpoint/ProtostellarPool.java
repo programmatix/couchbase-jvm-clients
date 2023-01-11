@@ -42,7 +42,7 @@ public class ProtostellarPool {
   private final AtomicLong lastUsed = new AtomicLong(0);
 
   public ProtostellarPool(Core core, String hostname, final int port) {
-    int numEndpoints = Integer.parseInt(System.getProperty("com.couchbase.protostellar.numEndpoints", "8"));
+    int numEndpoints = Integer.parseInt(System.getProperty("com.couchbase.protostellar.numEndpoints", "3"));
     logger.info("creating with endpoints {}", numEndpoints);
     endpoints = new ArrayList<>(numEndpoints);
     for(int i = 0; i < numEndpoints; i ++) {

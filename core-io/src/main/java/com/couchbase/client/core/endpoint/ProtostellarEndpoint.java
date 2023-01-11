@@ -206,6 +206,8 @@ public class ProtostellarEndpoint {
 
     // todo snremove we're using unverified TLS for now - once STG has it we can use the same Capella cert bundling approach and use TLS properly
     ManagedChannelBuilder builder = NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())
+      // 20MB is the (current) maximum document size supported by the server.  Specifying 21MB to give wiggle room for the rest of the GRPC message.
+      .maxInboundMessageSize(22020096)
       .executor(core.context().environment().executor())
       .withOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) core.context().environment().timeoutConfig().connectTimeout().toMillis())
       // Retry strategies to be determined, but presumably we will need something custom rather than what GRPC provides

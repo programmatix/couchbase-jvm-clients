@@ -17,7 +17,6 @@
 package com.couchbase.client.core.endpoint;
 
 import com.couchbase.client.core.Core;
-import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.cnc.events.endpoint.EndpointStateChangedEvent;
 import com.couchbase.client.core.deps.io.grpc.Attributes;
 import com.couchbase.client.core.deps.io.grpc.CallCredentials;
@@ -37,7 +36,7 @@ import com.couchbase.client.core.deps.io.grpc.Status;
 import com.couchbase.client.core.deps.io.grpc.netty.NettyChannelBuilder;
 import com.couchbase.client.core.deps.io.netty.channel.ChannelOption;
 import com.couchbase.client.core.diagnostics.EndpointDiagnostics;
-import com.couchbase.client.core.env.CoreEnvironment;
+import com.couchbase.client.core.protostellar.ProtostellarStatsCollector;
 import com.couchbase.client.core.util.HostAndPort;
 import com.couchbase.client.protostellar.analytics.v1.AnalyticsGrpc;
 import com.couchbase.client.protostellar.kv.v1.KvGrpc;
@@ -64,6 +63,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ProtostellarEndpoint {
   private final Logger logger = LoggerFactory.getLogger(ProtostellarEndpoint.class);
+
+  // todo snremove before GA (it's useful, but GRPC doesn't expose internals well, and this has to use hacky methods to get them). Plus of course it's a hack to have a public static setter.
+  public static ProtostellarStatsCollector collector;
 
   private final AtomicBoolean shutdown = new AtomicBoolean(false);
   // todo snbrett circuit breakers
@@ -118,11 +120,6 @@ public class ProtostellarEndpoint {
       }
     };
 
-    AtomicInteger concurrentlyOutgoingMessages = new AtomicInteger();
-    Set<Integer> concurrentlyOutgoingMessagesSeen = new ConcurrentSkipListSet<>();
-    AtomicInteger concurrentlyIncomingMessages = new AtomicInteger();
-    Set<Integer> concurrentlyIncomingMessagesSeen = new ConcurrentSkipListSet<>();
-
     // todo snremove probably remove pre-release, just trying to understand the internals
     ClientStreamTracer.Factory factory = new ClientStreamTracer.Factory() {
       public ClientStreamTracer newClientStreamTracer(ClientStreamTracer.StreamInfo info, Metadata headers) {
@@ -130,7 +127,9 @@ public class ProtostellarEndpoint {
           @Override
           public void outboundMessageSent(int seqNo, long optionalWireSize, long optionalUncompressedSize) {
             super.outboundMessageSent(seqNo, optionalWireSize, optionalUncompressedSize);
-            concurrentlyOutgoingMessages.decrementAndGet();
+            if (collector != null) {
+              collector.outboundMessageSent();
+            }
           }
 
           @Override
@@ -140,27 +139,27 @@ public class ProtostellarEndpoint {
             // logger.info("outbound {}", seqNo);
 
             // opsActuallyInFlight only reaches the max threads of the underlying executor.  This _might_ be the rpcs that are being concurrently
-            // sent on the wire, rather than RPCs that are in-flight, which would actually be a big improvement over OOTB classic which will
-            // only send one KV request at a time.
-            if (concurrentlyOutgoingMessagesSeen.add(concurrentlyOutgoingMessages.incrementAndGet())) {
-              System.out.println("New outgoing max " + concurrentlyOutgoingMessagesSeen.stream().max(Comparator.comparingInt(v -> v)).get());
+            // sent on the wire, rather than RPCs that are in-flight.
+            if (collector != null) {
+              collector.outboundMessage();
             }
           }
 
           @Override
           public void inboundMessage(int seqNo) {
             super.inboundMessage(seqNo);
-            // logger.info("inbound {}", seqNo);
-
-            if (concurrentlyIncomingMessagesSeen.add(concurrentlyIncomingMessages.incrementAndGet())) {
-              System.out.println("New incoming max " + concurrentlyIncomingMessagesSeen.stream().max(Comparator.comparingInt(v -> v)).get());
+            if (collector != null) {
+              collector.inboundMessage();
             }
           }
 
           @Override
           public void inboundMessageRead(int seqNo, long optionalWireSize, long optionalUncompressedSize) {
             super.inboundMessageRead(seqNo, optionalWireSize, optionalUncompressedSize);
-            concurrentlyIncomingMessages.decrementAndGet();
+            if (collector != null) {
+              collector.inboundMessageRead();
+            }
+
           }
 
           @Override
@@ -214,6 +213,7 @@ public class ProtostellarEndpoint {
       .disableRetry();
 
     // todo snremove experimental performance testing code
+    // Testing anyway indicates this load balancing makes zero difference - always end up with one channel and one subchannel per ManagedChannel regardless.
     String loadBalancingCount = System.getProperty("com.couchbase.protostellar.loadBalancing");
     String loadBalancingStrategy = System.getProperty("com.couchbase.protostellar.loadBalancingStrategy", "round_robin");
     String loadBalancingSingle = System.getProperty("com.couchbase.protostellar.loadBalancingSingle", "true");

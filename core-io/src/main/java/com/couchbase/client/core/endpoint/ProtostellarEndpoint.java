@@ -214,7 +214,7 @@ public class ProtostellarEndpoint {
       .disableRetry();
 
     // todo snremove experimental performance testing code
-    String loadBalancingCount = System.getProperty("com.couchbase.protostellar.loadBalancing", "4");
+    String loadBalancingCount = System.getProperty("com.couchbase.protostellar.loadBalancing");
     String loadBalancingStrategy = System.getProperty("com.couchbase.protostellar.loadBalancingStrategy", "round_robin");
     String loadBalancingSingle = System.getProperty("com.couchbase.protostellar.loadBalancingSingle", "true");
     logger.info("loadBalancing={} loadBalancingStrategy={} loadBalancingSingle={}", loadBalancingCount, loadBalancingStrategy, loadBalancingSingle);

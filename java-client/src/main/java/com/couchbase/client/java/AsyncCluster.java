@@ -185,8 +185,6 @@ public class AsyncCluster {
     );
   }
 
-  // todo sn verify that connecting with "protostellar://localhost" works fine
-
   /**
    * Connect to a Couchbase cluster with a list of seed nodes and custom options.
    * <p>

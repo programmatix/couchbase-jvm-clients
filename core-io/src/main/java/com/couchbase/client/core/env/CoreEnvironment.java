@@ -168,8 +168,7 @@ public class CoreEnvironment implements AutoCloseable {
       .orElse(new OwnedSupplier<>(
         Schedulers.newParallel("cb-comp", schedulerThreadCount, true))
       );
-    // todo sn will want to give user configurable control over the executor
-    // todo sn experiment with different executors and thread counts for a good performant out-of-the-box setup.
+    // todo snlater will want to give user configurable control over the executor
 
     String executorType = System.getProperty("com.couchbase.protostellar.executorType");
     String executorMaxThreadCountRaw = System.getProperty("com.couchbase.protostellar.executorMaxThreadCount");

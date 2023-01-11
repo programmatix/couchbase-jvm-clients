@@ -90,7 +90,6 @@ public class ProtostellarRequest<TGrpcRequest> {
     return span;
   }
 
-  // todo sn throw FeatureUnavailableException on most management APIs - or should we fallback?
   // todo sn have another go at finding number of underlying streams and HTTP2 connections
 
   public void logicallyComplete(@Nullable Throwable err) {

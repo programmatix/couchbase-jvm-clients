@@ -256,3 +256,5 @@ public class AccessorKeyValueProtostellar {
     return dispatchSpan;
   }
 }
+
+// todo sn legacy durability is not supported (getting removed from proto files) so throw

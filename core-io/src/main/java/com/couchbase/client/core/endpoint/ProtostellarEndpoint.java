@@ -123,8 +123,6 @@ public class ProtostellarEndpoint {
     AtomicInteger concurrentlyIncomingMessages = new AtomicInteger();
     Set<Integer> concurrentlyIncomingMessagesSeen = new ConcurrentSkipListSet<>();
 
-    // todo snbrett how to send idempotent flag over GRPC
-
     // todo snremove probably remove pre-release, just trying to understand the internals
     ClientStreamTracer.Factory factory = new ClientStreamTracer.Factory() {
       public ClientStreamTracer newClientStreamTracer(ClientStreamTracer.StreamInfo info, Metadata headers) {

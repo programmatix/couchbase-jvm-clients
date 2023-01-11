@@ -29,7 +29,6 @@ import java.util.Optional;
 // todo snbrett figure out how ErrorContext looks in Protostellar world
 @Stability.Volatile
 public class ProtostellarErrorContext extends ErrorContext {
-  // todo sn is this class meant to be immutable
   private Map<String, Object> fields;
   private final AbstractContext ctx;
 

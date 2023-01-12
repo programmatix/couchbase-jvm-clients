@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.convertTimeout;
 
@@ -74,6 +75,8 @@ public class ProtostellarRequest<TGrpcRequest> {
 
   private TGrpcRequest request;
   private long logicallyCompletedAt;
+  private long lastDispatchDuration;
+  private long totalDispatchDuration;
   private int retryAttempts;
   private Set<RetryReason> retryReasons;
 
@@ -222,36 +225,32 @@ public class ProtostellarRequest<TGrpcRequest> {
       input.put("retryReasons", retryReasons);
     }
     long logicalLatency = logicalRequestLatency();
-    // todo sn track timings
-//    if (dispatchLatency != 0 || logicalLatency != 0 || encodeLatency != 0 || serverLatency != 0) {
-//      HashMap<String, Long> timings = new HashMap<>();
-//      if (dispatchLatency != 0) {
-//        timings.put("dispatchMicros", TimeUnit.NANOSECONDS.toMicros(dispatchLatency));
-//      }
-//
-//      if (totalDispatchLatency.get() != 0) {
-//        timings.put("totalDispatchMicros", TimeUnit.NANOSECONDS.toMicros(totalDispatchLatency.get()));
-//      }
-//      if (serverLatency != 0) {
-//        timings.put("serverMicros", TimeUnit.NANOSECONDS.toMicros(serverLatency));
-//      }
-//      if (totalServerLatency.get() != 0) {
-//        timings.put("totalServerMicros", TimeUnit.NANOSECONDS.toMicros(totalServerLatency.get()));
-//      }
-//      if (logicalLatency != 0) {
-//        timings.put("totalMicros", TimeUnit.NANOSECONDS.toMicros(logicalLatency));
-//      }
-//      if (encodeLatency != 0) {
-//        timings.put("encodingMicros", TimeUnit.NANOSECONDS.toMicros(encodeLatency));
-//      }
-//      context.put("timings", timings);
-//    }
-//    return input;
+    if (lastDispatchDuration != 0 || logicalLatency != 0 || encodeLatency != 0) {
+      HashMap<String, Long> timings = new HashMap<>();
+      if (lastDispatchDuration != 0) {
+        timings.put("lastDispatchMicros", TimeUnit.NANOSECONDS.toMicros(lastDispatchDuration));
+      }
+      if (totalDispatchDuration != 0) {
+        timings.put("totalDispatchMicros", TimeUnit.NANOSECONDS.toMicros(totalDispatchDuration));
+      }
+      if (logicalLatency != 0) {
+        timings.put("totalMicros", TimeUnit.NANOSECONDS.toMicros(logicalLatency));
+      }
+      if (encodeLatency != 0) {
+        timings.put("encodingMicros", TimeUnit.NANOSECONDS.toMicros(encodeLatency));
+      }
+      input.put("timings", timings);
+    }
 
     return new ProtostellarErrorContext(input, null);
   }
 
   public int retryAttempts() {
     return retryAttempts;
+  }
+
+  public void dispatchDuration(long duration) {
+    lastDispatchDuration = duration;
+    totalDispatchDuration += duration;
   }
 }

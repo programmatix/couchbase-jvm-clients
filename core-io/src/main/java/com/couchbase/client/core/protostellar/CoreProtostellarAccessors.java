@@ -72,12 +72,14 @@ public class CoreProtostellarAccessors {
     while (true) {
       handleShutdownBlocking(core, request);
       ProtostellarEndpoint endpoint = core.protostellar().endpoint();
+      long start = System.nanoTime();
       RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
       try {
         // Make the Protostellar call.
         // todo sn check this is blocking just this user thread, not also an executor thread
         TGrpcResponse response = executeBlockingGrpcCall.apply(endpoint);
 
+        request.dispatchDuration(System.nanoTime() - start);
         if (dispatchSpan != null) {
           dispatchSpan.end();
         }
@@ -85,6 +87,7 @@ public class CoreProtostellarAccessors {
         request.logicallyComplete(null);
         return result;
       } catch (Throwable t) {
+        request.dispatchDuration(System.nanoTime() - start);
         ProtostellarRequestBehaviour behaviour = convertException.apply(t);
         handleDispatchSpan(behaviour, dispatchSpan);
         if (behaviour.retryDuration() != null) {
@@ -140,6 +143,7 @@ public class CoreProtostellarAccessors {
     }
     ProtostellarEndpoint endpoint = core.protostellar().endpoint();
     RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
+    long start = System.nanoTime();
 
     // Make the Protostellar call.
     ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.apply(endpoint);
@@ -147,6 +151,7 @@ public class CoreProtostellarAccessors {
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {
       @Override
       public void onSuccess(TGrpcResponse response) {
+        request.dispatchDuration(System.nanoTime() - start);
         if (dispatchSpan != null) {
           dispatchSpan.end();
         }
@@ -158,6 +163,7 @@ public class CoreProtostellarAccessors {
 
       @Override
       public void onFailure(Throwable t) {
+        request.dispatchDuration(System.nanoTime() - start);
         ProtostellarRequestBehaviour behaviour = convertException.apply(t);
         handleDispatchSpan(behaviour, dispatchSpan);
         if (behaviour.retryDuration() != null) {
@@ -220,6 +226,7 @@ public class CoreProtostellarAccessors {
 
     ProtostellarEndpoint endpoint = core.protostellar().endpoint();
     RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
+    long start = System.nanoTime();
 
     // Make the Protostellar call.
     ListenableFuture<TGrpcResponse> response = executeFutureGrpcCall.apply(endpoint);
@@ -227,6 +234,7 @@ public class CoreProtostellarAccessors {
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {
       @Override
       public void onSuccess(TGrpcResponse response) {
+        request.dispatchDuration(System.nanoTime() - start);
         if (dispatchSpan != null) {
           dispatchSpan.end();
         }
@@ -237,6 +245,7 @@ public class CoreProtostellarAccessors {
 
       @Override
       public void onFailure(Throwable t) {
+        request.dispatchDuration(System.nanoTime() - start);
         ProtostellarRequestBehaviour behaviour = convertException.apply(t);
         handleDispatchSpan(behaviour, dispatchSpan);
         if (behaviour.retryDuration() != null) {

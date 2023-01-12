@@ -25,13 +25,19 @@ import com.couchbase.client.core.error.AmbiguousTimeoutException;
 import com.couchbase.client.core.error.RequestCanceledException;
 import com.couchbase.client.core.error.UnambiguousTimeoutException;
 import com.couchbase.client.core.error.context.CancellationErrorContext;
+import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryReason;
 import com.couchbase.client.core.retry.RetryStrategy;
+import com.couchbase.client.core.service.ServiceType;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Think we need this as there's so much to hold onto outside of the basic GRPC request.
@@ -40,9 +46,12 @@ import java.time.Duration;
  */
 @Stability.Internal
 public class ProtostellarRequest<TGrpcRequest> {
+  public static final String REQUEST_KV_INSERT = "insert";
+  public static final String REQUEST_KV_REMOVE = "remove";
+  public static final String REQUEST_KV_GET = "get";
+  public static final String REQUEST_QUERY = "query";
+
   private final Core core;
-  private TGrpcRequest request;
-  private final ProtostellarRequestContext context;
   private final @Nullable RequestSpan span;
   private final long absoluteTimeout;
 
@@ -52,16 +61,33 @@ public class ProtostellarRequest<TGrpcRequest> {
   private long encodeLatency;
   private final RetryStrategy retryStrategy;
 
+  private final long createdAt = System.nanoTime();
+  private final ServiceType serviceType;
+  private final String requestName;
+  private final boolean idempotent;
+  private final Duration timeout;
+
+
+  private TGrpcRequest request;
+  private long logicallyCompletedAt;
+  private int retryAttempts;
+  private Set<RetryReason> retryReasons;
+
   public ProtostellarRequest(Core core,
+                             ServiceType serviceType,
+                             String requestName,
                              RequestSpan span,
-                             ProtostellarRequestContext context,
                              Duration timeout,
+                             boolean idempotent,
                              RetryStrategy retryStrategy) {
     this.core = core;
+    this.serviceType = serviceType;
+    this.requestName = requestName;
     this.span = span;
-    this.context = context;
     this.absoluteTimeout = System.nanoTime() + timeout.toNanos();
+    this.idempotent = idempotent;
     this.retryStrategy = retryStrategy;
+    this.timeout = timeout;
   }
 
   public ProtostellarRequest<TGrpcRequest> request(TGrpcRequest request) {
@@ -71,10 +97,6 @@ public class ProtostellarRequest<TGrpcRequest> {
 
   public TGrpcRequest request() {
     return request;
-  }
-
-  public ProtostellarRequestContext context() {
-    return context;
   }
 
   public long encodeLatency() {
@@ -93,7 +115,7 @@ public class ProtostellarRequest<TGrpcRequest> {
   public void logicallyComplete(@Nullable Throwable err) {
     if (span != null) {
       if (!CbTracing.isInternalSpan(span)) {
-        span.attribute(TracingIdentifiers.ATTR_RETRIES, context.retryAttempts());
+        span.attribute(TracingIdentifiers.ATTR_RETRIES, retryAttempts());
         if (err != null) {
           span.recordException(err);
           span.status(RequestSpan.StatusCode.ERROR);
@@ -103,21 +125,16 @@ public class ProtostellarRequest<TGrpcRequest> {
     }
 
     if (!(core.context().environment().meter() instanceof NoopMeter)) {
-      long latency = context.logicalRequestLatency();
+      long latency = logicalRequestLatency();
       if (latency > 0) {
-        Core.ResponseMetricIdentifier rmi = new Core.ResponseMetricIdentifier(context.serviceType().ident(), context.requestName());
+        Core.ResponseMetricIdentifier rmi = new Core.ResponseMetricIdentifier(serviceType.ident(), requestName);
         core.responseMetric(rmi).recordValue(latency);
       }
     }
   }
 
-  public void incrementRetryAttempts(Duration duration, RetryReason reason) {
-    context.incrementRetryAttempts(duration, reason);
-  }
-
-
   public Duration timeout() {
-    return context.timeout();
+    return timeout;
   }
 
   public long absoluteTimeout() {
@@ -149,6 +166,85 @@ public class ProtostellarRequest<TGrpcRequest> {
   }
 
   public boolean idempotent() {
-    return context.idempotent();
+    return idempotent;
+  }
+
+  public long logicalRequestLatency() {
+    if (logicallyCompletedAt == 0 || logicallyCompletedAt <= createdAt) {
+      return 0;
+    }
+    return logicallyCompletedAt - createdAt;
+  }
+  //
+  public void incrementRetryAttempts(Duration duration, RetryReason reason) {
+    retryAttempts += 1;
+    if (retryReasons == null) {
+      retryReasons = new HashSet<>();
+    }
+    retryReasons.add(reason);
+  }
+
+  // todo sn need to adjust timeout sent to GRPC down on each retry
+
+  public ProtostellarErrorContext context() {
+    Map<String, Object> input = new HashMap<>();
+
+    // todo sn is id important?
+    // context.put("requestId", request.id());
+    input.put("idempotent", idempotent);
+    input.put("requestName", requestName);
+    input.put("retried", retryAttempts);
+    // todo sn track completion
+    // context.put("completed", request.completed());
+    input.put("timeoutMs", timeout.toMillis());
+    // todo sn track cancellation
+//    if (request.cancelled()) {
+//      context.put("cancelled", true);
+//      context.put("reason", request.cancellationReason());
+//    }
+    // todo sn clientContext
+//    if (clientContext != null) {
+//      context.put("clientContext", clientContext);
+//    }
+    // todo sn is serviceContext important?
+//    Map<String, Object> serviceContext = request.serviceContext();
+//    if (serviceContext != null) {
+//      context.put("service", serviceContext);
+//    }
+    if (retryReasons != null) {
+      input.put("retryReasons", retryReasons);
+    }
+    long logicalLatency = logicalRequestLatency();
+    // todo sn track timings
+//    if (dispatchLatency != 0 || logicalLatency != 0 || encodeLatency != 0 || serverLatency != 0) {
+//      HashMap<String, Long> timings = new HashMap<>();
+//      if (dispatchLatency != 0) {
+//        timings.put("dispatchMicros", TimeUnit.NANOSECONDS.toMicros(dispatchLatency));
+//      }
+//
+//      if (totalDispatchLatency.get() != 0) {
+//        timings.put("totalDispatchMicros", TimeUnit.NANOSECONDS.toMicros(totalDispatchLatency.get()));
+//      }
+//      if (serverLatency != 0) {
+//        timings.put("serverMicros", TimeUnit.NANOSECONDS.toMicros(serverLatency));
+//      }
+//      if (totalServerLatency.get() != 0) {
+//        timings.put("totalServerMicros", TimeUnit.NANOSECONDS.toMicros(totalServerLatency.get()));
+//      }
+//      if (logicalLatency != 0) {
+//        timings.put("totalMicros", TimeUnit.NANOSECONDS.toMicros(logicalLatency));
+//      }
+//      if (encodeLatency != 0) {
+//        timings.put("encodingMicros", TimeUnit.NANOSECONDS.toMicros(encodeLatency));
+//      }
+//      context.put("timings", timings);
+//    }
+//    return input;
+
+    return new ProtostellarErrorContext(input, null);
+  }
+
+  public int retryAttempts() {
+    return retryAttempts;
   }
 }

@@ -57,7 +57,7 @@ public class CoreProtostellarErrorHandlingUtil {
       return request.createTimeout();
     }
 
-    ProtostellarErrorContext context = new ProtostellarErrorContext(request.context());
+    ProtostellarErrorContext context = request.context();
 
     if (t instanceof StatusRuntimeException) {
       // https://github.com/googleapis/googleapis/blob/master/google/rpc/status.proto

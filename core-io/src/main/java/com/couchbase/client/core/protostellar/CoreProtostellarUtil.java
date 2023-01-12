@@ -17,7 +17,6 @@ package com.couchbase.client.core.protostellar;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.api.kv.CoreDurability;
-import com.couchbase.client.core.cnc.AbstractContext;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
@@ -25,9 +24,6 @@ import com.couchbase.client.core.deps.com.google.protobuf.Timestamp;
 import com.couchbase.client.core.deps.io.grpc.Deadline;
 import com.couchbase.client.core.error.FeatureNotAvailableException;
 import com.couchbase.client.core.error.RequestCanceledException;
-import com.couchbase.client.core.error.context.ErrorContext;
-import com.couchbase.client.core.error.context.ProtostellarErrorContext;
-import com.couchbase.client.core.msg.Request;
 import com.couchbase.client.core.msg.kv.CodecFlags;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.protostellar.kv.v1.DocumentContentType;
@@ -40,7 +36,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 // todo sn split this grab-bag util class up
 public class CoreProtostellarUtil {
@@ -129,23 +124,23 @@ public class CoreProtostellarUtil {
     return DocumentContentType.UNKNOWN;
   }
 
-  public static void handleShutdownBlocking(Core core, AbstractContext context) {
+  public static void handleShutdownBlocking(Core core, ProtostellarRequest<?> request) {
     if (core.protostellar().endpoint().isShutdown()) {
-      throw RequestCanceledException.shuttingDown(new ProtostellarErrorContext(context));
+      throw RequestCanceledException.shuttingDown(request.context());
     }
   }
 
-  public static <T> boolean handleShutdownAsync(Core core, CompletableFuture<T> ret, AbstractContext context) {
+  public static <T> boolean handleShutdownAsync(Core core, CompletableFuture<T> ret, ProtostellarRequest<?> request) {
     if (core.protostellar().endpoint().isShutdown()) {
-      ret.completeExceptionally(RequestCanceledException.shuttingDown(new ProtostellarErrorContext(context)));
+      ret.completeExceptionally(RequestCanceledException.shuttingDown(request.context()));
       return true;
     }
     return false;
   }
 
-  public static <TSdkResult> @Nullable boolean handleShutdownReactive(Sinks.One<TSdkResult> ret, Core core, AbstractContext context) {
+  public static <TSdkResult> @Nullable boolean handleShutdownReactive(Sinks.One<TSdkResult> ret, Core core, ProtostellarRequest<?> request) {
     if (core.protostellar().endpoint().isShutdown()) {
-      ret.tryEmitError(RequestCanceledException.shuttingDown(new ProtostellarErrorContext(context))).orThrow();
+      ret.tryEmitError(RequestCanceledException.shuttingDown(request.context())).orThrow();
       return true;
     }
     return false;

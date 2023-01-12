@@ -18,22 +18,21 @@ package com.couchbase.client.core.error.context;
 
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.cnc.AbstractContext;
-import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.msg.ResponseStatus;
-import com.couchbase.client.core.protostellar.ProtostellarRequestContext;
+import reactor.util.annotation.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 // todo snbrett figure out how ErrorContext looks in Protostellar world - we re @Stability.Uncommitted
 @Stability.Volatile
 public class ProtostellarErrorContext extends ErrorContext {
   private Map<String, Object> fields;
-  private final AbstractContext ctx;
+  private @Nullable final AbstractContext ctx;
 
-  public ProtostellarErrorContext(AbstractContext ctx) {
+  public ProtostellarErrorContext(Map<String, Object> input, @Nullable AbstractContext ctx) {
     super(ResponseStatus.UNKNOWN);
+    this.fields = input;
     this.ctx = ctx;
   }
 
@@ -49,6 +48,8 @@ public class ProtostellarErrorContext extends ErrorContext {
   public void injectExportableParams(final Map<String, Object> input) {
     super.injectExportableParams(input);
     input.putAll(fields);
-    ctx.injectExportableParams(input);
+    if (ctx != null) {
+      ctx.injectExportableParams(input);
+    }
   }
 }

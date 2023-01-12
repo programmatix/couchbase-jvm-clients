@@ -30,7 +30,7 @@ public class RequestCanceledException extends CouchbaseException {
     this.reason = reason;
   }
 
-  public static <TGrpcRequest> RequestCanceledException shuttingDown(AbstractContext context) {
+  public static RequestCanceledException shuttingDown(AbstractContext context) {
     CancellationErrorContext ctx = new CancellationErrorContext(context);
     throw new RequestCanceledException("Request cancelled as in the process of shutting down", CancellationReason.SHUTDOWN, ctx);
   }

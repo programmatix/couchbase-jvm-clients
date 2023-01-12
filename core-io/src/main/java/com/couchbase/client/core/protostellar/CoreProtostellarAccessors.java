@@ -70,7 +70,7 @@ public class CoreProtostellarAccessors {
                       Function<TGrpcResponse, TSdkResult>   convertResponse,
                       Function<Throwable, ProtostellarRequestBehaviour> convertException) {
     while (true) {
-      handleShutdownBlocking(core, request.context());
+      handleShutdownBlocking(core, request);
       ProtostellarEndpoint endpoint = core.protostellar().endpoint();
       RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
       try {
@@ -148,7 +148,7 @@ public class CoreProtostellarAccessors {
                     Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                     Function<TGrpcResponse, TSdkResult>       convertResponse,
                     Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
-    if (handleShutdownAsync(core, ret, request.context())) {
+    if (handleShutdownAsync(core, ret, request)) {
       return;
     }
     ProtostellarEndpoint endpoint = core.protostellar().endpoint();
@@ -227,7 +227,7 @@ public class CoreProtostellarAccessors {
                         Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
                         Function<TGrpcResponse, TSdkResult>       convertResponse,
                         Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
-    if (handleShutdownReactive(ret, core, request.context())) {
+    if (handleShutdownReactive(ret, core, request)) {
       return;
     }
 

@@ -21,10 +21,8 @@ import com.couchbase.client.core.api.kv.CoreDurability;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.io.grpc.stub.StreamObserver;
-import com.couchbase.client.core.error.context.ProtostellarErrorContext;
 import com.couchbase.client.core.error.context.ReducedAnalyticsErrorContext;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
-import com.couchbase.client.core.protostellar.ProtostellarRequestContext;
 import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.env.ClusterEnvironment;
@@ -46,7 +44,7 @@ import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.conver
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.createSpan;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownAsync;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownBlocking;
-import static com.couchbase.client.core.protostellar.ProtostellarRequestContext.REQUEST_QUERY;
+import static com.couchbase.client.core.protostellar.ProtostellarRequest.REQUEST_QUERY;
 import static com.couchbase.client.core.util.Validators.notNullOrEmpty;
 
 
@@ -56,7 +54,7 @@ public class QueryAccessorProtostellar {
                                      QueryOptions.Built opts,
                                      ProtostellarRequest<QueryRequest> request,
                                      JsonSerializer serializer) {
-    handleShutdownBlocking(core, request.context());
+    handleShutdownBlocking(core, request);
     List<QueryResponse> responses = new ArrayList<>();
     CountDownLatch latch = new CountDownLatch(1);
     AtomicReference<RuntimeException> err = new AtomicReference<>();
@@ -101,7 +99,7 @@ public class QueryAccessorProtostellar {
                                                      ProtostellarRequest<QueryRequest> request,
                                                      JsonSerializer serializer) {
     CompletableFuture<QueryResult> ret = new CompletableFuture<>();
-    if (handleShutdownAsync(core, ret, request.context())) {
+    if (handleShutdownAsync(core, ret, request)) {
       return ret;
     }
     List<QueryResponse> responses = new ArrayList<>();
@@ -189,9 +187,11 @@ public class QueryAccessorProtostellar {
     RequestSpan span = createSpan(core, TracingIdentifiers.SPAN_REQUEST_QUERY, CoreDurability.NONE, opts.parentSpan().orElse(null));
     span.attribute(TracingIdentifiers.ATTR_STATEMENT, statement);
     ProtostellarRequest<com.couchbase.client.protostellar.query.v1.QueryRequest> out = new ProtostellarRequest<>(core,
+      ServiceType.QUERY,
+      REQUEST_QUERY,
       span,
-      new ProtostellarRequestContext(core, ServiceType.QUERY, REQUEST_QUERY, timeout, opts.readonly()),
       timeout,
+      opts.readonly(),
       opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
 
     com.couchbase.client.protostellar.query.v1.QueryRequest.Builder request = com.couchbase.client.protostellar.query.v1.QueryRequest.newBuilder()

@@ -30,7 +30,6 @@ import com.couchbase.client.core.protostellar.ProtostellarRequest;
 import com.couchbase.client.core.protostellar.ProtostellarBaseRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -53,7 +52,7 @@ public class RetryOrchestratorProtostellar {
     }
 
     if (reason.alwaysRetry()) {
-      return retryWithDuration(ctx, request, controlledBackoff(request.context().retryAttempts()), reason);
+      return retryWithDuration(ctx, request, controlledBackoff(request.retryAttempts()), reason);
     }
 
     try {
@@ -99,7 +98,7 @@ public class RetryOrchestratorProtostellar {
     ctx.environment().eventBus().publish(
       new RequestRetryScheduledEvent(cappedDuration, request.context(), request.getClass(), reason)
     );
-    request.context().incrementRetryAttempts(cappedDuration, reason);
+    request.incrementRetryAttempts(cappedDuration, reason);
 
     return ProtostellarRequestBehaviour.retry(cappedDuration);
   }

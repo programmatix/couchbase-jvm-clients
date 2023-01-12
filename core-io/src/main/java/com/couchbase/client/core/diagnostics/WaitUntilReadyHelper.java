@@ -59,6 +59,11 @@ public class WaitUntilReadyHelper {
   public static CompletableFuture<Void> waitUntilReady(final Core core, final Set<ServiceType> serviceTypes,
                                                        final Duration timeout, final ClusterState desiredState,
                                                        final Optional<String> bucketName) {
+    if (core.isProtostellar()) {
+      // todo sn waitUntilReady
+      return CompletableFuture.completedFuture(null);
+    }
+
     final WaitUntilReadyState state = new WaitUntilReadyState();
 
     state.transition(WaitUntilReadyStage.CONFIG_LOAD);

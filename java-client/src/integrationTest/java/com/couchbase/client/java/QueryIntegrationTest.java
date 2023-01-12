@@ -71,7 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
   clusterVersionEquals = DISABLE_QUERY_TESTS_FOR_CLUSTER,
   clusterVersionIsBelow = REQUIRE_MB_50132,
   clusterTypes = ClusterType.CAVES,
-  isProtostellarWillWorkLater = true
+  isProtostellar = true
 )
 class QueryIntegrationTest extends JavaIntegrationTest {
 
@@ -92,11 +92,10 @@ class QueryIntegrationTest extends JavaIntegrationTest {
         Bucket bucket = cluster.bucket(config().bucketname());
         collection = bucket.defaultCollection();
 
-        // todo sn
-//        bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
-//        waitForService(bucket, ServiceType.QUERY);
-//        waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
-//
+        bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+        waitForService(bucket, ServiceType.QUERY);
+        waitForQueryIndexerToHaveKeyspace(cluster, config().bucketname());
+
         bucketName = "`" + config().bucketname() + "`";
         createPrimaryIndex(cluster, config().bucketname());
     }
@@ -147,6 +146,7 @@ class QueryIntegrationTest extends JavaIntegrationTest {
         assertTrue(result.metaData().metrics().isPresent());
     }
 
+    @IgnoreWhen(isProtostellarWillWorkLater = true) // STG bug, ignores readonly
     @Test
     void readOnlyViolation() {
         QueryOptions options = queryOptions().readonly(true);
@@ -233,6 +233,7 @@ class QueryIntegrationTest extends JavaIntegrationTest {
         assertTrue(profile.size() > 0);
     }
 
+    @IgnoreWhen(isProtostellarWillWorkLater = true) // Needs correct error from STG
     @Test
     void failOnSyntaxError() {
         assertThrows(ParsingFailureException.class, () -> cluster.query("invalid export"));
@@ -340,6 +341,7 @@ class QueryIntegrationTest extends JavaIntegrationTest {
         assertEquals(1, rows.size());
     }
 
+    @IgnoreWhen(isProtostellarWillWorkLater = true) // STG bug, returns error
     @Test
     void consistentWith() {
         String id = UUID.randomUUID().toString();

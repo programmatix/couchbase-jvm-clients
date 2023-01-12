@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 @IgnoreWhen(clusterTypes = {ClusterType.MOCKED},
   missesCapabilities = {Capabilities.CREATE_AS_DELETED},
-  isProtostellarOnlyBecauseOfWaitUntilReady = true
+  isProtostellarWillWorkLater = true
 )
 public class TransactionsIntegrationTest extends JavaIntegrationTest {
 

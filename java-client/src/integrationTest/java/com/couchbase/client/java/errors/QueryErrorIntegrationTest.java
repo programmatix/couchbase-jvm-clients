@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @IgnoreWhen( missesCapabilities = { Capabilities.QUERY },
+  // Needs fixed STG error handling
   isProtostellarOnlyBecauseOfWaitUntilReady = true
 )
 class QueryErrorIntegrationTest extends JavaIntegrationTest {

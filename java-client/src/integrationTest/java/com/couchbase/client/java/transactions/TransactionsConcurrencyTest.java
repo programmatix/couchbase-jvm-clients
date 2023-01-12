@@ -45,8 +45,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  * Testing transactions concurrency, looking for scheduler exhaustion issues and similar.
  */
 @IgnoreWhen(clusterTypes = {ClusterType.MOCKED},
-  missesCapabilities = {Capabilities.CREATE_AS_DELETED},
-  isProtostellarOnlyBecauseOfWaitUntilReady = true)
+  missesCapabilities = {Capabilities.CREATE_AS_DELETED}
+)
 public class TransactionsConcurrencyTest extends JavaIntegrationTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionsConcurrencyTest.class);
 

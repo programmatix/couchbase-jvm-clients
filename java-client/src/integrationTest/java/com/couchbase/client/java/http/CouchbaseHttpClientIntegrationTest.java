@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @IgnoreWhen(clusterTypes = {ClusterType.MOCKED, ClusterType.CAVES},
-  isProtostellarOnlyBecauseOfWaitUntilReady = true)
+  isProtostellar = true)
 class CouchbaseHttpClientIntegrationTest extends JavaIntegrationTest {
 
   private static Cluster cluster;

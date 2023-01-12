@@ -668,10 +668,6 @@ public class AsyncCluster {
    * @return a completable future that completes either once ready or timeout.
    */
   public CompletableFuture<Void> waitUntilReady(final Duration timeout, final WaitUntilReadyOptions options) {
-    if (core.isProtostellar()) {
-      throw CoreProtostellarUtil.unsupportedCurrentlyInProtostellar();
-    }
-
     notNull(options, "WaitUntilReadyOptions");
     final WaitUntilReadyOptions.Built opts = options.build();
     return WaitUntilReadyHelper.waitUntilReady(core, opts.serviceTypes(), timeout, opts.desiredState(), Optional.empty());

@@ -57,7 +57,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests many aspects of the exception raising for the KeyValue service.
  */
-@IgnoreWhen(isProtostellarOnlyBecauseOfWaitUntilReady = true)
 class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
 
   static private Cluster cluster;
@@ -85,6 +84,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertNotNull(thrown.context());
 
     assertThrows(InvalidArgumentException.class, () -> collection.get("foo", null));
+    // todo sn fix
     assertThrows(InvalidArgumentException.class, () -> collection.get(""));
     assertThrows(InvalidArgumentException.class, () -> collection.get(null));
     assertThrows(InvalidArgumentException.class, () -> collection.get("", getOptions().withExpiry(true)));
@@ -93,6 +93,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertThrows(InvalidArgumentException.class, () -> collection.get("foo", getOptions().project(tooManyFields)));
   }
 
+  @IgnoreWhen(isProtostellarWillWorkLater = true)
   @Test
   void verifyGetAndLockExceptions() {
     DocumentNotFoundException thrown = assertThrows(
@@ -112,7 +113,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
    * be post 5.0.
    */
   @Test
-  @IgnoreWhen(clusterTypes = ClusterType.MOCKED)
+  @IgnoreWhen(clusterTypes = ClusterType.MOCKED, isProtostellarWillWorkLater = true)
   void verifyGetAndLockDoubleLock() {
     String validId = UUID.randomUUID().toString();
     collection.upsert(validId, JsonObject.create());
@@ -124,6 +125,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertTrue(exception.context().requestContext().retryReasons().contains(RetryReason.KV_LOCKED));
   }
 
+  @IgnoreWhen(isProtostellarWillWorkLater = true)
   @Test
   void verifyGetAndTouchExceptions() {
     DocumentNotFoundException thrown = assertThrows(
@@ -143,7 +145,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
    * be post 5.0.
    */
   @Test
-  @IgnoreWhen(clusterTypes = ClusterType.MOCKED)
+  @IgnoreWhen(clusterTypes = ClusterType.MOCKED, isProtostellarWillWorkLater = true)
   void verifyTouchingLocked() {
     String validId = UUID.randomUUID().toString();
     collection.upsert(validId, JsonObject.create());
@@ -155,6 +157,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertTrue(exception.context().requestContext().retryReasons().contains(RetryReason.KV_LOCKED));
   }
 
+  @IgnoreWhen(isProtostellarWillWorkLater = true)
   @Test
   void verifyExistsExceptions() {
     assertThrows(InvalidArgumentException.class, () -> collection.exists("foo", null));
@@ -164,11 +167,13 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
   @Test
   void verifyRemoveExceptions() {
     assertThrows(InvalidArgumentException.class, () -> collection.remove("foo", null));
+    // todo sn fix
     assertThrows(InvalidArgumentException.class, () -> collection.remove(null));
   }
 
   @Test
   void verifyInsertExceptions() {
+    // todo sn fix
     assertThrows(InvalidArgumentException.class, () -> collection.insert("foo", null));
     assertThrows(InvalidArgumentException.class, () -> collection.insert(null, "bar"));
     assertThrows(InvalidArgumentException.class, () -> collection.insert("foo", "bar", null));
@@ -183,6 +188,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertNotNull(thrown.context());
   }
 
+  @IgnoreWhen(isProtostellarWillWorkLater = true)
   @Test
   void verifyUpsertExceptions() {
     assertThrows(InvalidArgumentException.class, () -> collection.upsert("foo", null));
@@ -190,6 +196,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertThrows(InvalidArgumentException.class, () -> collection.upsert("foo", "bar", null));
   }
 
+  @IgnoreWhen(isProtostellarWillWorkLater = true)
   @Test
   void verifyReplaceExceptions() {
     DocumentNotFoundException thrown = assertThrows(
@@ -242,7 +249,7 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
    * Ignored for the mock because it still returns TMPFAIL (like the old servers)
    */
   @Test
-  @IgnoreWhen(clusterTypes = ClusterType.MOCKED)
+  @IgnoreWhen(clusterTypes = ClusterType.MOCKED, isProtostellarWillWorkLater = true)
   void verifyUnlockCasMismatch() {
     String id = UUID.randomUUID().toString();
     collection.upsert(id, "foo");

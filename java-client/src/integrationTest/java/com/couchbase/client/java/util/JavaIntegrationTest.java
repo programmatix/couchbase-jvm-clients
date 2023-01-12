@@ -212,6 +212,11 @@ public class JavaIntegrationTest extends ClusterAwareIntegrationTest {
   protected static void waitForService(final Bucket bucket, final ServiceType serviceType) {
     bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
 
+    if (bucket.core().isProtostellar()) {
+      // todo sn ping
+      return;
+    }
+
     Util.waitUntilCondition(() -> {
       PingResult pingResult = bucket.ping(PingOptions.pingOptions().serviceTypes(Collections.singleton(serviceType)));
 

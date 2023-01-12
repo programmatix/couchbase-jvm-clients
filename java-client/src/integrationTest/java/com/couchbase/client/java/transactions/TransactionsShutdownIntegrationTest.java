@@ -28,8 +28,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 @IgnoreWhen(clusterTypes = {ClusterType.MOCKED},
-  missesCapabilities = {Capabilities.CREATE_AS_DELETED},
-  isProtostellarOnlyBecauseOfWaitUntilReady = true
+  missesCapabilities = {Capabilities.CREATE_AS_DELETED}
 )
 public class TransactionsShutdownIntegrationTest extends JavaIntegrationTest {
     /**

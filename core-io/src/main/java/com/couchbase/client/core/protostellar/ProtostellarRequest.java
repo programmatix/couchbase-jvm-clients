@@ -21,6 +21,7 @@ import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.cnc.metrics.NoopMeter;
+import com.couchbase.client.core.deps.io.grpc.Deadline;
 import com.couchbase.client.core.error.AmbiguousTimeoutException;
 import com.couchbase.client.core.error.RequestCanceledException;
 import com.couchbase.client.core.error.UnambiguousTimeoutException;
@@ -38,6 +39,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.convertTimeout;
 
 /**
  * Think we need this as there's so much to hold onto outside of the basic GRPC request.
@@ -66,6 +69,7 @@ public class ProtostellarRequest<TGrpcRequest> {
   private final String requestName;
   private final boolean idempotent;
   private final Duration timeout;
+  private final Deadline deadline;
 
 
   private TGrpcRequest request;
@@ -88,6 +92,7 @@ public class ProtostellarRequest<TGrpcRequest> {
     this.idempotent = idempotent;
     this.retryStrategy = retryStrategy;
     this.timeout = timeout;
+    this.deadline = convertTimeout(timeout);
   }
 
   public ProtostellarRequest<TGrpcRequest> request(TGrpcRequest request) {
@@ -137,6 +142,10 @@ public class ProtostellarRequest<TGrpcRequest> {
     return timeout;
   }
 
+  public Deadline deadline() {
+    return deadline;
+  }
+
   public long absoluteTimeout() {
     return absoluteTimeout;
   }
@@ -183,8 +192,6 @@ public class ProtostellarRequest<TGrpcRequest> {
     }
     retryReasons.add(reason);
   }
-
-  // todo sn need to adjust timeout sent to GRPC down on each retry
 
   public ProtostellarErrorContext context() {
     Map<String, Object> input = new HashMap<>();

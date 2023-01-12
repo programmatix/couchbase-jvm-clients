@@ -78,7 +78,7 @@ public class QueryAccessorProtostellar {
     };
 
     core.protostellar().endpoint().queryStub()
-      .withDeadline(convertTimeout(request.timeout()))
+      .withDeadline(request.deadline())
       .query(request.request(), response);
 
     try {
@@ -122,7 +122,7 @@ public class QueryAccessorProtostellar {
     };
 
     core.protostellar().endpoint().queryStub()
-      .withDeadline(convertTimeout(request.timeout()))
+      .withDeadline(request.deadline())
       .query(request.request(), response);
 
     return ret;
@@ -157,7 +157,7 @@ public class QueryAccessorProtostellar {
     };
 
     core.protostellar().endpoint().queryStub()
-      .withDeadline(convertTimeout(request.timeout()))
+      .withDeadline(request.deadline())
       .query(request.request(), response);
 
     return Mono.just(new ReactiveQueryResultProtostellar(responses.asFlux(), serializer));

@@ -47,6 +47,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -154,6 +156,25 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
   @Test
   void emptyIfGetNotFound() {
     assertThrows(DocumentNotFoundException.class, () -> collection.get(UUID.randomUUID().toString()));
+  }
+
+  @Test
+  void errorContextIsPopulated() {
+    try {
+      collection.get(UUID.randomUUID().toString());
+    }
+    catch (DocumentNotFoundException err) {
+      Map<String, Object> input = new HashMap<>();
+      err.context().injectExportableParams(input);
+      assertEquals(true, input.get("idempotent"));
+      assertEquals("get", input.get("requestName"));
+      assertEquals(0, input.get("retried"));
+      assertEquals(2500L, input.get("timeoutMs"));
+      assertFalse(input.containsKey("cancelled"));
+      assertFalse(input.containsKey("reason"));
+      assertFalse(input.containsKey("retryReasons"));
+      assertTrue(input.containsKey("timings"));
+    }
   }
 
   @IgnoreWhen(isProtostellarWillWorkLater = true)

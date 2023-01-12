@@ -79,6 +79,7 @@ public class ProtostellarRequest<TGrpcRequest> {
   private long totalDispatchDuration;
   private int retryAttempts;
   private Set<RetryReason> retryReasons;
+  private CancellationReason cancellationReason;
 
   public ProtostellarRequest(Core core,
                              ServiceType serviceType,
@@ -162,6 +163,8 @@ public class ProtostellarRequest<TGrpcRequest> {
   }
 
   public ProtostellarRequestBehaviour cancel(CancellationReason reason) {
+    this.cancellationReason = reason;
+
     String msg = this.getClass().getSimpleName() + ", Reason: " + reason;
     CancellationErrorContext ctx = new CancellationErrorContext(context());
     RuntimeException exception = new RequestCanceledException(msg, reason, ctx);
@@ -169,11 +172,14 @@ public class ProtostellarRequest<TGrpcRequest> {
     return ProtostellarRequestBehaviour.fail(exception);
   }
 
-  public ProtostellarRequestBehaviour createTimeout() {
+  public ProtostellarRequestBehaviour cancelDueToTimeout() {
     CancellationReason reason = CancellationReason.TIMEOUT;
+    this.cancellationReason = reason;
+
     String msg = this.getClass().getSimpleName() + ", Reason: " + reason;
     CancellationErrorContext ctx = new CancellationErrorContext(context());
     RuntimeException exception = idempotent() ? new UnambiguousTimeoutException(msg, ctx) : new AmbiguousTimeoutException(msg, ctx);
+
     return ProtostellarRequestBehaviour.fail(exception);
   }
 
@@ -207,11 +213,10 @@ public class ProtostellarRequest<TGrpcRequest> {
     // todo sn track completion
     // context.put("completed", request.completed());
     input.put("timeoutMs", timeout.toMillis());
-    // todo sn track cancellation
-//    if (request.cancelled()) {
-//      context.put("cancelled", true);
-//      context.put("reason", request.cancellationReason());
-//    }
+    if (cancellationReason != null) {
+      input.put("cancelled", true);
+      input.put("reason", cancellationReason);
+    }
     // todo sn clientContext
 //    if (clientContext != null) {
 //      context.put("clientContext", clientContext);

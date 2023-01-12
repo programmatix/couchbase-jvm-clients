@@ -61,7 +61,7 @@ public class CoreProtostellarErrorHandlingUtil {
     }
 
     if (request.timeoutElapsed()) {
-      return request.createTimeout();
+      return request.cancelDueToTimeout();
     }
 
     ProtostellarErrorContext context = request.context();

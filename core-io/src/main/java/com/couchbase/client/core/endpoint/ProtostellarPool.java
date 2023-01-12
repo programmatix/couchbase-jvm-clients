@@ -18,6 +18,7 @@ package com.couchbase.client.core.endpoint;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.CoreContext;
+import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.env.CoreEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * https://github.com/grpc/grpc/issues/21386 indicates limit is quite low, maybe 100 concurrent rpcs
  * inspiration: https://github.com/googleapis/gax-java/blob/main/gax-grpc/src/main/java/com/google/api/gax/grpc/ChannelPool.java
  */
+@Stability.Internal
 public class ProtostellarPool {
   private final Logger logger = LoggerFactory.getLogger(ProtostellarPool.class);
 
@@ -59,5 +61,9 @@ public class ProtostellarPool {
     int index = (int) (lastUsed.getAndIncrement() % endpoints.size());
     // logger.info("Using endpoint {}", index);
     return endpoints.get(index);
+  }
+
+  public List<ProtostellarEndpoint> endpoints() {
+    return endpoints;
   }
 }

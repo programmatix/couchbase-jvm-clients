@@ -94,9 +94,8 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
     Bucket bucket = cluster.bucket(config().bucketname());
     collection = bucket.defaultCollection();
 
-    // todo snbrett - what does it meant for this in SN?
-//     bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
-    // cluster.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+     bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
+     cluster.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
   }
 
   @AfterAll

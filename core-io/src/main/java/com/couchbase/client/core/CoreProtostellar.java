@@ -74,4 +74,8 @@ public class CoreProtostellar {
   public ProtostellarEndpoint endpoint() {
     return pool.endpoint();
   }
+
+  public ProtostellarPool pool() {
+    return pool;
+  }
 }

@@ -17,6 +17,7 @@
 package com.couchbase.client.core.endpoint;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.cnc.events.endpoint.EndpointStateChangedEvent;
 import com.couchbase.client.core.deps.io.grpc.Attributes;
 import com.couchbase.client.core.deps.io.grpc.CallCredentials;
@@ -36,6 +37,8 @@ import com.couchbase.client.core.deps.io.grpc.Status;
 import com.couchbase.client.core.deps.io.grpc.netty.NettyChannelBuilder;
 import com.couchbase.client.core.deps.io.netty.channel.ChannelOption;
 import com.couchbase.client.core.diagnostics.EndpointDiagnostics;
+import com.couchbase.client.core.error.UnambiguousTimeoutException;
+import com.couchbase.client.core.error.context.CancellationErrorContext;
 import com.couchbase.client.core.protostellar.ProtostellarStatsCollector;
 import com.couchbase.client.core.util.HostAndPort;
 import com.couchbase.client.protostellar.analytics.v1.AnalyticsGrpc;
@@ -52,6 +55,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -340,5 +344,43 @@ public class ProtostellarEndpoint {
 
   public int port() {
     return port;
+  }
+
+  /**
+   * Waits until the ManagedChannel is in READY state.  Will also initialise trying to make that connection if it's not already.
+   *
+   * @return a CompletableFuture as that's what WaitUntilReadyHelper uses.
+   */
+  @Stability.Internal
+  public CompletableFuture<Void> waitUntilReady(long absoluteTimeoutNanos, boolean waitingForReady) {
+    CompletableFuture<Void> onDone = new CompletableFuture<>();
+    ConnectivityState current = managedChannel.getState(true);
+    logger.debug("WaitUntilReady: Endpoint {}:{} starts in state {}", hostname, port, current);
+    notify(current, onDone, absoluteTimeoutNanos, waitingForReady);
+    return onDone;
+  }
+
+  private void notify(ConnectivityState current, CompletableFuture<Void> onDone, long absoluteTimeoutNanos, boolean waitingForReady) {
+    if (inDesiredState(current, waitingForReady)) {
+      onDone.complete(null);
+    }
+    else {
+      this.managedChannel.notifyWhenStateChanged(current, () -> {
+        ConnectivityState now = this.managedChannel.getState(true);
+        logger.debug("WaitUntilReady: Endpoint {}:{} is now in state {}", hostname, port, now);
+
+        if (inDesiredState(current, waitingForReady)) {
+          onDone.complete(null);
+        } else if (System.nanoTime() >= absoluteTimeoutNanos) {
+          onDone.completeExceptionally(new UnambiguousTimeoutException("Timed out while waiting for Protostellar endpoint " + hostname + ":" + port, new CancellationErrorContext(null)));
+        } else {
+          notify(now, onDone, absoluteTimeoutNanos, waitingForReady);
+        }
+      });
+    }
+  }
+
+  private boolean inDesiredState(ConnectivityState current, boolean waitingForReady) {
+    return (waitingForReady && current == ConnectivityState.READY) || (!waitingForReady && current != ConnectivityState.READY);
   }
 }

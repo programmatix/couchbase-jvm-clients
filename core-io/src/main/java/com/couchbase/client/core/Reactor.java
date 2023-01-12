@@ -91,6 +91,7 @@ public class Reactor {
 
     mono = mono.doFinally(st -> {
       // todo sn investigate what this is used for and if we need to emulate it in PS world
+      // request.cancel(CancellationReason.STOPPED_LISTENING) on the ListenableFuture
       if (st == SignalType.CANCEL) {
         cancellationTask.run();
       }

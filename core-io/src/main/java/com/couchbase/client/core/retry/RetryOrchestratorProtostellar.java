@@ -79,6 +79,7 @@ public class RetryOrchestratorProtostellar {
         // todo sn do we need to emulate this? "unmonitored request's severity is downgraded to debug to not spam the info-level logs"
         ctx.environment().eventBus().publish(new RequestNotRetriedEvent(Event.Severity.DEBUG, request.getClass(), request.context(), reason, null));
         // todo sn retryAction.exceptionTranslator() is part of RetryStrategy interface, what does it do, do we need to pass it along?
+        // user request - wanted to fail fast if doc locked - wanted DocLocked not Timeout
         return request.cancel(CancellationReason.noMoreRetries(reason));
       }
     }

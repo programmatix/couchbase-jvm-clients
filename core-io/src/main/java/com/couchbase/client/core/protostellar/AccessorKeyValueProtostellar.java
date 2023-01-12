@@ -43,6 +43,7 @@ import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handle
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownBlocking;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownReactive;
 
+// todo sn rename not KeyValue specific
 public class AccessorKeyValueProtostellar {
 
   /**
@@ -79,7 +80,6 @@ public class AccessorKeyValueProtostellar {
           } catch (InterruptedException e) {
             throw new RuntimeException(e);
           }
-          // todo sn do we want to handle CancellationReason.TOO_MANY_REQUESTS_IN_RETRY here?
           // Loop round again for a retry.
         } else {
           request.logicallyComplete(behaviour.exception());

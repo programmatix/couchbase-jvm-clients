@@ -404,8 +404,11 @@ public class CoreEnvironment implements AutoCloseable {
    * Returns the executor used to schedule non-reactive async tasks across the SDK.
    */
   public Executor executor() {
+    // todo sn need to shutdown the executor if OwnedSupplier
     return executor.get();
   }
+
+  // todo sn skip initialise [most of?] Core in protostellar:// mode
 
   /**
    * Returns the request tracer for response time observability.

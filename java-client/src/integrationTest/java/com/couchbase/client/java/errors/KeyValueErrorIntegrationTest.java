@@ -84,7 +84,6 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
     assertNotNull(thrown.context());
 
     assertThrows(InvalidArgumentException.class, () -> collection.get("foo", null));
-    // todo sn fix
     assertThrows(InvalidArgumentException.class, () -> collection.get(""));
     assertThrows(InvalidArgumentException.class, () -> collection.get(null));
     assertThrows(InvalidArgumentException.class, () -> collection.get("", getOptions().withExpiry(true)));
@@ -167,13 +166,11 @@ class KeyValueErrorIntegrationTest extends JavaIntegrationTest {
   @Test
   void verifyRemoveExceptions() {
     assertThrows(InvalidArgumentException.class, () -> collection.remove("foo", null));
-    // todo sn fix
     assertThrows(InvalidArgumentException.class, () -> collection.remove(null));
   }
 
   @Test
   void verifyInsertExceptions() {
-    // todo sn fix
     assertThrows(InvalidArgumentException.class, () -> collection.insert("foo", null));
     assertThrows(InvalidArgumentException.class, () -> collection.insert(null, "bar"));
     assertThrows(InvalidArgumentException.class, () -> collection.insert("foo", "bar", null));

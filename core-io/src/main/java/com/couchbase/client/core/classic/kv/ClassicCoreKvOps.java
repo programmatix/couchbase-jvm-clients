@@ -67,6 +67,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static com.couchbase.client.core.api.kv.CoreKvParamValidators.validateGetParams;
+import static com.couchbase.client.core.api.kv.CoreKvParamValidators.validateInsertParams;
+import static com.couchbase.client.core.api.kv.CoreKvParamValidators.validateRemoveParams;
 import static com.couchbase.client.core.classic.ClassicHelper.maybeWrapWithLegacyDurability;
 import static com.couchbase.client.core.classic.ClassicHelper.setClientContext;
 import static com.couchbase.client.core.error.DefaultErrorUtil.keyValueStatusToException;
@@ -103,7 +106,7 @@ public final class ClassicCoreKvOps implements CoreKvOps {
 
   @Override
   public CoreAsyncResponse<CoreGetResult> getAsync(CoreCommonOptions common, String key, List<String> projections, boolean withExpiry) {
-    notNullOrEmpty(key, "Document ID");
+    validateGetParams(common, key, projections, withExpiry);
 
     Duration timeout = timeout(common);
     RetryStrategy retryStrategy = retryStrategy(common);
@@ -146,7 +149,7 @@ public final class ClassicCoreKvOps implements CoreKvOps {
       List<String> projections,
       boolean withExpiry
   ) {
-    notNullOrEmpty(key, "Document ID");
+    validateGetParams(common, key, projections, withExpiry);
     checkProjectionLimits(projections, withExpiry);
 
     Duration timeout = timeout(common);
@@ -312,7 +315,7 @@ public final class ClassicCoreKvOps implements CoreKvOps {
       CoreDurability durability,
       long expiry
   ) {
-    notNullOrEmpty(key, "Document ID");
+    validateInsertParams(common, key, content, durability, expiry);
 
     Duration timeout = timeout(common, durability);
     RetryStrategy retryStrategy = retryStrategy(common);
@@ -500,7 +503,7 @@ public final class ClassicCoreKvOps implements CoreKvOps {
       long cas,
       CoreDurability durability
   ) {
-    notNullOrEmpty(key, "Document ID");
+    validateRemoveParams(common, key, cas, durability);
 
     Duration timeout = timeout(common, durability);
     RetryStrategy retryStrategy = retryStrategy(common);

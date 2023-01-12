@@ -16,6 +16,7 @@
 package com.couchbase.client.core.protostellar;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.deps.com.google.protobuf.Any;
 import com.couchbase.client.core.deps.com.google.protobuf.InvalidProtocolBufferException;
 import com.couchbase.client.core.deps.com.google.rpc.PreconditionFailure;
@@ -23,20 +24,26 @@ import com.couchbase.client.core.deps.com.google.rpc.ResourceInfo;
 import com.couchbase.client.core.deps.com.google.rpc.Status;
 import com.couchbase.client.core.deps.io.grpc.StatusRuntimeException;
 import com.couchbase.client.core.deps.io.grpc.protobuf.StatusProto;
+import com.couchbase.client.core.error.AmbiguousTimeoutException;
+import com.couchbase.client.core.error.AuthenticationFailureException;
 import com.couchbase.client.core.error.CasMismatchException;
 import com.couchbase.client.core.error.DecodingFailureException;
 import com.couchbase.client.core.error.DocumentExistsException;
-import com.couchbase.client.core.error.DocumentLockedException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
+import com.couchbase.client.core.error.FeatureNotAvailableException;
+import com.couchbase.client.core.error.InternalServerFailureException;
+import com.couchbase.client.core.error.InvalidArgumentException;
+import com.couchbase.client.core.error.RequestCanceledException;
+import com.couchbase.client.core.error.context.CancellationErrorContext;
 import com.couchbase.client.core.error.context.ProtostellarErrorContext;
-import com.couchbase.client.core.msg.Response;
-import com.couchbase.client.core.msg.ResponseStatus;
+import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import com.couchbase.client.core.retry.RetryReason;
 
 import java.util.concurrent.ExecutionException;
 
+@Stability.Internal
 public class CoreProtostellarErrorHandlingUtil {
   private CoreProtostellarErrorHandlingUtil() {}
 
@@ -79,7 +86,7 @@ public class CoreProtostellarErrorHandlingUtil {
               PreconditionFailure.Violation violation = info.getViolations(0);
               String type = violation.getType();
 
-              // todo snbrett many details of error handling left to sort out
+              // todo snask many details of error handling left to sort out
               if (type.equals(PRECONDITION_CAS)) {
                 return ProtostellarRequestBehaviour.fail(new CasMismatchException(context));
               }
@@ -101,16 +108,32 @@ public class CoreProtostellarErrorHandlingUtil {
       com.couchbase.client.core.deps.io.grpc.Status.Code code = sre.getStatus().getCode();
 
       switch (code) {
+        case CANCELLED:
+          return ProtostellarRequestBehaviour.fail(new RequestCanceledException("Request cancelled by server", CancellationReason.SERVER_CANCELLED, new CancellationErrorContext(context)));
+        case ABORTED:
+        case UNKNOWN:
+        case INTERNAL:
+          return ProtostellarRequestBehaviour.fail(new InternalServerFailureException(context));
+        case OUT_OF_RANGE:
+        case INVALID_ARGUMENT:
+          return ProtostellarRequestBehaviour.fail(new InvalidArgumentException("Invalid argument provided", t, context));
+        case DEADLINE_EXCEEDED:
+          return ProtostellarRequestBehaviour.fail(new AmbiguousTimeoutException("The server reported the operation timeout, and state might have been changed", new CancellationErrorContext(context)));
+        case NOT_FOUND:
+          // todo snask need a clear mapping of these error codes.  NOT_FOUND on collection.get() is obvious - but what about on a query?
+          return ProtostellarRequestBehaviour.fail(new DocumentNotFoundException(context));
         case ALREADY_EXISTS:
           return ProtostellarRequestBehaviour.fail(new DocumentExistsException(context));
-        case NOT_FOUND:
-          return ProtostellarRequestBehaviour.fail(new DocumentNotFoundException(context));
+        case UNAUTHENTICATED:
+        case PERMISSION_DENIED:
+          return ProtostellarRequestBehaviour.fail(new AuthenticationFailureException("Server reported that permission to the resource was denied", context, t));
+        case UNIMPLEMENTED:
+          return ProtostellarRequestBehaviour.fail(new FeatureNotAvailableException(t));
         case UNAVAILABLE:
           // todo sn can we better differentiate between SERVICE_NOT_AVAILABLE, ENDPOINT_NOT_AVAILABLE, NODE_NOT_AVAILABLE, ENDPOINT_NOT_WRITABLE, CHANNEL_CLOSED_WHILE_IN_FLIGHT?
           return RetryOrchestratorProtostellar.shouldRetry(core, request, RetryReason.ENDPOINT_NOT_AVAILABLE);
-          // todo snbrett see lots of INTERNAL errors during start of perf testing and unclear why.  Debug why (has SN just not finished warming up? If so, still need to handle cleanly)
         default:
-          // TODO sn handle all codes
+          // TODO snask what to do for RESOURCE_EXHAUSTED, FAILED_PRECONDITION, DATA_LOSS
           return ProtostellarRequestBehaviour.fail(new UnsupportedOperationException("Unhandled error code " + code));
       }
     } else if (t instanceof RuntimeException) {

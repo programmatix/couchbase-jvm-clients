@@ -30,7 +30,7 @@ import com.couchbase.client.core.api.kv.CoreMutationResult;
 import com.couchbase.client.core.cnc.RequestTracer;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.io.CollectionIdentifier;
-import com.couchbase.client.core.protostellar.AccessorKeyValueProtostellar;
+import com.couchbase.client.core.protostellar.CoreProtostellarAccessors;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
 import com.couchbase.client.core.retry.RetryStrategy;
 import reactor.core.publisher.Mono;
@@ -72,7 +72,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   public CoreGetResult getBlocking(CoreCommonOptions common, String key, List<String> projections, boolean withExpiry) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> req = getRequest(core, common, keyspace, key);
 
-    return AccessorKeyValueProtostellar.blocking(core,
+    return CoreProtostellarAccessors.blocking(core,
       req,
       (endpoint) -> {
         // withDeadline creates a new stub and Google performance docs advise reusing stubs as much as possible.
@@ -89,7 +89,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
 
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> req = getRequest(core, common, keyspace, key);
 
-    return AccessorKeyValueProtostellar.asyncCore(core,
+    return CoreProtostellarAccessors.asyncCore(core,
       req,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(req.request()),
       (response) -> convertGetResponse(keyspace, key, response));
@@ -99,7 +99,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   public Mono<CoreGetResult> getReactive(CoreCommonOptions common, String key, List<String> projections, boolean withExpiry) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> req = getRequest(core, common, keyspace, key);
 
-    return AccessorKeyValueProtostellar.reactive(core,
+    return CoreProtostellarAccessors.reactive(core,
       req,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(req.request()),
       (response) -> convertGetResponse(keyspace, key, response));
@@ -126,7 +126,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   @Override
   public CoreMutationResult insertBlocking(CoreCommonOptions common, String key, Supplier<CoreEncodedContent> content, CoreDurability durability, long expiry) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.InsertRequest> request = insertRequest(core, keyspace, common, key, content, durability, expiry);
-    return AccessorKeyValueProtostellar.blocking(core,
+    return CoreProtostellarAccessors.blocking(core,
       request,
       (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(request.timeout())).insert(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));
@@ -135,7 +135,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   @Override
   public CoreAsyncResponse<CoreMutationResult> insertAsync(CoreCommonOptions common, String key, Supplier<CoreEncodedContent> content, CoreDurability durability, long expiry) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.InsertRequest> request = insertRequest(core, keyspace, common, key, content, durability, expiry);
-    return AccessorKeyValueProtostellar.asyncCore(core,
+    return CoreProtostellarAccessors.asyncCore(core,
       request,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(request.timeout())).insert(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));
@@ -144,7 +144,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   @Override
   public Mono<CoreMutationResult> insertReactive(CoreCommonOptions common, String key, Supplier<CoreEncodedContent> content, CoreDurability durability, long expiry) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.InsertRequest> request = insertRequest(core, keyspace, common, key, content, durability, expiry);
-    return AccessorKeyValueProtostellar.reactive(core,
+    return CoreProtostellarAccessors.reactive(core,
       request,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(request.timeout())).insert(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));
@@ -164,7 +164,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   @Override
   public CoreMutationResult removeBlocking(CoreCommonOptions common, String key, long cas, CoreDurability durability) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> request = removeRequest(core, keyspace, common, key, cas, durability);
-    return AccessorKeyValueProtostellar.blocking(core,
+    return CoreProtostellarAccessors.blocking(core,
       request,
       (endpoint) -> endpoint.kvBlockingStub().withDeadline(convertTimeout(request.timeout())).remove(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));
@@ -173,7 +173,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   @Override
   public CoreAsyncResponse<CoreMutationResult> removeAsync(CoreCommonOptions common, String key, long cas, CoreDurability durability) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> request = removeRequest(core, keyspace, common, key, cas, durability);
-    return AccessorKeyValueProtostellar.asyncCore(core,
+    return CoreProtostellarAccessors.asyncCore(core,
       request,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(request.timeout())).remove(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));
@@ -182,7 +182,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   @Override
   public Mono<CoreMutationResult> removeReactive(CoreCommonOptions common, String key, long cas, CoreDurability durability) {
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> request = removeRequest(core, keyspace, common, key, cas, durability);
-    return AccessorKeyValueProtostellar.reactive(core,
+    return CoreProtostellarAccessors.reactive(core,
       request,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(request.timeout())).remove(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));

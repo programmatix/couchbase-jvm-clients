@@ -25,26 +25,28 @@ import com.couchbase.client.core.deps.com.google.common.util.concurrent.FutureCa
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.Futures;
 import com.couchbase.client.core.deps.com.google.common.util.concurrent.ListenableFuture;
 import com.couchbase.client.core.endpoint.ProtostellarEndpoint;
-import com.couchbase.client.core.error.context.ErrorContext;
 import com.couchbase.client.core.io.netty.TracingUtils;
 import com.couchbase.client.core.msg.CancellationReason;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
-import com.couchbase.client.core.retry.RetryOrchestratorProtostellar;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.annotation.Nullable;
 
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownAsync;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownBlocking;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownReactive;
 
-// todo sn rename not KeyValue specific
-public class AccessorKeyValueProtostellar {
+/**
+ * Used to generically handle the core functionality of sending a GRPC request over Protostellar and handling the response.
+ * <p>
+ * Can handle any single-request-single-response setup, e.g. KV, collection management, etc.
+ * <p>
+ * Does not handle streaming.
+ */
+public class CoreProtostellarAccessors {
 
   /**
    * Convenience overload that uses the default exception handling.

@@ -17,7 +17,6 @@
 package com.couchbase.client.core.protostellar.kv;
 
 import com.couchbase.client.core.Core;
-import com.couchbase.client.core.CoreContext;
 import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.kv.CoreAsyncResponse;
@@ -27,12 +26,9 @@ import com.couchbase.client.core.api.kv.CoreExistsResult;
 import com.couchbase.client.core.api.kv.CoreGetResult;
 import com.couchbase.client.core.api.kv.CoreKvOps;
 import com.couchbase.client.core.api.kv.CoreMutationResult;
-import com.couchbase.client.core.cnc.RequestTracer;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
-import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.protostellar.CoreProtostellarAccessors;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
-import com.couchbase.client.core.retry.RetryStrategy;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -47,28 +43,16 @@ import static com.couchbase.client.core.protostellar.kv.CoreProtostellarRequests
 import static com.couchbase.client.core.protostellar.kv.CoreProtostellarRequests.insertRequest;
 import static com.couchbase.client.core.protostellar.kv.CoreProtostellarRequests.removeRequest;
 import static com.couchbase.client.core.protostellar.kv.CoreProtostellarResponses.convertGetResponse;
-import static com.couchbase.client.core.util.Validators.notNullOrEmpty;
 import static java.util.Objects.requireNonNull;
 
 @Stability.Internal
 public final class ProtostellarCoreKvOps implements CoreKvOps {
   private final Core core;
-  private final CoreContext ctx;
-  // todo sn use these
-  private final Duration defaultKvTimeout;
-  private final RetryStrategy defaultRetryStrategy;
-  private final CollectionIdentifier collectionIdentifier;
   private final CoreKeyspace keyspace;
-  private final RequestTracer requestTracer;
 
   public ProtostellarCoreKvOps(Core core, CoreKeyspace keyspace) {
     this.core = requireNonNull(core);
-    this.ctx = core.context();
-    this.defaultKvTimeout = ctx.environment().timeoutConfig().kvTimeout();
-    this.defaultRetryStrategy = ctx.environment().retryStrategy();
-    this.requestTracer = ctx.environment().requestTracer();
     this.keyspace = requireNonNull(keyspace);
-    this.collectionIdentifier = keyspace.toCollectionIdentifier();
   }
 
   @Override

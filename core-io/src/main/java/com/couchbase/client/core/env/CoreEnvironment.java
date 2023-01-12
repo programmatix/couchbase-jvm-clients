@@ -405,7 +405,6 @@ public class CoreEnvironment implements AutoCloseable {
    * Returns the executor used to schedule non-reactive async tasks across the SDK.
    */
   public Executor executor() {
-    // todo sn need to shutdown the executor if OwnedSupplier
     return executor.get();
   }
 
@@ -535,6 +534,18 @@ public class CoreEnvironment implements AutoCloseable {
       .then(Mono.defer(() -> {
         if (scheduler instanceof OwnedSupplier) {
           scheduler.get().dispose();
+        }
+        return Mono.empty();
+      }))
+      .then(Mono.defer(() -> {
+        if (executor instanceof OwnedSupplier) {
+          if (executor.get() instanceof ThreadPoolExecutor) {
+            ((ThreadPoolExecutor) executor.get()).shutdown();
+          }
+          else if (executor.get() instanceof ForkJoinPool) {
+            ((ForkJoinPool) executor.get()).shutdown();
+          }
+          else throw new IllegalStateException("Unknown but owned executor type");
         }
         return Mono.empty();
       }))

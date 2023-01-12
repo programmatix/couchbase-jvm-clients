@@ -16,6 +16,7 @@
 package com.couchbase.client.core.protostellar;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.CoreKeyspace;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.io.CollectionIdentifier;
 import com.couchbase.client.core.service.ServiceType;
@@ -26,7 +27,7 @@ import java.util.Map;
 @Stability.Internal
 public class ProtostellarKeyValueRequestContext extends ProtostellarRequestContext {
   private final String id;
-  private final CollectionIdentifier collectionIdentifier;
+  private final CoreKeyspace keyspace;
 
 
   public ProtostellarKeyValueRequestContext(Core core,
@@ -34,18 +35,18 @@ public class ProtostellarKeyValueRequestContext extends ProtostellarRequestConte
                                             String requestName,
                                             Duration timeout,
                                             String id,
-                                            CollectionIdentifier collectionIdentifier,
+                                            CoreKeyspace keyspace,
                                             boolean idempotent) {
     super(core, serviceType, requestName, timeout, idempotent);
     this.id = id;
-    this.collectionIdentifier = collectionIdentifier;
+    this.keyspace = keyspace;
   }
 
   public void injectExportableParams(final Map<String, Object> input) {
     super.injectExportableParams(input);
     input.put("id", id);
-    input.put("bucket", collectionIdentifier.bucket());
-    input.put("scope", collectionIdentifier.scope().orElse(CollectionIdentifier.DEFAULT_SCOPE));
-    input.put("collection", collectionIdentifier.collection().orElse(CollectionIdentifier.DEFAULT_COLLECTION));
+    input.put("bucket", keyspace.bucket());
+    input.put("scope", keyspace.scope());
+    input.put("collection", keyspace.collection());
   }
 }

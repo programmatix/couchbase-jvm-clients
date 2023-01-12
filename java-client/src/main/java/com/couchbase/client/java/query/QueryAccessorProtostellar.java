@@ -17,6 +17,7 @@ package com.couchbase.client.java.query;
 
 import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
+import com.couchbase.client.core.api.kv.CoreDurability;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.io.grpc.stub.StreamObserver;
@@ -177,7 +178,7 @@ public class QueryAccessorProtostellar {
     notNullOrEmpty(statement, "Statement", () -> new ReducedAnalyticsErrorContext(statement));
 
     Duration timeout = opts.timeout().orElse(core.context().environment().timeoutConfig().queryTimeout());
-    RequestSpan span = createSpan(core, TracingIdentifiers.SPAN_REQUEST_QUERY, Optional.empty(), opts.parentSpan().orElse(null));
+    RequestSpan span = createSpan(core, TracingIdentifiers.SPAN_REQUEST_QUERY, CoreDurability.NONE, opts.parentSpan().orElse(null));
     span.attribute(TracingIdentifiers.ATTR_STATEMENT, statement);
     ProtostellarRequest<com.couchbase.client.protostellar.query.v1.QueryRequest> out = new ProtostellarRequest<>(core,
       span,

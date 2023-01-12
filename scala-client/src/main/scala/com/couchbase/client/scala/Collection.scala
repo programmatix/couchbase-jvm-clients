@@ -22,7 +22,6 @@ import com.couchbase.client.scala.datastructures._
 import com.couchbase.client.scala.durability.Durability
 import com.couchbase.client.scala.durability.Durability._
 import com.couchbase.client.scala.kv._
-import com.couchbase.client.scala.kv.handlers.InsertHandlerProtostellar
 import com.couchbase.client.scala.util.TimeoutUtil
 
 import scala.collection.compat.immutable.LazyList
@@ -169,31 +168,15 @@ class Collection(
       durability: Durability = Disabled,
       timeout: Duration = Duration.MinusInf
   )(implicit serializer: JsonSerializer[T]): Try[MutationResult] = {
-    if (async.core.isProtostellar) {
-      // todo sn for now the only Scala work is this successful proof of concept
-      val req = InsertHandlerProtostellar.request(async.core,
+    // todo sn check CoreKvOps approach in Scala
+    block(
+      async.insert(
         id,
         content,
-        timeout,
         durability,
-        0,
-        async.environment.retryStrategy,
-        async.environment.transcoder,
-        serializer,
-        None,
-        async.collectionIdentifier)
-      req.flatMap(request => InsertHandlerProtostellar.blocking(async.core, request))
-    }
-    else {
-      block(
-        async.insert(
-          id,
-          content,
-          durability,
-          timeout
-        )
+        timeout
       )
-    }
+    )
   }
 
   /** Inserts a full document into this collection, if it does not exist already.

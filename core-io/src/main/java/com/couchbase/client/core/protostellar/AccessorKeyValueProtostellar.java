@@ -47,6 +47,17 @@ import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handle
 public class AccessorKeyValueProtostellar {
 
   /**
+   * Convenience overload that uses the default exception handling.
+   */
+  public static <TSdkResult, TGrpcRequest, TGrpcResponse>
+  TSdkResult blocking(Core core,
+                      ProtostellarRequest<TGrpcRequest>     request,
+                      Function<ProtostellarEndpoint, TGrpcResponse> executeBlockingGrpcCall,
+                      Function<TGrpcResponse, TSdkResult>   convertResponse) {
+    return blocking(core, request, executeBlockingGrpcCall, convertResponse, (err) -> CoreProtostellarErrorHandlingUtil.convertKeyValueException(core, request, err));
+  }
+
+  /**
    * @param <TSdkResult> e.g. MutationResult
    * @param <TGrpcResponse> e.g. com.couchbase.client.protostellar.kv.v1.InsertResponse
    */
@@ -89,6 +100,17 @@ public class AccessorKeyValueProtostellar {
     }
   }
 
+  /**
+   * Convenience overload that uses the default exception handling.
+   */
+  public static <TSdkResult, TGrpcRequest, TGrpcResponse>
+  CoreAsyncResponse<TSdkResult> asyncCore(Core core,
+                                          ProtostellarRequest<TGrpcRequest>         request,
+                                          Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                                          Function<TGrpcResponse, TSdkResult>       convertResponse) {
+    return asyncCore(core, request, executeFutureGrpcCall, convertResponse, (err) -> CoreProtostellarErrorHandlingUtil.convertKeyValueException(core, request, err));
+  }
+
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   CoreAsyncResponse<TSdkResult> asyncCore(Core core,
                                           ProtostellarRequest<TGrpcRequest>         request,
@@ -104,6 +126,7 @@ public class AccessorKeyValueProtostellar {
     return response;
   }
 
+  @Deprecated // todo sn not sure if this is needed anymore
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
   CompletableFuture<TSdkResult> async(Core core,
                                       ProtostellarRequest<TGrpcRequest>         request,
@@ -165,6 +188,21 @@ public class AccessorKeyValueProtostellar {
         }
       }
     }, core.context().environment().executor());
+  }
+
+  /**
+   * Convenience overload that uses the default exception handling.
+   */
+  public static <TSdkResult, TGrpcRequest, TGrpcResponse>
+  Mono<TSdkResult> reactive(Core core,
+                            ProtostellarRequest<TGrpcRequest>         request,
+                            Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                            Function<TGrpcResponse, TSdkResult>       convertResponse) {
+    return Mono.defer(() -> {
+      Sinks.One<TSdkResult> ret = Sinks.one();
+      reactiveInternal(ret, core, request, executeFutureGrpcCall, convertResponse, (err) -> CoreProtostellarErrorHandlingUtil.convertKeyValueException(core, request, err));
+      return ret.asMono();
+    });
   }
 
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>

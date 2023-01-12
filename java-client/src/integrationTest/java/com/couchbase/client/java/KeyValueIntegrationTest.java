@@ -183,6 +183,7 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
   /**
    * Verify that an empty Optional is returned even though the expiry is requested.
    */
+  @IgnoreWhen(isProtostellarWillWorkLater = true)
   @Test
   void expiryRequestedButNotSetOnDoc() {
     String id = UUID.randomUUID().toString();
@@ -470,7 +471,7 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
    *  which time we can remove the restriction on not running this test when mocked.
    */
   @Test
-  @IgnoreWhen( clusterTypes = { ClusterType.MOCKED })
+  @IgnoreWhen( clusterTypes = { ClusterType.MOCKED }, isProtostellarWillWorkLater = true)
   void checkExpiryBeyond2038() {
     // The server interprets the 32-bit expiry field as an unsigned
     // integer. This means the maximum value is 4294967295 seconds,
@@ -489,7 +490,7 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
   }
 
   @Test
-  @IgnoreWhen(clusterTypes = {ClusterType.MOCKED})
+  @IgnoreWhen(clusterTypes = {ClusterType.MOCKED}, isProtostellarWillWorkLater = true)
   void checkExpiryExactly30Days() {
     checkExpiry(Duration.ofDays(30));
   }
@@ -500,7 +501,7 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
    * ensures we're shielding the user from that surprising behavior.
    */
   @Test
-  @IgnoreWhen(clusterTypes = {ClusterType.MOCKED})
+  @IgnoreWhen(clusterTypes = {ClusterType.MOCKED}, isProtostellarWillWorkLater = true)
   void checkExpiryBeyond30Days() {
     checkExpiry(Duration.ofDays(31));
   }

@@ -16,6 +16,7 @@
 package com.couchbase.client.core.protostellar;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.api.kv.CoreDurability;
 import com.couchbase.client.core.cnc.AbstractContext;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
@@ -50,6 +51,20 @@ public class CoreProtostellarUtil {
   }
 
   public static Duration kvDurableTimeout(Optional<Duration> customTimeout,
+                                          CoreDurability dl,
+                                          Core core) {
+    if (customTimeout.isPresent()) {
+      return customTimeout.get();
+    } else if (dl.isLegacy()) {
+      throw new FeatureNotAvailableException("Legacy durability is not supported with Protostellar, please use Durability");
+    } else if (!dl.isNone()) {
+      return core.context().environment().timeoutConfig().kvDurableTimeout();
+    } else {
+      return core.context().environment().timeoutConfig().kvTimeout();
+    }
+  }
+
+  public static Duration kvDurableTimeout(Optional<Duration> customTimeout,
                                           Optional<com.couchbase.client.core.msg.kv.DurabilityLevel> dl,
                                           Core core) {
     if (customTimeout.isPresent()) {
@@ -60,6 +75,7 @@ public class CoreProtostellarUtil {
       return core.context().environment().timeoutConfig().kvTimeout();
     }
   }
+
   public static Deadline convertTimeout(Optional<Duration> customTimeout, Duration defaultTimeout) {
     if (customTimeout.isPresent()) {
       return Deadline.after(customTimeout.get().toMillis(), TimeUnit.MILLISECONDS);
@@ -149,11 +165,33 @@ public class CoreProtostellarUtil {
     throw new IllegalArgumentException("Unknown durability level " + dl);
   }
 
+  public static DurabilityLevel convert(CoreDurability dl) {
+    if (dl.isNone()) {
+      throw new IllegalStateException("Should not have no durability here");
+    }
+
+    switch (dl.levelIfSynchronous().get()) {
+      case MAJORITY:
+        return DurabilityLevel.MAJORITY;
+      case MAJORITY_AND_PERSIST_TO_ACTIVE:
+        return DurabilityLevel.MAJORITY_AND_PERSIST_TO_ACTIVE;
+      case PERSIST_TO_MAJORITY:
+        return DurabilityLevel.PERSIST_TO_MAJORITY;
+    }
+
+    // NONE should be handled earlier, by not sending anything.
+    throw new IllegalArgumentException("Unknown durability level " + dl);
+  }
+
   public static @Nullable Instant convertExpiry(boolean hasExpiry, Timestamp expiry) {
     if (hasExpiry) {
       return Instant.ofEpochSecond(expiry.getSeconds());
     }
     return null;
+  }
+
+  public static Timestamp convertExpiry(long expiry) {
+    return Timestamp.newBuilder().setSeconds(expiry).build();
   }
 
   public static <TResponse> ProtostellarRequestBehaviour convertKeyValueException(Core core,
@@ -164,12 +202,12 @@ public class CoreProtostellarUtil {
 
   public static RequestSpan createSpan(Core core,
                                        String spanName,
-                                       Optional<com.couchbase.client.core.msg.kv.DurabilityLevel> durability,
+                                       CoreDurability durability,
                                        @Nullable RequestSpan parent) {
     RequestSpan span = CbTracing.newSpan(core.context().environment().requestTracer(), spanName, parent);
 
-    if (durability.isPresent()) {
-      switch (durability.get()) {
+    if (!durability.isNone() && !durability.isLegacy()) {
+      switch (durability.levelIfSynchronous().get()) {
         case MAJORITY:
           span.attribute(TracingIdentifiers.ATTR_DURABILITY, "majority");
           break;

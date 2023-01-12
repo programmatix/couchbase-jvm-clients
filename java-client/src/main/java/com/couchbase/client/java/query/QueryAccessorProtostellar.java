@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.convertTimeout;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.createSpan;
@@ -58,6 +59,8 @@ public class QueryAccessorProtostellar {
     handleShutdownBlocking(core, request.context());
     List<QueryResponse> responses = new ArrayList<>();
     CountDownLatch latch = new CountDownLatch(1);
+    AtomicReference<RuntimeException> err = new AtomicReference<>();
+
     StreamObserver<QueryResponse> response = new StreamObserver<QueryResponse>() {
       @Override
       public void onNext(QueryResponse response) {
@@ -66,7 +69,8 @@ public class QueryAccessorProtostellar {
 
       @Override
       public void onError(Throwable throwable) {
-        throw convertException(throwable);
+        err.set(convertException(throwable));
+        latch.countDown();
       }
 
       @Override
@@ -83,6 +87,10 @@ public class QueryAccessorProtostellar {
       latch.await();
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
+    }
+
+    if (err.get() != null) {
+      throw err.get();
     }
 
     return new QueryResultProtostellar(responses, serializer);

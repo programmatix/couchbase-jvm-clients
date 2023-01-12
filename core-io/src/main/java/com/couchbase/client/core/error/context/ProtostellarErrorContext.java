@@ -24,7 +24,7 @@ import reactor.util.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-// todo snbrett figure out how ErrorContext looks in Protostellar world - we re @Stability.Uncommitted
+// todo snask figure out how ErrorContext looks in Protostellar world - we re @Stability.Uncommitted
 @Stability.Volatile
 public class ProtostellarErrorContext extends ErrorContext {
   private Map<String, Object> fields;

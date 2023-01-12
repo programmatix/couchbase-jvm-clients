@@ -106,19 +106,19 @@ public class CoreProtostellarAccessors {
    * Convenience overload that uses the default exception handling.
    */
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
-  CoreAsyncResponse<TSdkResult> asyncCore(Core core,
-                                          ProtostellarRequest<TGrpcRequest>         request,
-                                          Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
-                                          Function<TGrpcResponse, TSdkResult>       convertResponse) {
-    return asyncCore(core, request, executeFutureGrpcCall, convertResponse, (err) -> CoreProtostellarErrorHandlingUtil.convertKeyValueException(core, request, err));
+  CoreAsyncResponse<TSdkResult> async(Core core,
+                                      ProtostellarRequest<TGrpcRequest>         request,
+                                      Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                                      Function<TGrpcResponse, TSdkResult>       convertResponse) {
+    return async(core, request, executeFutureGrpcCall, convertResponse, (err) -> CoreProtostellarErrorHandlingUtil.convertKeyValueException(core, request, err));
   }
 
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
-  CoreAsyncResponse<TSdkResult> asyncCore(Core core,
-                                          ProtostellarRequest<TGrpcRequest>         request,
-                                          Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
-                                          Function<TGrpcResponse, TSdkResult>       convertResponse,
-                                          Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
+  CoreAsyncResponse<TSdkResult> async(Core core,
+                                      ProtostellarRequest<TGrpcRequest>         request,
+                                      Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
+                                      Function<TGrpcResponse, TSdkResult>       convertResponse,
+                                      Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
 
     CompletableFuture<TSdkResult> ret = new CompletableFuture<>();
     CoreAsyncResponse<TSdkResult> response = new CoreAsyncResponse<>(ret, () -> {
@@ -126,19 +126,6 @@ public class CoreProtostellarAccessors {
     });
     asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
     return response;
-  }
-
-  @Deprecated // todo sn not sure if this is needed anymore
-  public static <TSdkResult, TGrpcRequest, TGrpcResponse>
-  CompletableFuture<TSdkResult> async(Core core,
-                                      ProtostellarRequest<TGrpcRequest>         request,
-                                      Function<ProtostellarEndpoint, ListenableFuture<TGrpcResponse>> executeFutureGrpcCall,
-                                      Function<TGrpcResponse, TSdkResult>       convertResponse,
-                                      Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
-
-    CompletableFuture<TSdkResult> ret = new CompletableFuture<>();
-    asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
-    return ret;
   }
 
   public static <TSdkResult, TGrpcRequest, TGrpcResponse>
@@ -288,7 +275,6 @@ public class CoreProtostellarAccessors {
     final RequestSpan dispatchSpan;
     if (!CbTracing.isInternalTracer(tracer)) {
       dispatchSpan = tracer.requestSpan(TracingIdentifiers.SPAN_DISPATCH, request.span());
-      // todo snbrett do we want to provide localId and operationId for Protostellar
       TracingUtils.setCommonDispatchSpanAttributes(dispatchSpan, null, null, 0, endpoint.hostname(), endpoint.port(), null);
     } else {
       dispatchSpan = null;
@@ -296,5 +282,3 @@ public class CoreProtostellarAccessors {
     return dispatchSpan;
   }
 }
-
-// todo sn legacy durability is not supported (getting removed from proto files) so throw

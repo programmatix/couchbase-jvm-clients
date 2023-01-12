@@ -163,12 +163,8 @@ public class QueryAccessorProtostellar {
     return Mono.just(new ReactiveQueryResultProtostellar(responses.asFlux(), serializer));
   }
 
-  private static Duration timeout(Core core) {
-    return core.context().environment().timeoutConfig().queryTimeout();
-  }
-
   private static RuntimeException convertException(Throwable throwable) {
-    // todo snbrett query error handling
+    // todo snask query error handling
     if (throwable instanceof RuntimeException) {
       return (RuntimeException) throwable;
     }

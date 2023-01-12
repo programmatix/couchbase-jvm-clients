@@ -170,6 +170,7 @@ public class CoreEnvironment implements AutoCloseable {
       );
     // todo snlater will want to give user configurable control over the executor
 
+    // todo snremove doesn't seem to matter what executor is used so settle on one
     String executorType = System.getProperty("com.couchbase.protostellar.executorType");
     String executorMaxThreadCountRaw = System.getProperty("com.couchbase.protostellar.executorMaxThreadCount");
     int maxThreadCount = Runtime.getRuntime().availableProcessors();

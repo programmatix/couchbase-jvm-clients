@@ -90,8 +90,7 @@ public class Reactor {
     Mono<T> mono = MyLittleAssemblyFactory.callOnAssembly(new SilentMonoCompletionStage<>(response));
 
     mono = mono.doFinally(st -> {
-      // todo sn investigate what this is used for and if we need to emulate it in PS world
-      // request.cancel(CancellationReason.STOPPED_LISTENING) on the ListenableFuture
+      // todo snlater cancel the Protostellar ListenableFuture if the reactive user has stopped listening (cancelled)
       if (st == SignalType.CANCEL) {
         cancellationTask.run();
       }

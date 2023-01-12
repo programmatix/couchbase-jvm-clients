@@ -75,7 +75,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
     validateGetParams(common, key, projections, withExpiry);
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> req = getRequest(core, common, keyspace, key);
 
-    return CoreProtostellarAccessors.asyncCore(core,
+    return CoreProtostellarAccessors.async(core,
       req,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(req.timeout())).get(req.request()),
       (response) -> convertGetResponse(keyspace, key, response));
@@ -124,7 +124,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   public CoreAsyncResponse<CoreMutationResult> insertAsync(CoreCommonOptions common, String key, Supplier<CoreEncodedContent> content, CoreDurability durability, long expiry) {
     validateInsertParams(common, key, content, durability, expiry);
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.InsertRequest> request = insertRequest(core, keyspace, common, key, content, durability, expiry);
-    return CoreProtostellarAccessors.asyncCore(core,
+    return CoreProtostellarAccessors.async(core,
       request,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(request.timeout())).insert(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));
@@ -164,7 +164,7 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
   public CoreAsyncResponse<CoreMutationResult> removeAsync(CoreCommonOptions common, String key, long cas, CoreDurability durability) {
     validateRemoveParams(common, key, cas, durability);
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> request = removeRequest(core, keyspace, common, key, cas, durability);
-    return CoreProtostellarAccessors.asyncCore(core,
+    return CoreProtostellarAccessors.async(core,
       request,
       (endpoint) -> endpoint.kvStub().withDeadline(convertTimeout(request.timeout())).remove(request.request()),
       (response) -> CoreProtostellarResponses.convertResponse(keyspace, key, response));

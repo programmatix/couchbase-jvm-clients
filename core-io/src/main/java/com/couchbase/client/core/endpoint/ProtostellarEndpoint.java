@@ -72,7 +72,7 @@ public class ProtostellarEndpoint {
   public static ProtostellarStatsCollector collector;
 
   private final AtomicBoolean shutdown = new AtomicBoolean(false);
-  // todo snbrett circuit breakers
+  // todo snask circuit breakers
   // private final CircuitBreaker circuitBreaker;
 
   private final ManagedChannel managedChannel;
@@ -206,7 +206,7 @@ public class ProtostellarEndpoint {
   private ManagedChannel channel() {
     logger.info("making channel {} {}", hostname, port);
 
-    // todo sn what to do with tcpKeepAlivesEnabled and rest of connection options (kvNumConnections etc.)
+    // todo snask what to do with tcpKeepAlivesEnabled and rest of connection options (kvNumConnections etc.)
 
     // todo snremove we're using unverified TLS for now - once STG has it we can use the same Capella cert bundling approach and use TLS properly
     ManagedChannelBuilder builder = NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())

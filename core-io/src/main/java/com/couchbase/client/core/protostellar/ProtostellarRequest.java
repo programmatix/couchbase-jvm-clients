@@ -276,6 +276,26 @@ public class ProtostellarRequest<TGrpcRequest> {
     return state != State.INCOMPLETE;
   }
 
+  public long createdAt() {
+    return createdAt;
+  }
+
+  public ServiceType serviceType() {
+    return serviceType;
+  }
+
+  public @Nullable CancellationReason cancellationReason() {
+    return cancellationReason;
+  }
+
+  public boolean failed() {
+    return state == State.FAILED;
+  }
+
+  public boolean succeeded() {
+    return state == State.SUCCEEDED;
+  }
+
   /**
    * Represents the states this request can be in.
    */

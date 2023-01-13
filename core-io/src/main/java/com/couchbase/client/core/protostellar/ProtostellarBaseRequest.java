@@ -15,6 +15,7 @@
  */
 package com.couchbase.client.core.protostellar;
 
+import com.couchbase.client.core.Core;
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.deps.io.netty.util.Timeout;
@@ -25,6 +26,7 @@ import com.couchbase.client.core.msg.Response;
 import com.couchbase.client.core.msg.ResponseStatus;
 import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.service.ServiceType;
+import com.couchbase.client.core.util.CbCollections;
 
 import java.time.Duration;
 import java.util.Map;
@@ -32,57 +34,63 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * Current plan is to avoid having ProtostellarRequest extend Request, but there are places in the public API that require a Request.
- * So, one will be created on-demand.
- *
- * Most of these methods are left empty as they should not be actually used.
+ * Where the public API requires a {@link Request}, create one dynamically.
  */
 @Stability.Volatile
 public class ProtostellarBaseRequest implements Request<ProtostellarBaseRequest.ProtostellarResponse> {
   private final ProtostellarRequest<?> request;
+  private final Core core;
 
   @Stability.Internal
-  public ProtostellarBaseRequest(ProtostellarRequest<?> request) {
+  public ProtostellarBaseRequest(Core core, ProtostellarRequest<?> request) {
     this.request = request;
+    this.core = core;
   }
 
-  private static UnsupportedOperationException unsupported() {
-    return new UnsupportedOperationException("This method should not be called");
+  /**
+   * Because the underlying {@link ProtostellarRequest> does not implement the {@link Request} interface, it cannot support all operations.
+   * <p>
+   * Ideally the Request interface, part of the public API, would be much smaller and would only contain getters; it contains the methods it does for legacy reasons.
+   * <p>
+   * We have aimed to provide all the methods and fields that would be useful to users of the interface, particular from {@link RetryStrategy}.
+   */
+  private static UnsupportedOperationException unsupported(String message) {
+    return new UnsupportedOperationException(message);
   }
 
   @Override
   public long id() {
-    throw unsupported();
+    throw unsupported("Protostellar requests do not have unique identifiers");
   }
 
   @Override
   public CompletableFuture<ProtostellarResponse> response() {
-    throw unsupported();
+    throw unsupported("Protostellar requests do not contain their responses");
   }
 
   @Override
   public void succeed(ProtostellarResponse result) {
-    throw unsupported();
+    throw unsupported("Protostellar requests cannot be succeeded this way");
   }
 
   @Override
   public void fail(Throwable error) {
-    throw unsupported();
+    throw unsupported("Protostellar requests cannot be failed this way");
   }
 
   @Override
   public void cancel(CancellationReason reason, Function<Throwable, Throwable> exceptionTranslator) {
-    throw unsupported();
+    throw unsupported("Protostellar requests cannot be cancelled this way");
   }
 
   @Override
   public void timeoutRegistration(Timeout registration) {
-    throw unsupported();
+    throw unsupported("Protostellar requests cannot have their timeouts configured in this way");
   }
 
   @Override
   public RequestContext context() {
-    throw unsupported();
+    return new RequestContext(core.context(), this);
   }
 
   @Override
@@ -92,69 +100,69 @@ public class ProtostellarBaseRequest implements Request<ProtostellarBaseRequest.
 
   @Override
   public boolean timeoutElapsed() {
-    throw unsupported();
+    return request.timeoutElapsed();
   }
 
   @Override
   public boolean completed() {
-    throw unsupported();
+    return request.completed();
   }
 
   @Override
   public boolean succeeded() {
-    throw unsupported();
+    return request.succeeded();
   }
 
   @Override
   public boolean failed() {
-    throw unsupported();
+    return request.failed();
   }
 
   @Override
   public boolean cancelled() {
-    throw unsupported();
+    // We don't track cancellation separately for ProtostellarRequest.  It's just another form of failure.
+    return failed();
   }
 
   @Override
   public CancellationReason cancellationReason() {
-    throw unsupported();
+    return request.cancellationReason();
   }
 
   @Override
   public ServiceType serviceType() {
-    throw unsupported();
+    return request.serviceType();
   }
 
   @Override
   public Map<String, Object> serviceContext() {
-    throw unsupported();
+    return CbCollections.mapOf();
   }
 
   @Override
   public RetryStrategy retryStrategy() {
-    throw unsupported();
+    return request.retryStrategy();
   }
 
   @Override
   public RequestSpan requestSpan() {
-    throw unsupported();
+    return request.span();
   }
 
   @Override
   public long createdAt() {
-    throw unsupported();
+    return request.createdAt();
   }
 
   @Override
   public long absoluteTimeout() {
-    // todo sn some of these fields, such as timeout, would be reasonably useful to e.g. RetryStrategy implementations, and we should supply
     return request.absoluteTimeout();
   }
 
   static class ProtostellarResponse implements Response {
     @Override
     public ResponseStatus status() {
-      throw unsupported();
+      throw unsupported("Protostellar requests do not have a status field");
     }
   }
 }

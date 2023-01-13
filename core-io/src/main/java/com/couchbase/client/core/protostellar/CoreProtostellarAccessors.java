@@ -158,7 +158,7 @@ public class CoreProtostellarAccessors {
         TSdkResult result = convertResponse.apply(response);
 
         if (request.completed()) {
-          core.context().environment().orphanReporter().report(new ProtostellarBaseRequest(request));
+          core.context().environment().orphanReporter().report(new ProtostellarBaseRequest(core, request));
         }
         else {
           request.raisedResponseToUser(null);
@@ -250,7 +250,7 @@ public class CoreProtostellarAccessors {
       @Override
       public void onSuccess(TGrpcResponse response) {
         if (request.completed()) {
-          core.context().environment().orphanReporter().report(new ProtostellarBaseRequest(request));
+          core.context().environment().orphanReporter().report(new ProtostellarBaseRequest(core, request));
         }
         else {
           request.dispatchDuration(System.nanoTime() - start);

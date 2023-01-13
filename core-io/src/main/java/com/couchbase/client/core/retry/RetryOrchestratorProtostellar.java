@@ -64,7 +64,7 @@ public class RetryOrchestratorProtostellar {
         retryAction = RetryAction.withDuration(Duration.ofMillis(50));
       }
       else {
-        ProtostellarBaseRequest wrapper = new ProtostellarBaseRequest(request);
+        ProtostellarBaseRequest wrapper = new ProtostellarBaseRequest(core, request);
 
         retryAction = request.retryStrategy().shouldRetry(wrapper, reason).get();
       }

@@ -56,7 +56,6 @@ public class UnmanagedTestCluster extends TestCluster {
 
   private final OkHttpClient httpClient;
   private final String seedHost;
-  private final int seedPort;
   private final boolean isDnsSrv;
   private final String adminUsername;
   private final String adminPassword;
@@ -68,12 +67,17 @@ public class UnmanagedTestCluster extends TestCluster {
   private final boolean isProtostellar;
 
   UnmanagedTestCluster(final Properties properties) {
-    // localhost:8091 or couchbases://localhost:8091 or protostellar://localhost:8091
+    // localhost:8091 or couchbases://localhost:8091 or protostellar://localhost:8091 or protostellar://localhost
     String[] split = properties.getProperty("cluster.unmanaged.seed").split(":");
     isProtostellar = split[0].equals("protostellar");
     seedHost = split[split.length - 2].replace("//", "");
-    // todo sn handle missing port
-    seedPort = Integer.parseInt(split[split.length - 1]);
+    int seedPort = 0;
+    try {
+      seedPort = Integer.parseInt(split[split.length - 1]);
+    }
+    catch (NumberFormatException err) {
+      // Handling couchbase://localhost et al.
+    }
     adminUsername = properties.getProperty("cluster.adminUsername");
     adminPassword = properties.getProperty("cluster.adminPassword");
     numReplicas = Integer.parseInt(properties.getProperty("cluster.unmanaged.numReplicas"));
@@ -82,7 +86,7 @@ public class UnmanagedTestCluster extends TestCluster {
     isDnsSrv = Boolean.parseBoolean(properties.getProperty("cluster.unmanaged.dnsSrv"));
     bucketname = Optional.ofNullable(properties.getProperty("cluster.unmanaged.bucket")).orElse("");
     httpClient = setupHttpClient(runWithTLS);
-    baseUrl = (runWithTLS ? "https://" : "http://") + getNodeUrl(isDnsSrv, seedHost, runWithTLS) + ":" + seedPort;
+    baseUrl = (runWithTLS ? "https://" : "http://") + getNodeUrl(isDnsSrv, seedHost, runWithTLS) + (seedPort == 0 ? "" : (":" + seedPort));
   }
 
   @Override

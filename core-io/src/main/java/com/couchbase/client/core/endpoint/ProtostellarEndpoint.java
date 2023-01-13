@@ -42,6 +42,7 @@ import com.couchbase.client.core.error.context.CancellationErrorContext;
 import com.couchbase.client.core.protostellar.ProtostellarStatsCollector;
 import com.couchbase.client.core.util.HostAndPort;
 import com.couchbase.client.protostellar.analytics.v1.AnalyticsGrpc;
+import com.couchbase.client.protostellar.internal.hooks.v1.HooksGrpc;
 import com.couchbase.client.protostellar.kv.v1.KvGrpc;
 import com.couchbase.client.protostellar.query.v1.QueryGrpc;
 import org.slf4j.Logger;
@@ -78,6 +79,7 @@ public class ProtostellarEndpoint {
   private final KvGrpc.KvBlockingStub kvBlockingStub;
   private final AnalyticsGrpc.AnalyticsStub analyticsStub;
   private final QueryGrpc.QueryStub queryStub;
+  private final HooksGrpc.HooksBlockingStub hooksBlockingStub;
   private final String hostname;
   private final int port;
   private final Core core;
@@ -199,6 +201,7 @@ public class ProtostellarEndpoint {
     kvBlockingStub = KvGrpc.newBlockingStub(managedChannel).withInterceptors(ci);
     analyticsStub = AnalyticsGrpc.newStub(managedChannel).withCallCredentials(creds);
     queryStub = QueryGrpc.newStub(managedChannel).withCallCredentials(creds);
+    hooksBlockingStub = HooksGrpc.newBlockingStub(managedChannel).withCallCredentials(creds);
   }
 
   private ManagedChannel channel() {
@@ -324,6 +327,10 @@ public class ProtostellarEndpoint {
 
   public QueryGrpc.QueryStub queryStub() {
     return queryStub;
+  }
+
+  public HooksGrpc.HooksBlockingStub hooksBlockingStub() {
+    return hooksBlockingStub;
   }
 
   /**

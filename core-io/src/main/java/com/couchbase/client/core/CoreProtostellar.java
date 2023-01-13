@@ -34,7 +34,7 @@ public class CoreProtostellar {
   /**
    * The default port used for Protostellar.
    */
-  private static final int DEFAULT_PROTOSTELLAR_TLS_PORT = 18098;
+  public static final int DEFAULT_PROTOSTELLAR_TLS_PORT = 18098;
 
 
   private final ProtostellarPool pool;

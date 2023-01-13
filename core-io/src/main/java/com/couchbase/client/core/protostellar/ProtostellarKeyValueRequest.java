@@ -48,8 +48,9 @@ public class ProtostellarKeyValueRequest<TGrpcRequest> extends ProtostellarReque
                                      RequestSpan span,
                                      Duration timeout,
                                      boolean idempotent,
-                                     RetryStrategy retryStrategy) {
-    super(core, ServiceType.KV, requestName, span, timeout, idempotent, retryStrategy);
+                                     RetryStrategy retryStrategy,
+                                     Map<String, Object> clientContext) {
+    super(core, ServiceType.KV, requestName, span, timeout, idempotent, retryStrategy, clientContext);
     this.keyspace = keyspace;
     this.key = key;
     this.durability = durability;

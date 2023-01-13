@@ -189,7 +189,8 @@ public class QueryAccessorProtostellar {
       span,
       timeout,
       opts.readonly(),
-      opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
+      opts.retryStrategy().orElse(core.context().environment().retryStrategy()),
+      opts.clientContext());
 
     com.couchbase.client.protostellar.query.v1.QueryRequest.Builder request = com.couchbase.client.protostellar.query.v1.QueryRequest.newBuilder()
       .setStatement(statement);
@@ -203,7 +204,6 @@ public class QueryAccessorProtostellar {
 
     out.request(request.build());
 
-    // todo sn request.context().clientContext(opts.clientContext());
     return out;
   }
 }

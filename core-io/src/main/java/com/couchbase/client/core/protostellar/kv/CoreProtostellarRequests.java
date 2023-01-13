@@ -48,9 +48,9 @@ public class CoreProtostellarRequests {
   private CoreProtostellarRequests() {}
 
   public static ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> getRequest(Core core,
-                                                                                                CoreCommonOptions opts,
-                                                                                                CoreKeyspace keyspace,
-                                                                                                String key) {
+                                                                                                   CoreCommonOptions opts,
+                                                                                                   CoreKeyspace keyspace,
+                                                                                                   String key) {
     Duration timeout = CoreProtostellarUtil.kvTimeout(opts.timeout(), core);
     ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> out = new ProtostellarKeyValueRequest<>(core,
       keyspace,
@@ -60,7 +60,8 @@ public class CoreProtostellarRequests {
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_GET, CoreDurability.NONE, opts.parentSpan().orElse(null)),
       timeout,
       true,
-      opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
+      opts.retryStrategy().orElse(core.context().environment().retryStrategy()),
+      opts.clientContext());
 
     out.request(com.couchbase.client.protostellar.kv.v1.GetRequest.newBuilder()
       .setBucketName(keyspace.bucket())
@@ -88,7 +89,8 @@ public class CoreProtostellarRequests {
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, durability, opts.parentSpan().orElse(null)),
       timeout,
       false,
-      opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
+      opts.retryStrategy().orElse(core.context().environment().retryStrategy()),
+      opts.clientContext());
 
     final RequestSpan encodeSpan = CbTracing.newSpan(core.context(), TracingIdentifiers.SPAN_REQUEST_ENCODING, out.span());
     long start = System.nanoTime();
@@ -136,7 +138,8 @@ public class CoreProtostellarRequests {
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_REMOVE, durability, opts.parentSpan().orElse(null)),
       timeout,
       false,
-      opts.retryStrategy().orElse(core.context().environment().retryStrategy()));
+      opts.retryStrategy().orElse(core.context().environment().retryStrategy()),
+      opts.clientContext());
 
     com.couchbase.client.protostellar.kv.v1.RemoveRequest.Builder request = com.couchbase.client.protostellar.kv.v1.RemoveRequest.newBuilder()
       .setBucketName(keyspace.bucket())

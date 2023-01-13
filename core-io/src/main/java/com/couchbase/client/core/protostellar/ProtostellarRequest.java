@@ -69,6 +69,7 @@ public class ProtostellarRequest<TGrpcRequest> {
   private final boolean idempotent;
   private final Duration timeout;
   private final Deadline deadline;
+  private final Map<String, Object> clientContext;
 
 
   private TGrpcRequest request;
@@ -92,7 +93,8 @@ public class ProtostellarRequest<TGrpcRequest> {
                              RequestSpan span,
                              Duration timeout,
                              boolean idempotent,
-                             RetryStrategy retryStrategy) {
+                             RetryStrategy retryStrategy,
+                             Map<String, Object> clientContext) {
     this.core = core;
     this.serviceType = serviceType;
     this.requestName = requestName;
@@ -102,6 +104,7 @@ public class ProtostellarRequest<TGrpcRequest> {
     this.retryStrategy = retryStrategy;
     this.timeout = timeout;
     this.deadline = convertTimeout(timeout);
+    this.clientContext = clientContext;
   }
 
   public ProtostellarRequest<TGrpcRequest> request(TGrpcRequest request) {
@@ -232,10 +235,9 @@ public class ProtostellarRequest<TGrpcRequest> {
       input.put("cancelled", true);
       input.put("reason", cancellationReason);
     }
-    // todo sn clientContext
-//    if (clientContext != null) {
-//      context.put("clientContext", clientContext);
-//    }
+    if (clientContext != null) {
+      input.put("clientContext", clientContext);
+    }
     Map<String, Object> serviceContext = serviceContext();
     if (serviceContext != null) {
       input.put("service", serviceContext);

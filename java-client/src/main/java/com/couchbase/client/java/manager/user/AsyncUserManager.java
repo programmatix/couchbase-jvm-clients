@@ -280,7 +280,6 @@ public class AsyncUserManager {
   }
 
   private void checkIfProtostellar() {
-    // todo snask do we want to throw on DN for management APIs if Elixir?
     if (core.isProtostellar()) {
       throw CoreProtostellarUtil.unsupportedInProtostellar("user management");
     }

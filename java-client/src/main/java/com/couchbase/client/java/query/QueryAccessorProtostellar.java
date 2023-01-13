@@ -44,6 +44,7 @@ import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.conver
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.createSpan;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownAsync;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownBlocking;
+import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.handleShutdownReactive;
 import static com.couchbase.client.core.protostellar.ProtostellarRequest.REQUEST_QUERY;
 import static com.couchbase.client.core.util.Validators.notNullOrEmpty;
 
@@ -132,10 +133,10 @@ public class QueryAccessorProtostellar {
                                                                QueryOptions.Built opts,
                                                                ProtostellarRequest<QueryRequest> request,
                                                                JsonSerializer serializer) {
-    // todo sn
-//    if (handleShutdownReactive(core, () -> { return null; })) {
-//      return;
-//    }
+    Mono<ReactiveQueryResultProtostellar> err = handleShutdownReactive(core, request);
+    if (err != null) {
+      return err;
+    }
 
     Sinks.Many<QueryResponse> responses = Sinks.many().replay().latest();
 

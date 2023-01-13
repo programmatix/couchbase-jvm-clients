@@ -16,6 +16,7 @@
 package com.couchbase.client.core.protostellar;
 
 import com.couchbase.client.core.Core;
+import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.kv.CoreDurability;
 import com.couchbase.client.core.cnc.CbTracing;
 import com.couchbase.client.core.cnc.RequestSpan;
@@ -28,6 +29,7 @@ import com.couchbase.client.core.msg.kv.CodecFlags;
 import com.couchbase.client.core.retry.ProtostellarRequestBehaviour;
 import com.couchbase.client.protostellar.kv.v1.DocumentContentType;
 import com.couchbase.client.protostellar.kv.v1.DurabilityLevel;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.annotation.Nullable;
 
@@ -37,7 +39,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-// todo sn split this grab-bag util class up
+@Stability.Internal
 public class CoreProtostellarUtil {
   private CoreProtostellarUtil() {}
 
@@ -76,24 +78,6 @@ public class CoreProtostellarUtil {
       return Deadline.after(customTimeout.get().toMillis(), TimeUnit.MILLISECONDS);
     } else {
       return Deadline.after(defaultTimeout.toMillis(), TimeUnit.MILLISECONDS);
-    }
-  }
-
-  public static Deadline convertKvDurableTimeout(Optional<Duration> customTimeout, Optional<com.couchbase.client.core.msg.kv.DurabilityLevel> dl, Core core) {
-    if (customTimeout.isPresent()) {
-      return Deadline.after(customTimeout.get().toMillis(), TimeUnit.MILLISECONDS);
-    } else if (dl.isPresent()) {
-      return Deadline.after(core.context().environment().timeoutConfig().kvDurableTimeout().toMillis(), TimeUnit.MILLISECONDS);
-    } else {
-      return Deadline.after(core.context().environment().timeoutConfig().kvTimeout().toMillis(), TimeUnit.MILLISECONDS);
-    }
-  }
-
-  public static Deadline convertKvTimeout(Optional<Duration> customTimeout, Core core) {
-    if (customTimeout.isPresent()) {
-      return Deadline.after(customTimeout.get().toMillis(), TimeUnit.MILLISECONDS);
-    } else {
-      return Deadline.after(core.context().environment().timeoutConfig().kvTimeout().toMillis(), TimeUnit.MILLISECONDS);
     }
   }
 
@@ -144,6 +128,13 @@ public class CoreProtostellarUtil {
       return true;
     }
     return false;
+  }
+
+  public static <T> @Nullable Mono<T> handleShutdownReactive(Core core, ProtostellarRequest<?> request) {
+    if (core.protostellar().endpoint().isShutdown()) {
+      return Mono.error(RequestCanceledException.shuttingDown(request.context()));
+    }
+    return null;
   }
 
   public static DurabilityLevel convert(com.couchbase.client.core.msg.kv.DurabilityLevel dl) {

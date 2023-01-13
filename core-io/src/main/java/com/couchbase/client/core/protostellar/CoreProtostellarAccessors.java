@@ -84,7 +84,7 @@ public class CoreProtostellarAccessors {
           dispatchSpan.end();
         }
         TSdkResult result = convertResponse.apply(response);
-        request.logicallyComplete(null);
+        request.raisedResponseToUser(null);
         return result;
       } catch (Throwable t) {
         request.dispatchDuration(System.nanoTime() - start);
@@ -98,7 +98,7 @@ public class CoreProtostellarAccessors {
           }
           // Loop round again for a retry.
         } else {
-          request.logicallyComplete(behaviour.exception());
+          request.raisedResponseToUser(behaviour.exception());
           throw behaviour.exception();
         }
       }
@@ -157,8 +157,14 @@ public class CoreProtostellarAccessors {
         }
 
         TSdkResult result = convertResponse.apply(response);
-        request.logicallyComplete(null);
-        ret.complete(result);
+
+        if (request.completed()) {
+          core.context().environment().orphanReporter().report(new ProtostellarBaseRequest(request));
+        }
+        else {
+          request.raisedResponseToUser(null);
+          ret.complete(result);
+        }
       }
 
       @Override
@@ -173,13 +179,23 @@ public class CoreProtostellarAccessors {
 
           if (unableToSchedule) {
             RuntimeException err = request.cancel(CancellationReason.TOO_MANY_REQUESTS_IN_RETRY).exception();
-            request.logicallyComplete(err);
-            ret.completeExceptionally(err);
+            if (request.completed()) {
+              // todo snask what here
+            }
+            else {
+              request.raisedResponseToUser(err);
+              ret.completeExceptionally(err);
+            }
           }
         }
         else {
-          request.logicallyComplete(behaviour.exception());
-          ret.completeExceptionally(behaviour.exception());
+          if (request.completed()) {
+            // todo snask what here
+          }
+          else {
+            request.raisedResponseToUser(behaviour.exception());
+            ret.completeExceptionally(behaviour.exception());
+          }
         }
       }
     }, core.context().environment().executor());
@@ -234,13 +250,18 @@ public class CoreProtostellarAccessors {
     Futures.addCallback(response, new FutureCallback<TGrpcResponse>() {
       @Override
       public void onSuccess(TGrpcResponse response) {
-        request.dispatchDuration(System.nanoTime() - start);
-        if (dispatchSpan != null) {
-          dispatchSpan.end();
+        if (request.completed()) {
+          core.context().environment().orphanReporter().report(new ProtostellarBaseRequest(request));
         }
-        TSdkResult result = convertResponse.apply(response);
-        request.logicallyComplete(null);
-        ret.tryEmitValue(result).orThrow();
+        else {
+          request.dispatchDuration(System.nanoTime() - start);
+          if (dispatchSpan != null) {
+            dispatchSpan.end();
+          }
+          TSdkResult result = convertResponse.apply(response);
+          request.raisedResponseToUser(null);
+          ret.tryEmitValue(result).orThrow();
+        }
       }
 
       @Override
@@ -255,13 +276,23 @@ public class CoreProtostellarAccessors {
 
           if (unableToSchedule) {
             RuntimeException err = request.cancel(CancellationReason.TOO_MANY_REQUESTS_IN_RETRY).exception();
-            request.logicallyComplete(err);
-            ret.tryEmitError(err).orThrow();
+            if (request.completed()) {
+              // todo snask what here?
+            }
+            else {
+              request.raisedResponseToUser(err);
+              ret.tryEmitError(err).orThrow();
+            }
           }
         }
         else {
-          request.logicallyComplete(behaviour.exception());
-          ret.tryEmitError(behaviour.exception()).orThrow();
+          if (request.completed()) {
+            // todo snask what here?
+          }
+          else {
+            request.raisedResponseToUser(behaviour.exception());
+            ret.tryEmitError(behaviour.exception()).orThrow();
+          }
         }
       }
     }, core.context().environment().executor());

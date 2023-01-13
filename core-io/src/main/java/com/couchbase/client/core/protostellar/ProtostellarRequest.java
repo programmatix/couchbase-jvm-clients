@@ -80,6 +80,13 @@ public class ProtostellarRequest<TGrpcRequest> {
   private int retryAttempts;
   private Set<RetryReason> retryReasons;
   private CancellationReason cancellationReason;
+  /**
+   * The state model is slightly different to BaseRequest's.  A request can either return success
+   * or an exception to the user.  We don't regard cancellation as a separate state, it's simply
+   * a form of raising an exception.  It provides a simpler model where the state may only be
+   * changed in logicallyComplete.
+   */
+  private volatile State state = State.INCOMPLETE;
 
   public ProtostellarRequest(Core core,
                              ServiceType serviceType,
@@ -121,7 +128,16 @@ public class ProtostellarRequest<TGrpcRequest> {
     return span;
   }
 
-  public void logicallyComplete(@Nullable Throwable err) {
+  /**
+   * Crucial to always ultimately call this on every request, and just once.
+   */
+  public void raisedResponseToUser(@Nullable Throwable err) {
+    if (state != State.INCOMPLETE) {
+      throw new IllegalStateException("Trying to raise a response multiple times on the same request - internal bug");
+    }
+
+    state = (err == null) ? State.SUCCEEDED : State.FAILED;
+
     if (span != null) {
       if (!CbTracing.isInternalSpan(span)) {
         span.attribute(TracingIdentifiers.ATTR_RETRIES, retryAttempts());
@@ -174,7 +190,7 @@ public class ProtostellarRequest<TGrpcRequest> {
 
   public ProtostellarRequestBehaviour cancelDueToTimeout() {
     CancellationReason reason = CancellationReason.TIMEOUT;
-    this.cancellationReason = reason;
+    cancellationReason = reason;
 
     String msg = this.getClass().getSimpleName() + ", Reason: " + reason;
     CancellationErrorContext ctx = new CancellationErrorContext(context());
@@ -205,13 +221,10 @@ public class ProtostellarRequest<TGrpcRequest> {
   public ProtostellarErrorContext context() {
     Map<String, Object> input = new HashMap<>();
 
-    // todo sn is id important?
-    // context.put("requestId", request.id());
     input.put("idempotent", idempotent);
     input.put("requestName", requestName);
     input.put("retried", retryAttempts);
-    // todo sn track completion
-    // context.put("completed", request.completed());
+    input.put("completed", completed());
     input.put("timeoutMs", timeout.toMillis());
     if (cancellationReason != null) {
       input.put("cancelled", true);
@@ -257,5 +270,30 @@ public class ProtostellarRequest<TGrpcRequest> {
   public void dispatchDuration(long duration) {
     lastDispatchDuration = duration;
     totalDispatchDuration += duration;
+  }
+
+  public boolean completed() {
+    return state != State.INCOMPLETE;
+  }
+
+  /**
+   * Represents the states this request can be in.
+   */
+  private enum State {
+
+    /**
+     * This request is not complete yet.
+     */
+    INCOMPLETE,
+
+    /**
+     * This request has been completed successfully.
+     */
+    SUCCEEDED,
+
+    /**
+     * This request has been completed with failure.
+     */
+    FAILED
   }
 }

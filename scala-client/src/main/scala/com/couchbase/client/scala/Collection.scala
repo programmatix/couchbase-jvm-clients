@@ -168,7 +168,6 @@ class Collection(
       durability: Durability = Disabled,
       timeout: Duration = Duration.MinusInf
   )(implicit serializer: JsonSerializer[T]): Try[MutationResult] = {
-    // todo sn check CoreKvOps approach in Scala
     block(
       async.insert(
         id,

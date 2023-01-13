@@ -25,7 +25,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 
 private[scala] object CoreCommonConverters {
-  def convert(env: ClusterEnvironment, options: GetOptions): CoreCommonOptions = {
+  def convert(options: GetOptions): CoreCommonOptions = {
     CoreCommonOptions.of(
       if (options.timeout == Duration.MinusInf) null
       else java.time.Duration.ofNanos(options.timeout.toNanos),
@@ -39,12 +39,12 @@ private[scala] object CoreCommonConverters {
       env: ClusterEnvironment,
       transcoder: Option[Transcoder]
   ): GetResult = {
-    new GetResult(
+    GetResult(
       in.key(),
       Left(in.content()),
       in.flags(),
       in.cas(),
-      in.expiry(),
+      Option(in.expiry()),
       transcoder.getOrElse(env.transcoder)
     )
   }

@@ -61,7 +61,6 @@ public class RetryOrchestratorProtostellar {
       // The 99% case is that the retry strategy is the default BestEffortRetryStrategy.INSTANCE.  We can avoid turning the ProtostellarRequest into a Request in this case (Request is required by
       // the RetryStrategy public API).
       if (request.retryStrategy() == BestEffortRetryStrategy.INSTANCE) {
-        // todo sn emulate BestEffortRetryStrategy behaviour, with exponential backoff.  For now just using a fixed retry.
         retryAction = RetryAction.withDuration(Duration.ofMillis(50));
       }
       else {
@@ -75,10 +74,7 @@ public class RetryOrchestratorProtostellar {
         Duration cappedDuration = capDuration(duration.get(), request);
         return retryWithDuration(ctx, request, cappedDuration, reason);
       } else {
-        // todo sn do we need to emulate this? "unmonitored request's severity is downgraded to debug to not spam the info-level logs"
         ctx.environment().eventBus().publish(new RequestNotRetriedEvent(Event.Severity.DEBUG, request.getClass(), request.context(), reason, null));
-        // todo sn retryAction.exceptionTranslator() is part of RetryStrategy interface, what does it do, do we need to pass it along?
-        // user request - wanted to fail fast if doc locked - wanted DocLocked not Timeout
         return request.cancel(CancellationReason.noMoreRetries(reason));
       }
     }

@@ -213,7 +213,7 @@ public class JavaIntegrationTest extends ClusterAwareIntegrationTest {
     bucket.waitUntilReady(WAIT_UNTIL_READY_DEFAULT);
 
     if (bucket.core().isProtostellar()) {
-      // todo sn ping
+      // Protostellar ping support will be implemented under JVMCBC-1189
       return;
     }
 

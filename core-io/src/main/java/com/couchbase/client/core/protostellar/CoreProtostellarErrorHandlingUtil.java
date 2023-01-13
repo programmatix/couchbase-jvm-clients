@@ -86,7 +86,6 @@ public class CoreProtostellarErrorHandlingUtil {
               PreconditionFailure.Violation violation = info.getViolations(0);
               String type = violation.getType();
 
-              // todo snask many details of error handling left to sort out
               if (type.equals(PRECONDITION_CAS)) {
                 return ProtostellarRequestBehaviour.fail(new CasMismatchException(context));
               }
@@ -120,7 +119,6 @@ public class CoreProtostellarErrorHandlingUtil {
         case DEADLINE_EXCEEDED:
           return ProtostellarRequestBehaviour.fail(new AmbiguousTimeoutException("The server reported the operation timeout, and state might have been changed", new CancellationErrorContext(context)));
         case NOT_FOUND:
-          // todo snask need a clear mapping of these error codes.  NOT_FOUND on collection.get() is obvious - but what about on a query?
           return ProtostellarRequestBehaviour.fail(new DocumentNotFoundException(context));
         case ALREADY_EXISTS:
           return ProtostellarRequestBehaviour.fail(new DocumentExistsException(context));
@@ -130,10 +128,9 @@ public class CoreProtostellarErrorHandlingUtil {
         case UNIMPLEMENTED:
           return ProtostellarRequestBehaviour.fail(new FeatureNotAvailableException(t));
         case UNAVAILABLE:
-          // todo sn can we better differentiate between SERVICE_NOT_AVAILABLE, ENDPOINT_NOT_AVAILABLE, NODE_NOT_AVAILABLE, ENDPOINT_NOT_WRITABLE, CHANNEL_CLOSED_WHILE_IN_FLIGHT?
           return RetryOrchestratorProtostellar.shouldRetry(core, request, RetryReason.ENDPOINT_NOT_AVAILABLE);
         default:
-          // TODO snask what to do for RESOURCE_EXHAUSTED, FAILED_PRECONDITION, DATA_LOSS
+          // There are several codes left to handle, to be fixed under JVMCBC-1188.
           return ProtostellarRequestBehaviour.fail(new UnsupportedOperationException("Unhandled error code " + code));
       }
     } else if (t instanceof RuntimeException) {

@@ -186,7 +186,6 @@ public class ThresholdLoggingTracer implements RequestTracer {
       if (request instanceof CoreTransactionRequest) {
         return tookNanos >= transactionsThreshold;
       }
-      // todo snask handle with Protostellar - what kind of service is it?
       return false;
     }
     else if (serviceType == ServiceType.KV && tookNanos >= kvThreshold) {

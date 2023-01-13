@@ -412,9 +412,6 @@ public class KeyValueMessageHandler extends ChannelDuplexHandler {
     return start;
   }
 
-  // todo sn perf test multiple doc sizes
-  // todo sn perf test the 3 APIs
-
   /**
    * Tries to decode the response and succeed the request.
    * <p>

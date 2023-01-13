@@ -9,7 +9,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CouchbaseForkPoolThreadFactory implements ForkJoinPool.ForkJoinWorkerThreadFactory {
-  // todo snremove before GA, this is something of a hack
+  // JVMCBC-1187: Temporary performance-related code that will be removed pre-GA.
   public static ProtostellarStatsCollector collector;
 
   private final Logger logger = LoggerFactory.getLogger(CouchbaseForkPoolThreadFactory.class);

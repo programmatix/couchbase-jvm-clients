@@ -68,13 +68,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ProtostellarEndpoint {
   private final Logger logger = LoggerFactory.getLogger(ProtostellarEndpoint.class);
 
-  // todo snremove before GA (it's useful, but GRPC doesn't expose internals well, and this has to use hacky methods to get them). Plus of course it's a hack to have a public static setter.
+  // JVMCBC-1187: Temporary performance-related code that will be removed pre-GA.  (It's useful, but GRPC doesn't expose internals well, and
+  // this has to use hacky methods to get them). Plus of course it's a hack to have a public static setter.
   public static ProtostellarStatsCollector collector;
 
   private final AtomicBoolean shutdown = new AtomicBoolean(false);
-  // todo snask circuit breakers
-  // private final CircuitBreaker circuitBreaker;
-
   private final ManagedChannel managedChannel;
   private final KvGrpc.KvFutureStub kvStub;
   private final KvGrpc.KvBlockingStub kvBlockingStub;
@@ -85,7 +83,7 @@ public class ProtostellarEndpoint {
   private final Core core;
 
   public ProtostellarEndpoint(Core core, String hostname, final int port) {
-    // todo snremove temporary hack to get performance testing working
+    // JVMCBC-1187: This is a temporary hack to get performance testing working, which will be removed pre-GA.
     // The issue is that we send in protostellar://cbs as a connection string because the Couchbase cluster is running in a Docker container named "cbs", and the performer is also running in a Docker container.
     // However, Stellar Nebula is running normally, not in a container, so must be accessed with "localhost" instead.
     // So we pass a connection string of "protostellar://cbs" and "com.couchbase.protostellar.overrideHostname"="localhost".
@@ -124,7 +122,7 @@ public class ProtostellarEndpoint {
       }
     };
 
-    // todo snremove probably remove pre-release, just trying to understand the internals
+    // JVMCBC-1187: Temporary code to provide some insight on GRPC internals, will likely be removed pre-GA.
     ClientStreamTracer.Factory factory = new ClientStreamTracer.Factory() {
       public ClientStreamTracer newClientStreamTracer(ClientStreamTracer.StreamInfo info, Metadata headers) {
         return new ClientStreamTracer() {
@@ -187,7 +185,7 @@ public class ProtostellarEndpoint {
       public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
         // logger.info("{}", method.getFullMethodName());
 
-        // todo snremove an interceptor seems to be the only way of setting this option.  remove pre-release.
+        // JVMCBC-1187: an interceptor seems to be the only way of setting this option.  Will be removed before GA.
         return next.newCall(method, callOptions.withStreamTracerFactory(factory));
       }
     };
@@ -206,9 +204,7 @@ public class ProtostellarEndpoint {
   private ManagedChannel channel() {
     logger.info("making channel {} {}", hostname, port);
 
-    // todo snask what to do with tcpKeepAlivesEnabled and rest of connection options (kvNumConnections etc.)
-
-    // todo snremove we're using unverified TLS for now - once STG has it we can use the same Capella cert bundling approach and use TLS properly
+    // JVMCBC-1187: we're using unverified TLS for now - once STG has it we can use the same Capella cert bundling approach and use TLS properly.
     ManagedChannelBuilder builder = NettyChannelBuilder.forAddress(hostname, port, InsecureChannelCredentials.create())
       // 20MB is the (current) maximum document size supported by the server.  Specifying 21MB to give wiggle room for the rest of the GRPC message.
       .maxInboundMessageSize(22020096)
@@ -217,7 +213,7 @@ public class ProtostellarEndpoint {
       // Retry strategies to be determined, but presumably we will need something custom rather than what GRPC provides
       .disableRetry();
 
-    // todo snremove experimental performance testing code
+    // JVMCBC-1187: experimental code for performance testing that will be removed pre-GA.
     // Testing anyway indicates this load balancing makes zero difference - always end up with one channel and one subchannel per ManagedChannel regardless.
     String loadBalancingCount = System.getProperty("com.couchbase.protostellar.loadBalancing");
     String loadBalancingStrategy = System.getProperty("com.couchbase.protostellar.loadBalancingStrategy", "round_robin");
@@ -288,12 +284,13 @@ public class ProtostellarEndpoint {
     throw new IllegalStateException("Unknown state " + state);
   }
 
-  // todo sn hook up diagnostics
+  // Diagnostics to be completed under JVMCBC-1189
   public EndpointDiagnostics diagnostics() {
     return new EndpointDiagnostics(null,
       convert(managedChannel.getState(false)),
       CircuitBreaker.State.CLOSED,
-      null, // todo sn
+      // Don't have easy access to the local hostname - try to resolve under JVMCBC-1189
+      null,
       hostname,
       Optional.empty(),
       Optional.empty(),

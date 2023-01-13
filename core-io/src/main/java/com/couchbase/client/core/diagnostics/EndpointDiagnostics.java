@@ -191,7 +191,6 @@ public class EndpointDiagnostics {
         return map;
     }
 
-    // todo snask how should PS look in diagnostics report?
     @Override
     public String toString() {
         return "EndpointDiagnostics{" +

@@ -59,14 +59,13 @@ public @interface IgnoreWhen {
 
   /**
    * If the test config specifies connecting as Protostellar.
-   *
-   * todo snremove this will be removed before GA - it just indicates tests that will ultimately work with Protosstellar
    */
+  // JVMCBC-1187: This and everything using it will be fixed and removed before GA.
   boolean isProtostellarWillWorkLater() default false;
 
   /**
    * Similar to isProtostellarWillWorkLater - some tests are only failing due to lack of waitUntilReady
-   * todo snremove before GA
    */
+  // JVMCBC-1187: This and everything using it will be fixed and removed before GA.
   boolean isProtostellarOnlyBecauseOfWaitUntilReady() default false;
 }

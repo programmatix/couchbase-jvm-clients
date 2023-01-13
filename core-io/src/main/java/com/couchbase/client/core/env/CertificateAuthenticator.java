@@ -133,7 +133,7 @@ public class CertificateAuthenticator implements Authenticator {
 
   @Override
   public void authProtostellarRequest(Metadata metadata) {
-    // todo sn support
+    // To be added under JVMCBC-1195
     throw new UnsupportedOperationException("CertificateAuthenticator is not supported with Protostellar");
   }
 

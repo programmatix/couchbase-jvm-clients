@@ -164,7 +164,7 @@ public class QueryAccessorProtostellar {
   }
 
   private static RuntimeException convertException(Throwable throwable) {
-    // todo snask query error handling
+    // STG does not currently implement most query errors.
     if (throwable instanceof RuntimeException) {
       return (RuntimeException) throwable;
     }

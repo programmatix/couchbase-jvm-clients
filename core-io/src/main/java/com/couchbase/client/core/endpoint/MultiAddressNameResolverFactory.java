@@ -15,6 +15,7 @@
  */
 package com.couchbase.client.core.endpoint;
 
+import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.deps.io.grpc.Attributes;
 import com.couchbase.client.core.deps.io.grpc.EquivalentAddressGroup;
 import com.couchbase.client.core.deps.io.grpc.NameResolver;
@@ -23,7 +24,8 @@ import java.net.URI;
 import java.util.List;
 
 // Credit: https://sultanov.dev/blog/grpc-client-side-load-balancing/
-// todo snremove currently only being used for perf testing
+// JVMCBC-1192: Only being used for performance testing and will be removed pre-GA.
+@Stability.Internal
 public class MultiAddressNameResolverFactory extends NameResolver.Factory {
 
   final List<EquivalentAddressGroup> addresses;

@@ -44,8 +44,7 @@ public class EndpointContext extends CoreContext {
   /**
    * The service type of this endpoint.
    */
-  // todo sn check if this needs to be nullable
-  private final @Nullable ServiceType serviceType;
+  private final ServiceType serviceType;
 
   private final Optional<String> bucket;
 
@@ -64,7 +63,7 @@ public class EndpointContext extends CoreContext {
    * Creates a new {@link EndpointContext}.
    */
   public EndpointContext(CoreContext ctx, HostAndPort remoteSocket,
-                         CircuitBreaker circuitBreaker, @Nullable ServiceType serviceType,
+                         CircuitBreaker circuitBreaker, ServiceType serviceType,
                          Optional<HostAndPort> localSocket, Optional<String> bucket, Optional<String> channelId) {
     super(ctx.core(), ctx.id(), ctx.environment(), ctx.authenticator());
     this.remoteSocket = remoteSocket;

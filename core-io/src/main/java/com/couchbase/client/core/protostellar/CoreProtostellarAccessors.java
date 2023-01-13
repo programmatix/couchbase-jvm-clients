@@ -76,7 +76,6 @@ public class CoreProtostellarAccessors {
       RequestSpan dispatchSpan = createDispatchSpan(core, request, endpoint);
       try {
         // Make the Protostellar call.
-        // todo sn check this is blocking just this user thread, not also an executor thread
         TGrpcResponse response = executeBlockingGrpcCall.apply(endpoint);
 
         request.dispatchDuration(System.nanoTime() - start);

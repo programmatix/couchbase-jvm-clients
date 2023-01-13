@@ -75,8 +75,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// todo sn make tests run in SN mode also
-
 /**
  * This integration test makes sure the various KV-based APIs work as they are intended to.
  *
@@ -156,6 +154,11 @@ class KeyValueIntegrationTest extends JavaIntegrationTest {
   @Test
   void emptyIfGetNotFound() {
     assertThrows(DocumentNotFoundException.class, () -> collection.get(UUID.randomUUID().toString()));
+  }
+
+  @Test
+  void emptyIfGetNotFoundReactive() {
+    assertThrows(DocumentNotFoundException.class, () -> collection.reactive().get(UUID.randomUUID().toString()).block());
   }
 
   @Test

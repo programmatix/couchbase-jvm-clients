@@ -168,9 +168,8 @@ public class CoreEnvironment implements AutoCloseable {
       .orElse(new OwnedSupplier<>(
         Schedulers.newParallel("cb-comp", schedulerThreadCount, true))
       );
-    // todo snlater will want to give user configurable control over the executor
 
-    // todo snremove doesn't seem to matter what executor is used so settle on one
+    // JVMCBC-1192: temporary code for performance testing purposes.  Will settle on a default pre-GA.
     String executorType = System.getProperty("com.couchbase.protostellar.executorType");
     String executorMaxThreadCountRaw = System.getProperty("com.couchbase.protostellar.executorMaxThreadCount");
     int maxThreadCount = Runtime.getRuntime().availableProcessors();
@@ -407,8 +406,6 @@ public class CoreEnvironment implements AutoCloseable {
   public Executor executor() {
     return executor.get();
   }
-
-  // todo sn skip initialise [most of?] Core in protostellar:// mode
 
   /**
    * Returns the request tracer for response time observability.

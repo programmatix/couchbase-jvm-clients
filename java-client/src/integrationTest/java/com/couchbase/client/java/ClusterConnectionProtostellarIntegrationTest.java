@@ -20,6 +20,8 @@ import com.couchbase.client.core.error.AmbiguousTimeoutException;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.kv.InsertOptions;
 import com.couchbase.client.java.util.JavaIntegrationTest;
+import com.couchbase.client.test.Capabilities;
+import com.couchbase.client.test.IgnoreWhen;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -28,8 +30,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-// todo snlater there will be a cluster cap eventually to allow Protostellar-only tests against clusters that don't have it.  Disabled for now until that is resolved.
-@Disabled
+@IgnoreWhen(missesCapabilities = {Capabilities.PROTOSTELLAR})
 class ClusterConnectionProtostellarIntegrationTest extends JavaIntegrationTest {
 
   @Test

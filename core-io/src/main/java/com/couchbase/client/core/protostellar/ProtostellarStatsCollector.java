@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// todo snremove before GA
+// JVMCBC-1187: This and everything using it will be removed before GA.
 @Stability.Internal
 public class ProtostellarStatsCollector {
   private int channelsCreated = 0;

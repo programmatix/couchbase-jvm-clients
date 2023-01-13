@@ -44,9 +44,7 @@ import java.util.concurrent.TimeUnit;
 import static com.couchbase.client.core.protostellar.CoreProtostellarUtil.convertTimeout;
 
 /**
- * Think we need this as there's so much to hold onto outside of the basic GRPC request.
- * However, cannot extend Request since that requires its response derive from Response, which a GRPC response doesn't.
- * Could create Response wrappers, but seeing how far we get without that...
+ * Holds onto a GRPC request, along with pertaining mutable and immutable state bound to the request's lifetime.
  */
 @Stability.Internal
 public class ProtostellarRequest<TGrpcRequest> {
@@ -66,7 +64,7 @@ public class ProtostellarRequest<TGrpcRequest> {
   private final RetryStrategy retryStrategy;
 
   private final long createdAt = System.nanoTime();
-  private final ServiceType serviceType;
+  protected final ServiceType serviceType;
   private final String requestName;
   private final boolean idempotent;
   private final Duration timeout;
@@ -218,6 +216,10 @@ public class ProtostellarRequest<TGrpcRequest> {
     retryReasons.add(reason);
   }
 
+  protected Map<String, Object> serviceContext() {
+    return null;
+  }
+
   public ProtostellarErrorContext context() {
     Map<String, Object> input = new HashMap<>();
 
@@ -234,11 +236,10 @@ public class ProtostellarRequest<TGrpcRequest> {
 //    if (clientContext != null) {
 //      context.put("clientContext", clientContext);
 //    }
-    // todo sn is serviceContext important?
-//    Map<String, Object> serviceContext = request.serviceContext();
-//    if (serviceContext != null) {
-//      context.put("service", serviceContext);
-//    }
+    Map<String, Object> serviceContext = serviceContext();
+    if (serviceContext != null) {
+      input.put("service", serviceContext);
+    }
     if (retryReasons != null) {
       input.put("retryReasons", retryReasons);
     }

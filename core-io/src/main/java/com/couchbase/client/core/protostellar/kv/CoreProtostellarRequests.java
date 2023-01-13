@@ -26,6 +26,7 @@ import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.com.google.protobuf.ByteString;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.protostellar.CoreProtostellarUtil;
+import com.couchbase.client.core.protostellar.ProtostellarKeyValueRequest;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
 import com.couchbase.client.core.service.ServiceType;
 import com.couchbase.client.protostellar.kv.v1.InsertRequest;
@@ -51,8 +52,10 @@ public class CoreProtostellarRequests {
                                                                                                 CoreKeyspace keyspace,
                                                                                                 String key) {
     Duration timeout = CoreProtostellarUtil.kvTimeout(opts.timeout(), core);
-    ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> out = new ProtostellarRequest<>(core,
-      ServiceType.KV,
+    ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.GetRequest> out = new ProtostellarKeyValueRequest<>(core,
+      keyspace,
+      key,
+      CoreDurability.NONE,
       REQUEST_KV_GET,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_GET, CoreDurability.NONE, opts.parentSpan().orElse(null)),
       timeout,
@@ -77,8 +80,10 @@ public class CoreProtostellarRequests {
                                                                  CoreDurability durability,
                                                                  long expiry) {
     Duration timeout = CoreProtostellarUtil.kvDurableTimeout(opts.timeout(), durability, core);
-    ProtostellarRequest<InsertRequest> out = new ProtostellarRequest<>(core,
-      ServiceType.KV,
+    ProtostellarRequest<InsertRequest> out = new ProtostellarKeyValueRequest<>(core,
+      keyspace,
+      key,
+      CoreDurability.NONE,
       REQUEST_KV_INSERT,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_INSERT, durability, opts.parentSpan().orElse(null)),
       timeout,
@@ -123,8 +128,10 @@ public class CoreProtostellarRequests {
                                                                                                          long cas,
                                                                                                          CoreDurability durability) {
     Duration timeout = CoreProtostellarUtil.kvDurableTimeout(opts.timeout(), durability, core);
-    ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> out = new ProtostellarRequest<>(core,
-      ServiceType.KV,
+    ProtostellarRequest<com.couchbase.client.protostellar.kv.v1.RemoveRequest> out = new ProtostellarKeyValueRequest<>(core,
+      keyspace,
+      key,
+      CoreDurability.NONE,
       REQUEST_KV_REMOVE,
       createSpan(core, TracingIdentifiers.SPAN_REQUEST_KV_REMOVE, durability, opts.parentSpan().orElse(null)),
       timeout,

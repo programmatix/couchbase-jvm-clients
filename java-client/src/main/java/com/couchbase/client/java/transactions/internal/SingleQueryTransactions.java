@@ -32,9 +32,7 @@ import com.couchbase.client.java.env.ClusterEnvironment;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.QueryResult;
-import com.couchbase.client.java.query.QueryResultHttp;
 import com.couchbase.client.java.query.ReactiveQueryResult;
-import com.couchbase.client.java.query.ReactiveQueryResultHttp;
 import com.couchbase.client.java.transactions.error.TransactionExpiredException;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
@@ -68,7 +66,7 @@ public class SingleQueryTransactions {
             JsonSerializer serializer = opts.serializer() == null ? environment.jsonSerializer() : opts.serializer();
 
             return tri.queryBlocking(statement, bucketName, scopeName, converted, Optional.of(span.span()))
-                    .map(qr -> (QueryResult) new QueryResultHttp(qr.header, qr.rows, qr.trailer, serializer))
+                    .map(qr -> new QueryResult(qr.header, qr.rows, qr.trailer, serializer))
                     .onErrorResume(ErrorUtil::convertTransactionFailedInternal)
                     .onErrorResume(ex -> {
                         // From a cluster.query() transaction the user will be expecting the traditional SDK errors
@@ -118,7 +116,7 @@ public class SingleQueryTransactions {
             ObjectNode converted = Mapper.reader().readValue(json.toBytes(), ObjectNode.class);
             JsonSerializer serializer = opts.serializer() == null ? environment.jsonSerializer() : opts.serializer();
             return tri.query(statement, bucketName, scopeName, converted, Optional.of(span.span()), errorConverter)
-                    .map(qr -> (ReactiveQueryResult) new ReactiveQueryResultHttp(qr, serializer))
+                    .map(qr -> new ReactiveQueryResult(qr, serializer))
                     .onErrorResume(ErrorUtil::convertTransactionFailedInternal)
                     .doOnError(err -> span.finish(err))
                     .doOnTerminate(() -> span.finish());

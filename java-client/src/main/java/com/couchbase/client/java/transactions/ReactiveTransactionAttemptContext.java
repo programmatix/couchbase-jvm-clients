@@ -22,7 +22,6 @@ import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.node.ObjectNode;
 import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
-import com.couchbase.client.core.transaction.CoreTransactionAttemptContextClassic;
 import com.couchbase.client.core.transaction.log.CoreTransactionLogger;
 import com.couchbase.client.core.transaction.support.SpanWrapper;
 import com.couchbase.client.java.ReactiveCollection;
@@ -46,13 +45,17 @@ import static com.couchbase.client.java.transactions.internal.EncodingUtil.encod
  * Thread-safety: This class is thread-safe for specific workloads, namely doing batch mutations in a reactive way.
  */
 public class ReactiveTransactionAttemptContext {
-    // todo sntxn port to strategy
-    private final CoreTransactionAttemptContextClassic internal;
+    private final CoreTransactionAttemptContext internal;
     private final JsonSerializer serializer;
 
     ReactiveTransactionAttemptContext(CoreTransactionAttemptContext internal, JsonSerializer serializer) {
-        this.internal = Objects.requireNonNull((CoreTransactionAttemptContextClassic) internal);
+        this.internal = Objects.requireNonNull(internal);
         this.serializer = Objects.requireNonNull(serializer);
+    }
+
+    @Stability.Internal
+    CoreTransactionAttemptContext ctx() {
+        return internal;
     }
 
     /**

@@ -25,6 +25,6 @@ public class ExpiryUtil {
     private ExpiryUtil() {}
 
     public static boolean hasExpired(CoreTransactionAttemptContext ctx, String stage, Optional<String> docId) {
-        return ((CoreTransactionAttemptContextClassic) ctx).hasExpiredClientSide(stage, docId);
+        return ctx.hasExpiredClientSide(stage, docId);
     }
 }

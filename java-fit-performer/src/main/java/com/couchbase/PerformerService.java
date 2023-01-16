@@ -133,26 +133,9 @@ public class PerformerService extends CorePerformer {
         response.addAllSdkImplementationCaps(Capabilities.sdkImplementationCaps());
         response.setLibraryVersion(VersionUtil.introspectSDKVersion());
 
-        // todo sntxn remove this is controlled by protostellar:// now
-        System.setProperty("com.couchbase.transactions.sn_mode", "true");
-
-        boolean snMode = System.getProperty("com.couchbase.transactions.sn_mode").equals("true");
-
         // [start:3.3.0]
         for (Extension ext : Extension.SUPPORTED) {
             try {
-                if (snMode) {
-                    if (ext == Extension.EXT_QUERY
-                            || ext == Extension.EXT_SINGLE_QUERY
-                            || ext == Extension.EXT_MOBILE_INTEROP
-                            || ext == Extension.EXT_REPLACE_BODY_WITH_XATTR
-                            || ext == Extension.EXT_OBSERVABILITY
-                            || ext == Extension.EXT_CUSTOM_METADATA_COLLECTION) {
-                        // todo sntxn expose properly
-                        continue;
-                    }
-                }
-
                 var pc = com.couchbase.client.protocol.transactions.Caps.valueOf(ext.name());
                 response.addTransactionImplementationsCaps(pc);
             } catch (IllegalArgumentException err) {
@@ -164,8 +147,6 @@ public class PerformerService extends CorePerformer {
                 }
             }
         }
-
-        response.addTransactionImplementationsCaps(com.couchbase.client.protocol.transactions.Caps.EXT_INSERT_EXISTING);
 
         var supported = new Supported();
         var protocolVersion = supported.protocolMajor + "." + supported.protocolMinor;

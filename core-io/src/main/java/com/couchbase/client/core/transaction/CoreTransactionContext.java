@@ -43,7 +43,7 @@ public class CoreTransactionContext {
     // The System.nanoTime() this overall transaction started
     private final long startTimeClient;
     public final CoreTransactionLogger LOGGER;
-    private volatile String transactionId;
+    private final String transactionId;
     private final SpanWrapper transactionSpan;
     private final CoreMergedTransactionConfig config;
     private final CoreTransactionsCleanup cleanup;
@@ -92,14 +92,6 @@ public class CoreTransactionContext {
 
     public String transactionId() {
         return transactionId;
-    }
-
-    /**
-     * Settable for Stellar Nebula.
-     */
-    public CoreTransactionContext transactionId(String transactionId) {
-        this.transactionId = transactionId;
-        return this;
     }
 
     public long startTimeClient() {

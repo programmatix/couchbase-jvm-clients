@@ -22,7 +22,9 @@ import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
 import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.node.ObjectNode;
 import com.couchbase.client.core.error.CouchbaseException;
-import com.couchbase.client.core.transaction.CoreTransactionAttemptContextClassic;
+import com.couchbase.client.core.error.EncodingFailureException;
+import com.couchbase.client.core.json.Mapper;
+import com.couchbase.client.core.msg.query.QueryRequest;
 import com.couchbase.client.core.transaction.CoreTransactionAttemptContext;
 import com.couchbase.client.core.transaction.log.CoreTransactionLogger;
 import com.couchbase.client.core.transaction.support.SpanWrapper;
@@ -31,8 +33,8 @@ import com.couchbase.client.java.Scope;
 import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.transactions.internal.OptionsUtil;
-import com.couchbase.client.java.transactions.internal.TransactionAttemptContextOperations;
 
+import java.io.IOException;
 import java.util.Objects;
 
 import static com.couchbase.client.core.cnc.TracingIdentifiers.TRANSACTION_OP_INSERT;
@@ -46,21 +48,17 @@ import static com.couchbase.client.java.transactions.internal.EncodingUtil.encod
  * as
  * commit or rollback the transaction.
  * <p>
- * These methods are blocking/synchronous.  See {@link CoreTransactionAttemptContextClassic} for the asynchronous version (which is
+ * These methods are blocking/synchronous.  See {@link CoreTransactionAttemptContext} for the asynchronous version (which is
  * the
  * preferred option, and which this class largely simply wraps).
  */
 public class TransactionAttemptContext {
     private final CoreTransactionAttemptContext internal;
     private final JsonSerializer serializer;
-    private final TransactionAttemptContextOperations strategy;
 
-    TransactionAttemptContext(CoreTransactionAttemptContext internal,
-                              JsonSerializer serializer,
-                              TransactionAttemptContextOperations strategy) {
+    TransactionAttemptContext(CoreTransactionAttemptContext internal, JsonSerializer serializer) {
         this.internal = Objects.requireNonNull(internal);
         this.serializer = Objects.requireNonNull(serializer);
-        this.strategy = Objects.requireNonNull(strategy);
     }
 
     @Stability.Internal
@@ -84,7 +82,9 @@ public class TransactionAttemptContext {
      * @return a <code>TransactionGetResult</code> containing the document
      */
     public TransactionGetResult get(Collection collection, String id) {
-        return strategy.get(collection, id);
+        return internal.get(makeCollectionIdentifier(collection.async()), id)
+                .map(result -> new TransactionGetResult(result, serializer()))
+                .block();
     }
 
     /**
@@ -110,16 +110,15 @@ public class TransactionAttemptContext {
         RequestSpan span = CbTracing.newSpan(internal.core().context(), TRANSACTION_OP_REPLACE, internal.span());
         span.attribute(TracingIdentifiers.ATTR_OPERATION, TRANSACTION_OP_REPLACE);
         byte[] encoded = encode(content, span, serializer, internal.core().context());
-        try {
-            return strategy.replace(doc.internal(), encoded, new SpanWrapper(span));
-        }
-        catch (Exception err) {
-            span.status(RequestSpan.StatusCode.ERROR);
-            throw err;
-        }
-        finally {
-            span.end();
-        }
+        return internal.replace(doc.internal(), encoded, new SpanWrapper(span))
+                .map(result -> new TransactionGetResult(result, serializer()))
+                .doOnError(err -> span.status(RequestSpan.StatusCode.ERROR))
+                .doOnTerminate(() -> span.end())
+                .block();
+    }
+
+    private JsonSerializer serializer() {
+        return serializer;
     }
 
     /**
@@ -142,16 +141,11 @@ public class TransactionAttemptContext {
         RequestSpan span = CbTracing.newSpan(internal.core().context(), TRANSACTION_OP_INSERT, internal.span());
         span.attribute(TracingIdentifiers.ATTR_OPERATION, TRANSACTION_OP_INSERT);
         byte[] encoded = encode(content, span, serializer, internal.core().context());
-        try {
-            return strategy.insert(makeCollectionIdentifier(collection.async()), id, encoded, new SpanWrapper(span));
-        }
-        catch (Exception err) {
-            span.status(RequestSpan.StatusCode.ERROR);
-            throw err;
-        }
-        finally {
-            span.end();
-        }
+        return internal.insert(makeCollectionIdentifier(collection.async()), id, encoded, new SpanWrapper(span))
+                .map(result -> new TransactionGetResult(result, serializer()))
+                .doOnError(err -> span.status(RequestSpan.StatusCode.ERROR))
+                .doOnTerminate(() -> span.end())
+                .block();
     }
 
     /**
@@ -171,16 +165,10 @@ public class TransactionAttemptContext {
     public void remove(TransactionGetResult doc) {
         RequestSpan span = CbTracing.newSpan(internal.core().context(), TRANSACTION_OP_REMOVE, internal.span());
         span.attribute(TracingIdentifiers.ATTR_OPERATION, TRANSACTION_OP_REMOVE);
-        try {
-            strategy.remove(doc.internal(), new SpanWrapper(span));
-        }
-        catch (Exception err) {
-            span.status(RequestSpan.StatusCode.ERROR);
-            throw err;
-        }
-        finally {
-            span.end();
-        }
+        internal.remove(doc.internal(), new SpanWrapper(span))
+                .doOnError(err -> span.status(RequestSpan.StatusCode.ERROR))
+                .doOnTerminate(() -> span.end())
+                .block();
     }
 
     /**
@@ -220,11 +208,14 @@ public class TransactionAttemptContext {
                              String statement,
                              TransactionQueryOptions options) {
         ObjectNode opts = OptionsUtil.createTransactionOptions(scope == null ? null : scope.reactive(), statement, options);
-        return strategy.queryBlocking(statement,
+        return internal.queryBlocking(statement,
                         scope == null ? null : scope.bucketName(),
                         scope == null ? null : scope.name(),
                         opts,
-                        false);
+                        false)
+                .publishOn(internal.core().context().environment().transactionsSchedulers().schedulerBlocking())
+                .map(response -> new TransactionQueryResult(response.header, response.rows, response.trailer, serializer()))
+                .block();
     }
 
     /**

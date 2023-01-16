@@ -25,7 +25,6 @@ import com.couchbase.client.java.codec.JsonSerializer;
 import com.couchbase.client.java.codec.TypeRef;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.query.QueryMetaData;
-import com.couchbase.client.java.query.QueryMetaDataHttp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -116,7 +115,7 @@ public class TransactionQueryResult {
      * Returns the {@link QueryMetaData} giving access to the additional metadata associated with this query.
      */
     public QueryMetaData metaData() {
-        return QueryMetaDataHttp.from(header, trailer);
+        return QueryMetaData.from(header, trailer);
     }
 
     @Override

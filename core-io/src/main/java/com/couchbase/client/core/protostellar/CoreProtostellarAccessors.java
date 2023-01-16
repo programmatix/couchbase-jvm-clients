@@ -123,9 +123,7 @@ public class CoreProtostellarAccessors {
                                       Function<Throwable, ProtostellarRequestBehaviour>     convertException) {
 
     CompletableFuture<TSdkResult> ret = new CompletableFuture<>();
-    CoreAsyncResponse<TSdkResult> response = new CoreAsyncResponse<>(ret, () -> {
-      // todo sn what to do here?
-    });
+    CoreAsyncResponse<TSdkResult> response = new CoreAsyncResponse<>(ret, () -> {});
     asyncInternal(ret, core, request, executeFutureGrpcCall, convertResponse, convertException);
     return response;
   }
@@ -178,20 +176,16 @@ public class CoreProtostellarAccessors {
 
           if (unableToSchedule) {
             RuntimeException err = request.cancel(CancellationReason.TOO_MANY_REQUESTS_IN_RETRY).exception();
-            if (request.completed()) {
-              // todo snask what here
-            }
-            else {
+            if (!request.completed()) {
+              // The completed() check is just a sanity check - it shouldn't be possible to be retrying an operation that has already completed.
               request.raisedResponseToUser(err);
               ret.completeExceptionally(err);
             }
           }
         }
         else {
-          if (request.completed()) {
-            // todo snask what here
-          }
-          else {
+          if (!request.completed()) {
+            // The completed() check is just a sanity check - it shouldn't be possible to be retrying an operation that has already completed.
             request.raisedResponseToUser(behaviour.exception());
             ret.completeExceptionally(behaviour.exception());
           }
@@ -275,20 +269,16 @@ public class CoreProtostellarAccessors {
 
           if (unableToSchedule) {
             RuntimeException err = request.cancel(CancellationReason.TOO_MANY_REQUESTS_IN_RETRY).exception();
-            if (request.completed()) {
-              // todo snask what here?
-            }
-            else {
+            if (!request.completed()) {
+              // The completed() check is just a sanity check - it shouldn't be possible to be retrying an operation that has already completed.
               request.raisedResponseToUser(err);
               ret.tryEmitError(err).orThrow();
             }
           }
         }
         else {
-          if (request.completed()) {
-            // todo snask what here?
-          }
-          else {
+          if (!request.completed()) {
+            // The completed() check is just a sanity check - it shouldn't be possible to be retrying an operation that has already completed.
             request.raisedResponseToUser(behaviour.exception());
             ret.tryEmitError(behaviour.exception()).orThrow();
           }
@@ -311,7 +301,7 @@ public class CoreProtostellarAccessors {
                                                                          ProtostellarRequest<TGrpcRequest> request,
                                                                          ProtostellarEndpoint endpoint) {
     RequestTracer tracer = core.context().environment().requestTracer();
-    final RequestSpan dispatchSpan;
+    RequestSpan dispatchSpan;
     if (!CbTracing.isInternalTracer(tracer)) {
       dispatchSpan = tracer.requestSpan(TracingIdentifiers.SPAN_DISPATCH, request.span());
       TracingUtils.setCommonDispatchSpanAttributes(dispatchSpan, null, null, 0, endpoint.hostname(), endpoint.port(), null);

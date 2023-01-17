@@ -39,7 +39,6 @@ import com.couchbase.client.core.retry.RetryStrategy;
 import com.couchbase.client.core.service.AbstractPooledEndpointServiceConfig;
 import com.couchbase.client.core.transaction.config.CoreTransactionsConfig;
 import com.couchbase.client.core.transaction.util.CoreTransactionsSchedulers;
-import com.couchbase.client.core.transaction.util.TransactionsThreadFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;

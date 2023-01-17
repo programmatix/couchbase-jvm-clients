@@ -29,6 +29,7 @@ import com.couchbase.client.core.api.kv.CoreMutationResult;
 import com.couchbase.client.core.endpoint.http.CoreCommonOptions;
 import com.couchbase.client.core.protostellar.CoreProtostellarAccessors;
 import com.couchbase.client.core.protostellar.ProtostellarRequest;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -182,6 +183,26 @@ public final class ProtostellarCoreKvOps implements CoreKvOps {
 
   @Override
   public CoreAsyncResponse<CoreExistsResult> existsAsync(CoreCommonOptions common, String key) {
+    throw unsupported();
+  }
+
+  @Override
+  public CoreAsyncResponse<CoreMutationResult> touchAsync(CoreCommonOptions common, String key, long expiry) {
+    throw unsupported();
+  }
+
+  @Override
+  public CoreAsyncResponse<Void> unlockAsync(CoreCommonOptions common, String key, long cas) {
+    throw unsupported();
+  }
+
+  @Override
+  public Flux<CoreGetResult> getAllReplicasReactive(CoreCommonOptions common, String key) {
+    throw unsupported();
+  }
+
+  @Override
+  public Mono<CoreGetResult> getAnyReplicaReactive(CoreCommonOptions common, String key) {
     throw unsupported();
   }
 

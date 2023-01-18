@@ -42,11 +42,9 @@ import static com.couchbase.client.test.Util.waitUntilCondition;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @IgnoreWhen(missesCapabilities = Capabilities.COLLECTIONS,
-  clusterTypes = ClusterType.CAVES,
-  isProtostellarWillWorkLater = true
+  clusterTypes = ClusterType.CAVES
 )
 class CollectionManagerIntegrationTest extends JavaIntegrationTest {
 
@@ -154,7 +152,8 @@ class CollectionManagerIntegrationTest extends JavaIntegrationTest {
   }
 
   @Test
-  @IgnoreWhen(missesCapabilities = Capabilities.ENTERPRISE_EDITION)
+  // gRpc for protostellare createCollectionRequest has not maxTTL
+  @IgnoreWhen(missesCapabilities = Capabilities.ENTERPRISE_EDITION, isProtostellarWillWorkLater = true)
   void shouldCreateCollectionWithMaxExpiry() {
     String scope = randomString();
     String collection1 = randomString();

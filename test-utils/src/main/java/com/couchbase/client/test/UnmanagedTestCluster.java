@@ -39,6 +39,7 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -76,7 +77,7 @@ public class UnmanagedTestCluster extends TestCluster {
       seedPort = Integer.parseInt(split[split.length - 1]);
     }
     catch (NumberFormatException err) {
-      // Handling couchbase://localhost et al.
+      throw err;
     }
     adminUsername = properties.getProperty("cluster.adminUsername");
     adminPassword = properties.getProperty("cluster.adminPassword");
@@ -86,7 +87,7 @@ public class UnmanagedTestCluster extends TestCluster {
     isDnsSrv = Boolean.parseBoolean(properties.getProperty("cluster.unmanaged.dnsSrv"));
     bucketname = Optional.ofNullable(properties.getProperty("cluster.unmanaged.bucket")).orElse("");
     httpClient = setupHttpClient(runWithTLS);
-    baseUrl = (runWithTLS ? "https://" : "http://") + getNodeUrl(isDnsSrv, seedHost, runWithTLS) + (seedPort == 0 ? "" : (":" + seedPort));
+    baseUrl = (runWithTLS && !isProtostellar ? "https://" : "http://") + getNodeUrl(isDnsSrv, seedHost, runWithTLS) + ":" + (runWithTLS && !isProtostellar ? "18091" : "8091") ;
   }
 
   @Override
@@ -154,7 +155,8 @@ public class UnmanagedTestCluster extends TestCluster {
       nodeConfigs.add(new TestNodeConfig(seedHost, null, true, Optional.empty()));
     } else if (isProtostellar) {
       nodeConfigs = new ArrayList<>();
-      nodeConfigs.add(new TestNodeConfig(seedHost, null, false, Optional.of(DEFAULT_PROTOSTELLAR_TLS_PORT)));
+      Map<Services,Integer> ports = new HashMap<>();
+      nodeConfigs.add(new TestNodeConfig(seedHost, ports, false, Optional.of(DEFAULT_PROTOSTELLAR_TLS_PORT)));
     } else {
       nodeConfigs = nodesFromRaw(seedHost, raw);
     }
@@ -302,6 +304,11 @@ public class UnmanagedTestCluster extends TestCluster {
     return seedHost;
   }
 
+  /**
+   * Whether the test config has asked to connect to the cluster over protostellar://
+   *
+   * (Not whether the cluster has Stellar Nebula enabled).
+   */
   @Override
   public boolean isProtostellar() {
     return isProtostellar;

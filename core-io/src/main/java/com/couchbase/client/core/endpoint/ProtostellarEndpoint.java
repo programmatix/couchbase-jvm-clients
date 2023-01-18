@@ -41,6 +41,8 @@ import com.couchbase.client.core.error.UnambiguousTimeoutException;
 import com.couchbase.client.core.error.context.CancellationErrorContext;
 import com.couchbase.client.core.protostellar.ProtostellarStatsCollector;
 import com.couchbase.client.core.util.HostAndPort;
+import com.couchbase.client.protostellar.admin.bucket.v1.BucketAdminGrpc;
+import com.couchbase.client.protostellar.admin.collection.v1.CollectionAdminGrpc;
 import com.couchbase.client.protostellar.analytics.v1.AnalyticsGrpc;
 import com.couchbase.client.protostellar.kv.v1.KvGrpc;
 import com.couchbase.client.protostellar.query.v1.QueryGrpc;
@@ -51,16 +53,12 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Wraps a GRPC ManagedChannel.
@@ -78,6 +76,9 @@ public class ProtostellarEndpoint {
   private final KvGrpc.KvBlockingStub kvBlockingStub;
   private final AnalyticsGrpc.AnalyticsStub analyticsStub;
   private final QueryGrpc.QueryStub queryStub;
+  private final CollectionAdminGrpc.CollectionAdminFutureStub collectionAdminStub;
+  private final CollectionAdminGrpc.CollectionAdminBlockingStub collectionAdminBlockingStub;
+  private final BucketAdminGrpc.BucketAdminStub bucketAdminStub;
   private final String hostname;
   private final int port;
   private final Core core;
@@ -199,6 +200,9 @@ public class ProtostellarEndpoint {
     kvBlockingStub = KvGrpc.newBlockingStub(managedChannel).withInterceptors(ci);
     analyticsStub = AnalyticsGrpc.newStub(managedChannel).withCallCredentials(creds);
     queryStub = QueryGrpc.newStub(managedChannel).withCallCredentials(creds);
+    collectionAdminStub = CollectionAdminGrpc.newFutureStub(managedChannel).withCallCredentials(creds);
+    collectionAdminBlockingStub = CollectionAdminGrpc.newBlockingStub(managedChannel).withCallCredentials(creds);
+    bucketAdminStub = BucketAdminGrpc.newStub(managedChannel).withCallCredentials(creds);
   }
 
   private ManagedChannel channel() {
@@ -314,6 +318,12 @@ public class ProtostellarEndpoint {
     return kvStub;
   }
 
+  public CollectionAdminGrpc.CollectionAdminFutureStub collectionAdminStub() {
+    return collectionAdminStub;
+  }
+  public CollectionAdminGrpc.CollectionAdminBlockingStub collectionAdminBlockingStub() {
+    return collectionAdminBlockingStub;
+  }
   public KvGrpc.KvBlockingStub kvBlockingStub() {
     return kvBlockingStub;
   }

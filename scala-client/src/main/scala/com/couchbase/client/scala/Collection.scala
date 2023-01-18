@@ -17,6 +17,7 @@
 package com.couchbase.client.scala
 
 import com.couchbase.client.core.annotation.Stability.Volatile
+import com.couchbase.client.core.error.DocumentNotFoundException
 import com.couchbase.client.scala.codec._
 import com.couchbase.client.scala.datastructures._
 import com.couchbase.client.scala.durability.Durability
@@ -24,17 +25,22 @@ import com.couchbase.client.scala.durability.Durability._
 import com.couchbase.client.scala.kv._
 import com.couchbase.client.scala.util.TimeoutUtil
 
+import java.util.concurrent.CompletionException
 import scala.collection.compat.immutable.LazyList
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
-import scala.util.control.NonFatal
-import scala.util.{Failure, Try}
+import scala.util.control.{Exception, NonFatal, TailCalls}
+import scala.util.{Failure, Success, Try}
 
 object Collection {
   private[scala] def block[T](in: Future[T]): Try[T] = {
     try {
-      Try(Await.result(in, Duration.Inf))
+      Try(Await.result(in, Duration.Inf)) match {
+        case Failure(err: CompletionException) => Failure(err.getCause)
+        case Failure(err)                      => Failure(err)
+        case Success(value)                    => Try(value)
+      }
     } catch {
       case NonFatal(err) => Failure(err)
     }

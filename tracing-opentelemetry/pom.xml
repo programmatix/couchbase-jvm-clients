@@ -15,11 +15,22 @@
     <name>OpenTelemetry Interoperability</name>
     <description>Provides interoperability with OpenTelemetry</description>
 
+    <properties>
+        <shaded.package.prefix>com.couchbase.client.core.deps.</shaded.package.prefix>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.couchbase.client</groupId>
             <artifactId>core-io</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.couchbase.client</groupId>
+            <artifactId>tracing-opentelemetry-deps</artifactId>
+            <version>1.2.11-SNAPSHOT</version>
+        </dependency>
+
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-api</artifactId>

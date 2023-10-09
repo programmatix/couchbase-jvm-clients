@@ -165,7 +165,7 @@ public class CoreProtostellarKeyValueResponses {
     for (int i = 0; i < response.getSpecsList().size(); i++) {
       CoreSubdocGetCommand original = specs.get(i);
       LookupInResponse.Spec resp = response.getSpecsList().get(i);
-      com.couchbase.client.core.deps.com.google.rpc.Status status = resp.getStatus();
+      com.google.rpc.Status status = resp.getStatus();
       ProtostellarRequestBehaviour behaviour = CoreProtostellarErrorHandlingUtil.convertStatus(core, request, null, status);
 
       boolean isFailedExists = original.type() == SubdocCommandType.EXISTS && resp.getContent().toStringUtf8().equalsIgnoreCase("false");

@@ -17,9 +17,8 @@ package com.couchbase.client.core.api.search.queries;
 
 import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.search.CoreSearchQuery;
-import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.node.ObjectNode;
-import com.couchbase.client.protostellar.search.v1.BooleanFieldQuery;
 import com.couchbase.client.protostellar.search.v1.Query;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import reactor.util.annotation.Nullable;
 
 @Stability.Internal
@@ -45,17 +44,6 @@ public class CoreBooleanFieldQuery extends CoreSearchQuery {
 
   @Override
   public Query asProtostellar() {
-    BooleanFieldQuery.Builder builder = BooleanFieldQuery.newBuilder()
-            .setValue(value);
-
-    if (field != null) {
-      builder.setField(field);
-    }
-
-    if (boost != null) {
-      builder.setBoost(boost.floatValue());
-    }
-
-    return Query.newBuilder().setBooleanFieldQuery(builder).build();
+    return null;
   }
 }

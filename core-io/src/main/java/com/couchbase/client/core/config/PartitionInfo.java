@@ -16,8 +16,8 @@
 
 package com.couchbase.client.core.config;
 
-import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.couchbase.client.core.deps.com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
 import java.util.Arrays;

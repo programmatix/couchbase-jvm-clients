@@ -27,49 +27,51 @@
             <artifactId>opentelemetry-grpc-1.6</artifactId>
             <!-- Older versions of Maven (certainly 3.6.3) cannot support "${opentelemetry.version}-alpha" -->
             <version>1.19.0-alpha</version>
+
             <!-- Don't want the transitive dependencies to be shaded into tracing-opentelemetry-deps -->
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>*</groupId>-->
+<!--                    <artifactId>*</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.3.0</version>
-                <configuration>
-                    <relocations>
-                        <!-- For tracing-opentelemetry, we need to combine the user's unshaded OpenTelemetry object, with a shaded
-                         ManagedChannelBuilder, via the GRPC instrumentation library.  The only solution that works is to
-                         a) include the instrumentation library in a separate tracing-opentelemeytry-deps so it can be shaded, and b) shade
-                         only these packages - so that the shaded instrumentation library continues to depend on unshaded io.opentelemetry.OpenTelemetry -->
-                        <relocation>
-                            <pattern>io.opentelemetry.instrumentation.grpc</pattern>
-                            <shadedPattern>${shaded.package.prefix}io.opentelemetry.instrumentation.grpc</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>io.grpc</pattern>
-                            <shadedPattern>${shaded.package.prefix}io.grpc</shadedPattern>
-                        </relocation>
-                    </relocations>
-                    <createSourcesJar>true</createSourcesJar>
-                    <shadeSourcesContent>true</shadeSourcesContent>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!-- Commented out of deshadowed build -->
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-shade-plugin</artifactId>-->
+<!--                <version>3.3.0</version>-->
+<!--                <configuration>-->
+<!--                    <relocations>-->
+<!--                        &lt;!&ndash; For tracing-opentelemetry, we need to combine the user's unshaded OpenTelemetry object, with a shaded-->
+<!--                         ManagedChannelBuilder, via the GRPC instrumentation library.  The only solution that works is to-->
+<!--                         a) include the instrumentation library in a separate tracing-opentelemeytry-deps so it can be shaded, and b) shade-->
+<!--                         only these packages - so that the shaded instrumentation library continues to depend on unshaded io.opentelemetry.OpenTelemetry &ndash;&gt;-->
+<!--                        <relocation>-->
+<!--                            <pattern>io.opentelemetry.instrumentation.grpc</pattern>-->
+<!--                            <shadedPattern>${shaded.package.prefix}io.opentelemetry.instrumentation.grpc</shadedPattern>-->
+<!--                        </relocation>-->
+<!--                        <relocation>-->
+<!--                            <pattern>io.grpc</pattern>-->
+<!--                            <shadedPattern>${shaded.package.prefix}io.grpc</shadedPattern>-->
+<!--                        </relocation>-->
+<!--                    </relocations>-->
+<!--                    <createSourcesJar>true</createSourcesJar>-->
+<!--                    <shadeSourcesContent>true</shadeSourcesContent>-->
+<!--                </configuration>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <phase>package</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>shade</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
     </build>
 

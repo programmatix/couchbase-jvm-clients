@@ -29,9 +29,9 @@ import com.couchbase.client.core.api.query.CoreQueryScanConsistency;
 import com.couchbase.client.core.api.query.CoreReactiveQueryResult;
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.TracingIdentifiers;
-import com.couchbase.client.core.deps.com.fasterxml.jackson.core.JsonProcessingException;
-import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.JsonNode;
-import com.couchbase.client.core.deps.com.google.protobuf.ByteString;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.protobuf.ByteString;
 import com.couchbase.client.core.error.InvalidArgumentException;
 import com.couchbase.client.core.error.context.ReducedQueryErrorContext;
 import com.couchbase.client.core.json.Mapper;
@@ -282,7 +282,7 @@ public class ProtostellarCoreQueryOps implements CoreQueryOps {
       if (tuning == null) {
         tuning = QueryRequest.TuningOptions.newBuilder();
       }
-      tuning.setScanWait(com.couchbase.client.core.deps.com.google.protobuf.Duration.newBuilder().setSeconds(TimeUnit.NANOSECONDS.toSeconds(opts.scanWait().toNanos())));
+      tuning.setScanWait(com.google.protobuf.Duration.newBuilder().setSeconds(TimeUnit.NANOSECONDS.toSeconds(opts.scanWait().toNanos())));
     }
 
     if (opts.maxParallelism() != null) {

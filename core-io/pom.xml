@@ -98,40 +98,40 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>${maven-shade-plugin.version}</version>
-                <configuration>
-                    <createSourcesJar>true</createSourcesJar>
-                    <shadeSourcesContent>true</shadeSourcesContent>
-                    <artifactSet>
-                        <includes>
-                            <include>com.couchbase.client:core-io-deps</include>
-                        </includes>
-                    </artifactSet>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.DontIncludeResourceTransformer">
-                                    <resources>
-                                        <resource>META-INF/services/com.fasterxml.jackson.core.JsonFactory</resource>
-                                        <resource>META-INF/services/com.fasterxml.jackson.core.ObjectCodec</resource>
-                                        <resource>META-INF/services/com.fasterxml.jackson.databind.Module</resource>
-                                    </resources>
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                <artifactId>maven-shade-plugin</artifactId>-->
+            <!--                <version>${maven-shade-plugin.version}</version>-->
+            <!--                <configuration>-->
+            <!--                    <createSourcesJar>true</createSourcesJar>-->
+            <!--                    <shadeSourcesContent>true</shadeSourcesContent>-->
+            <!--                    <artifactSet>-->
+            <!--                        <includes>-->
+            <!--                            <include>com.couchbase.client:core-io-deps</include>-->
+            <!--                        </includes>-->
+            <!--                    </artifactSet>-->
+            <!--                </configuration>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <phase>package</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>shade</goal>-->
+            <!--                        </goals>-->
+            <!--                        <configuration>-->
+            <!--                            <transformers>-->
+            <!--                                <transformer-->
+            <!--                                        implementation="org.apache.maven.plugins.shade.resource.DontIncludeResourceTransformer">-->
+            <!--                                    <resources>-->
+            <!--                                        <resource>META-INF/services/com.fasterxml.jackson.core.JsonFactory</resource>-->
+            <!--                                        <resource>META-INF/services/com.fasterxml.jackson.core.ObjectCodec</resource>-->
+            <!--                                        <resource>META-INF/services/com.fasterxml.jackson.databind.Module</resource>-->
+            <!--                                    </resources>-->
+            <!--                                </transformer>-->
+            <!--                            </transformers>-->
+            <!--                        </configuration>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -215,8 +215,8 @@
                 <version>3.2.0</version>
                 <configuration>
                     <archive>
-			<!-- the MANIFEST.MF does not exist until after the felix plugin runs, and felix plugin would have to run
-			 *after* this plugin to have the shaded classes for the Import/Exports -->
+                        <!-- the MANIFEST.MF does not exist until after the felix plugin runs, and felix plugin would have to run
+                         *after* this plugin to have the shaded classes for the Import/Exports -->
                         <!-- <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile> -->
                         <manifestEntries>
                             <Build-Time>${maven.build.timestamp}</Build-Time>
@@ -234,17 +234,17 @@
                         </manifestSections>
                     </archive>
                 </configuration>
-		<!-- this would be used when not using <packaging>bundle</> see java-client/pom.xml.  
-                <executions>
-                    <execution>
-                        <id>bundle-manifest</id>
-                        <phase>process-classes</phase>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-		-->
+                <!-- this would be used when not using <packaging>bundle</> see java-client/pom.xml.
+                        <executions>
+                            <execution>
+                                <id>bundle-manifest</id>
+                                <phase>process-classes</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                -->
             </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>

@@ -221,126 +221,135 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.3.0</version>
-                <configuration>
-                    <relocations>
-                        <relocation>
-                            <pattern>io.netty</pattern>
-                            <shadedPattern>${shaded.package.prefix}io.netty</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>com.fasterxml.jackson</pattern>
-                            <shadedPattern>${shaded.package.prefix}com.fasterxml.jackson</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>org.iq80.snappy</pattern>
-                            <shadedPattern>${shaded.package.prefix}org.iq80.snappy</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>org.LatencyUtils</pattern>
-                            <shadedPattern>${shaded.package.prefix}org.LatencyUtils</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>org.HdrHistogram</pattern>
-                            <shadedPattern>${shaded.package.prefix}org.HdrHistogram</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>org.jctools</pattern>
-                            <shadedPattern>${shaded.package.prefix}org.jctools</shadedPattern>
-                        </relocation>
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                <artifactId>maven-shade-plugin</artifactId>-->
+            <!--                <version>3.3.0</version>-->
+            <!--                <configuration>-->
+            <!--                    <relocations>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>io.netty</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}io.netty</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>com.fasterxml.jackson</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}com.fasterxml.jackson</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>org.iq80.snappy</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}org.iq80.snappy</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>org.LatencyUtils</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}org.LatencyUtils</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>org.HdrHistogram</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}org.HdrHistogram</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>org.jctools</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}org.jctools</shadedPattern>-->
+            <!--                        </relocation>-->
 
-                        <!-- gRPC and associated cruft -->
-                        <relocation>
-                            <pattern>io.grpc</pattern>
-                            <shadedPattern>${shaded.package.prefix}io.grpc</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>com.google</pattern>
-                            <shadedPattern>${shaded.package.prefix}com.google</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>io.perfmark</pattern>
-                            <shadedPattern>${shaded.package.prefix}io.perfmark</shadedPattern>
-                        </relocation>
-                    </relocations>
-                    <transformers>
-                        <!-- Required for gRPC -->
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+            <!--                        &lt;!&ndash; gRPC and associated cruft &ndash;&gt;-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>io.grpc</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}io.grpc</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>com.google</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}com.google</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>io.perfmark</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}io.perfmark</shadedPattern>-->
+            <!--                        </relocation>-->
 
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.epoll-x86_64.original}</file>
-                            <resource>META-INF/native/${native.epoll-x86_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.epoll-aarch_64.original}</file>
-                            <resource>META-INF/native/${native.epoll-aarch_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.kqueue-x86_64.original}</file>
-                            <resource>META-INF/native/${native.kqueue-x86_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.kqueue-aarch_64.original}</file>
-                            <resource>META-INF/native/${native.kqueue-aarch_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.tcnative-linux-x86_64.original}</file>
-                            <resource>META-INF/native/${native.tcnative-linux-x86_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.tcnative-linux-aarch_64.original}</file>
-                            <resource>META-INF/native/${native.tcnative-linux-aarch_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.tcnative-osx-x86_64.original}</file>
-                            <resource>META-INF/native/${native.tcnative-osx-x86_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.tcnative-osx-aarch_64.original}</file>
-                            <resource>META-INF/native/${native.tcnative-osx-aarch_64.renamed}</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                            <file>${native.folder}/META-INF/native/${native.tcnative-windows-x86_64.original}</file>
-                            <resource>META-INF/native/${native.tcnative-windows-x86_64.renamed}</resource>
-                        </transformer>
-                    </transformers>
-                    <filters>
-                        <filter>
-                            <artifact>*:*</artifact>
-                            <excludes>
-                                <!-- gRPC: Don't want *.proto for common classes, since they're shaded -->
-                                <exclude>google/</exclude>
+            <!--                        &lt;!&ndash; For tracing-opentelemetry, we need to combine the user's unshaded OpenTelemetry object, with a shaded-->
+            <!--                         ManagedChannelBuilder, via the GRPC instrumentation library.  The only solution that works is to-->
+            <!--                         a) include the instrumentation library in core-io-deps so it can be shaded, and b) shade-->
+            <!--                         only these - so that the shaded instrumentation library continues to depend on unshaded io.opentelemetry.OpenTelemetry &ndash;&gt;-->
+            <!--                        <relocation>-->
+            <!--                            <pattern>io.opentelemetry.instrumentation.grpc</pattern>-->
+            <!--                            <shadedPattern>${shaded.package.prefix}io.opentelemetry.instrumentation.grpc</shadedPattern>-->
+            <!--                        </relocation>-->
+            <!--                    </relocations>-->
+            <!--                    <transformers>-->
+            <!--                        &lt;!&ndash; Required for gRPC &ndash;&gt;-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
 
-                                <resource>META-INF/services/reactor.blockhound.integration.BlockHoundIntegration</resource>
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.epoll-x86_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.epoll-x86_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.epoll-aarch_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.epoll-aarch_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.kqueue-x86_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.kqueue-x86_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.kqueue-aarch_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.kqueue-aarch_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.tcnative-linux-x86_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.tcnative-linux-x86_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.tcnative-linux-aarch_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.tcnative-linux-aarch_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.tcnative-osx-x86_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.tcnative-osx-x86_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.tcnative-osx-aarch_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.tcnative-osx-aarch_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">-->
+            <!--                            <file>${native.folder}/META-INF/native/${native.tcnative-windows-x86_64.original}</file>-->
+            <!--                            <resource>META-INF/native/${native.tcnative-windows-x86_64.renamed}</resource>-->
+            <!--                        </transformer>-->
+            <!--                    </transformers>-->
+            <!--                    <filters>-->
+            <!--                        <filter>-->
+            <!--                            <artifact>*:*</artifact>-->
+            <!--                            <excludes>-->
+            <!--                                &lt;!&ndash; gRPC: Don't want *.proto for common classes, since they're shaded &ndash;&gt;-->
+            <!--                                <exclude>google/</exclude>-->
 
-                                <!-- Workaround for Shade plugin bug that causes module-info.class files in META-INF/versions
-                                     to be retained. -->
-                                <exclude>**/module-info.class</exclude>
+            <!--                                <resource>META-INF/services/reactor.blockhound.integration.BlockHoundIntegration</resource>-->
 
-                                <!-- Workaround for https://issues.apache.org/jira/browse/MSHADE-406
-                                     Shade plugin doesn't fully relocate classes that live here.
-                                     (The bytecode gets rewritten, but the filename does not.)
-                                     Assume these classes are just optimizations that take advantage of
-                                     features in newer version of Java; exclude them for now. -->
-                                <exclude>META-INF/versions/**</exclude>
-                            </excludes>
-                        </filter>
-                    </filters>
-                    <createSourcesJar>true</createSourcesJar>
-                    <shadeSourcesContent>true</shadeSourcesContent>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--                                &lt;!&ndash; Workaround for Shade plugin bug that causes module-info.class files in META-INF/versions-->
+            <!--                                     to be retained. &ndash;&gt;-->
+            <!--                                <exclude>**/module-info.class</exclude>-->
+
+            <!--                                &lt;!&ndash; Workaround for https://issues.apache.org/jira/browse/MSHADE-406-->
+            <!--                                     Shade plugin doesn't fully relocate classes that live here.-->
+            <!--                                     (The bytecode gets rewritten, but the filename does not.)-->
+            <!--                                     Assume these classes are just optimizations that take advantage of-->
+            <!--                                     features in newer version of Java; exclude them for now. &ndash;&gt;-->
+            <!--                                <exclude>META-INF/versions/**</exclude>-->
+            <!--                            </excludes>-->
+            <!--                        </filter>-->
+            <!--                    </filters>-->
+            <!--                    <createSourcesJar>true</createSourcesJar>-->
+            <!--                    <shadeSourcesContent>true</shadeSourcesContent>-->
+            <!--                </configuration>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <phase>package</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>shade</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
         </plugins>
     </build>
 

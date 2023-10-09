@@ -18,7 +18,8 @@ package com.couchbase.client.tracing.opentelemetry;
 
 import com.couchbase.client.core.cnc.RequestSpan;
 import com.couchbase.client.core.cnc.RequestTracer;
-import com.couchbase.client.core.deps.io.opentelemetry.instrumentation.grpc.v1_6.GrpcTelemetry;
+import io.grpc.ClientInterceptor;
+import io.grpc.ManagedChannelBuilder;
 import com.couchbase.client.core.env.CoreEnvironment;
 import com.couchbase.client.core.error.TracerException;
 import com.couchbase.client.core.protostellar.GrpcAwareRequestTracer;
@@ -139,9 +140,9 @@ public class OpenTelemetryRequestTracer implements RequestTracer, GrpcAwareReque
   public RequestSpan requestSpan(String operationName, RequestSpan parent) {
     try {
       SpanBuilder spanBuilder = tracer.spanBuilder(operationName)
-              // Per https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/database.md
-              // Span kind: MUST always be CLIENT.
-              .setSpanKind(SpanKind.CLIENT);
+        // Per https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/database.md
+        // Span kind: MUST always be CLIENT.
+        .setSpanKind(SpanKind.CLIENT);
       Context parentContext = Context.current();
       if (parent != null) {
         parentContext = parentContext.with(castSpan(parent));
@@ -164,11 +165,11 @@ public class OpenTelemetryRequestTracer implements RequestTracer, GrpcAwareReque
   }
 
   @Override
-  public void registerGrpc(com.couchbase.client.core.deps.io.grpc.ManagedChannelBuilder<?> builder) {
+  public void registerGrpc(io.grpc.ManagedChannelBuilder<?> builder) {
     if (openTelemetry != null) {
-      com.couchbase.client.core.deps.io.opentelemetry.instrumentation.grpc.v1_6.GrpcTelemetry grpcTelemetry =
-        GrpcTelemetry.create(openTelemetry);
-      com.couchbase.client.core.deps.io.grpc.ClientInterceptor interceptor = grpcTelemetry.newClientInterceptor();
+      io.opentelemetry.instrumentation.grpc.v1_6.GrpcTelemetry grpcTelemetry =
+        io.opentelemetry.instrumentation.grpc.v1_6.GrpcTelemetry.create(openTelemetry);
+      io.grpc.ClientInterceptor interceptor = grpcTelemetry.newClientInterceptor();
 
       builder.intercept(interceptor);
     }

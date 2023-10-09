@@ -21,7 +21,7 @@ import com.couchbase.client.core.annotation.Stability;
 import com.couchbase.client.core.api.kv.CoreKvOps;
 import com.couchbase.client.core.api.kv.CoreSubdocGetCommand;
 import com.couchbase.client.core.api.kv.CoreSubdocGetResult;
-import com.couchbase.client.core.deps.io.grpc.Metadata;
+import io.grpc.Metadata;
 import com.couchbase.client.core.error.CouchbaseException;
 import com.couchbase.client.core.error.TimeoutException;
 import com.couchbase.client.core.error.context.ReducedKeyValueErrorContext;

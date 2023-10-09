@@ -17,8 +17,8 @@
 package com.couchbase.client.java.query;
 
 import com.couchbase.client.core.annotation.Stability;
-import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.node.ArrayNode;
-import com.couchbase.client.core.deps.com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.couchbase.client.core.json.Mapper;
 import com.couchbase.client.java.json.JsonArray;
 import com.couchbase.client.java.json.JsonObject;

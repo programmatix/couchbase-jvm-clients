@@ -225,7 +225,7 @@ public class HealthPinger {
   }
 
   private static String format(NodeIdentifier id) {
-      return new HostAndPort(id.address(), id.managerPort()).format();
+    return new HostAndPort(id.address(), id.managerPort()).format();
   }
 
   /**

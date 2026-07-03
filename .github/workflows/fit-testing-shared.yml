@@ -1,15 +1,19 @@
-name: Run FIT (Internal/Shared)
+name: Run FIT Testing (Internal/Shared)
 
 on:
   workflow_dispatch:
     inputs:
       preset:
         description: FIT preset type to generate and execute.  (`fit definition list-presets`)
-        default: qe-set
+        required: true
         type: string
+      collect_extra_diagnostics:
+        description: Collect additional diagnostics (includes cbcollect, is slower)
+        default: true
+        type: boolean
       performer_image_name:
         description: Performer image name to use e.g. "java-fit-performer:main".
-        default: java-fit-performer:main
+        required: true
         type: string
       fit_cli_channel:
         description: fit-cli install channel. ("latest" or "ci")
@@ -22,6 +26,11 @@ on:
         description: FIT preset type to generate and execute.  (`fit definition list-presets`)
         required: true
         type: string
+      collect_extra_diagnostics:
+        description: Collect additional diagnostics (includes cbcollect, is slower)
+        required: false
+        type: boolean
+        default: true
       performer_image_name:
         description: Performer image name to use e.g. "java-fit-performer:main".
         required: true
@@ -36,9 +45,10 @@ permissions:
   id-token: write   # required for GitHub OIDC
 
 jobs:
-  run-fit-preset:
+  run-fit:
     runs-on: ubuntu-latest
     steps:
+      # Assume the AWS role 'fit-cli-role' from account 'cb-sdk' (958525475024), as this has all required AWS permissions.
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -51,5 +61,11 @@ jobs:
 
       - name: Run fit-cli
         run: |
-          curl -fsSL https://raw.githubusercontent.com/couchbaselabs/fit-cli/main/install.sh | CHANNEL="${{ vars.FIT_CLI_CHANNEL || inputs.fit_cli_channel || 'ci' }}" bash
-          fit run preset "${{ inputs.preset }}" --performer-image-name "${{ inputs.performer_image_name }}"
+          curl -fsSL https://raw.githubusercontent.com/couchbaselabs/fit-cli/main/install.sh | CHANNEL="${{ inputs.fit_cli_channel }}" bash
+
+          args=(preset "${{ inputs.preset }}" --performer "${{ inputs.performer_image_name }}")
+          if [[ "${{ inputs.collect_extra_diagnostics }}" == "true" ]]; then
+            args+=(--cbcollect)
+          fi
+
+          fit run "${args[@]}"

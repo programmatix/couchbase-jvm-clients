@@ -10,7 +10,7 @@ on:
         description: FIT preset to run.
         required: false
         type: string
-        default: qe-set
+        default: functional,situational-everything,cng-situational,cng-functional,private-endpoint-everything
       collect_extra_diagnostics:
         description: Collect additional diagnostics (includes cbcollect, is slower)
         required: false

@@ -45,30 +45,22 @@ permissions:
   id-token: write   # required for GitHub OIDC
 
 jobs:
-  create-preset-matrix:
+  preset-matrix:
     runs-on: ubuntu-latest
     outputs:
       presets: ${{ steps.presets.outputs.presets }}
     steps:
-      - name: Create preset matrix
+      - name: Preset matrix
         id: presets
         shell: bash
         run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-
-          presets = [preset.strip() for preset in os.environ["PRESETS"].split(",") if preset.strip()]
-          if not presets:
-              raise SystemExit("No FIT presets specified")
-
-          print(f"presets={json.dumps(presets)}")
-          PY
+          presets="[\"${PRESETS//,/\",\"}\"]"
+          echo "presets=$presets" >> "$GITHUB_OUTPUT"
         env:
           PRESETS: ${{ inputs.preset }}
 
   run-fit:
-    needs: create-preset-matrix
+    needs: preset-matrix
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

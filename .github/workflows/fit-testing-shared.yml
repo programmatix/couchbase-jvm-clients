@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       preset:
-        description: FIT preset type to generate and execute.  (`fit definition list-presets`)
+        description: FIT preset type(s) to generate and execute, comma-separated.  (`fit definition list-presets`)
         required: true
         type: string
       collect_extra_diagnostics:
@@ -23,7 +23,7 @@ on:
   workflow_call:
     inputs:
       preset:
-        description: FIT preset type to generate and execute.  (`fit definition list-presets`)
+        description: FIT preset type(s) to generate and execute, comma-separated.  (`fit definition list-presets`)
         required: true
         type: string
       collect_extra_diagnostics:
@@ -45,8 +45,36 @@ permissions:
   id-token: write   # required for GitHub OIDC
 
 jobs:
-  run-fit:
+  create-preset-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      presets: ${{ steps.presets.outputs.presets }}
+    steps:
+      - name: Create preset matrix
+        id: presets
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+
+          presets = [preset.strip() for preset in os.environ["PRESETS"].split(",") if preset.strip()]
+          if not presets:
+              raise SystemExit("No FIT presets specified")
+
+          print(f"presets={json.dumps(presets)}")
+          PY
+        env:
+          PRESETS: ${{ inputs.preset }}
+
+  run-fit:
+    needs: create-preset-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: ${{ fromJson(needs.create-preset-matrix.outputs.presets) }}
+    name: Run FIT (${{ matrix.preset }})
     steps:
       # Assume the AWS role 'fit-cli-role' from account 'cb-sdk' (958525475024), as this has all required AWS permissions.
       - name: Configure AWS credentials via OIDC
@@ -63,7 +91,7 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/couchbaselabs/fit-cli/main/install.sh | CHANNEL="${{ inputs.channel }}" bash
 
-          args=(preset "${{ inputs.preset }}" --performer "${{ inputs.performer }}")
+          args=(preset "${{ matrix.preset }}" --performer "${{ inputs.performer }}")
           if [[ "${{ inputs.collect_extra_diagnostics }}" == "true" ]]; then
             args+=(--cbcollect)
           fi

@@ -2,8 +2,7 @@ name: Run FIT Testing (Scala)
 
 on:
   schedule:
-    # Each day at midnight (UTC)
-    - cron: '0 0 * * *'
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       preset:

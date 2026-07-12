@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       preset:
-        description: FIT preset type(s) to generate and execute, comma-separated.  (`fit definition list-presets`)
+        description: FIT preset(s) and/or preset group(s) to generate and execute, comma-separated. (`fit definition list-presets`)
         required: true
         type: string
       collect_extra_diagnostics:
@@ -20,10 +20,18 @@ on:
         required: false
         type: string
         default: ci
+      fit_cli_ref:
+        description: >
+          Optional couchbaselabs/fit-cli git ref (branch, tag, or `refs/pull/<n>/head`)
+          to build fit-cli from source instead of installing `channel`. For testing a
+          fit-cli branch or PR.
+        required: false
+        type: string
+        default: ''
   workflow_call:
     inputs:
       preset:
-        description: FIT preset type(s) to generate and execute, comma-separated.  (`fit definition list-presets`)
+        description: FIT preset(s) and/or preset group(s) to generate and execute, comma-separated. (`fit definition list-presets`)
         required: true
         type: string
       collect_extra_diagnostics:
@@ -40,6 +48,14 @@ on:
         required: false
         type: string
         default: ci
+      fit_cli_ref:
+        description: >
+          Optional couchbaselabs/fit-cli git ref (branch, tag, or `refs/pull/<n>/head`)
+          to build fit-cli from source instead of installing `channel`. For testing a
+          fit-cli branch or PR.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   id-token: write   # required for GitHub OIDC
@@ -50,11 +66,21 @@ jobs:
     outputs:
       presets: ${{ steps.presets.outputs.presets }}
     steps:
+      - uses: actions/checkout@v4
+
+      # Expands any preset group names (e.g. "qe-release") in $PRESETS into their
+      # member presets, so the matrix below only ever sees concrete preset names.
+      - name: Install fit-cli
+        uses: ./.github/actions/install-fit-cli
+        with:
+          channel: ${{ inputs.channel }}
+          ref: ${{ inputs.fit_cli_ref }}
+
       - name: Preset matrix
         id: presets
         shell: bash
         run: |
-          presets="[\"${PRESETS//,/\",\"}\"]"
+          presets=$(fit definition expand-preset-group "$PRESETS" --json)
           echo "presets=$presets" >> "$GITHUB_OUTPUT"
         env:
           PRESETS: ${{ inputs.preset }}
@@ -65,9 +91,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: ${{ fromJson(needs.create-preset-matrix.outputs.presets) }}
+        preset: ${{ fromJson(needs.preset-matrix.outputs.presets) }}
     name: Run FIT (${{ matrix.preset }})
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Install fit-cli
+        uses: ./.github/actions/install-fit-cli
+        with:
+          channel: ${{ inputs.channel }}
+          ref: ${{ inputs.fit_cli_ref }}
+
       # Assume the AWS role 'fit-cli-role' from account 'cb-sdk' (958525475024), as this has all required AWS permissions.
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v6
@@ -81,8 +115,6 @@ jobs:
 
       - name: Run fit-cli
         run: |
-          curl -fsSL https://raw.githubusercontent.com/couchbaselabs/fit-cli/main/install.sh | CHANNEL="${{ inputs.channel }}" bash
-
           args=(preset "${{ matrix.preset }}" --performer "${{ inputs.performer }}")
           if [[ "${{ inputs.collect_extra_diagnostics }}" == "true" ]]; then
             args+=(--cbcollect)

@@ -20,6 +20,14 @@ on:
         required: false
         type: string
         default: ci
+      fit_cli_ref:
+        description: >
+          Optional couchbaselabs/fit-cli git ref (branch, tag, or `refs/pull/<n>/head`)
+          to build fit-cli from source instead of installing `channel`. For testing a
+          fit-cli branch or PR.
+        required: false
+        type: string
+        default: ''
   workflow_call:
     inputs:
       collect_extra_diagnostics:
@@ -32,6 +40,14 @@ on:
         required: false
         type: string
         default: ci
+      fit_cli_ref:
+        description: >
+          Optional couchbaselabs/fit-cli git ref (branch, tag, or `refs/pull/<n>/head`)
+          to build fit-cli from source instead of installing `channel`. For testing a
+          fit-cli branch or PR.
+        required: false
+        type: string
+        default: ''
 
 jobs:
   run-fit-java:
@@ -41,3 +57,4 @@ jobs:
       collect_extra_diagnostics: ${{ inputs.collect_extra_diagnostics }}
       performer: 'columnar-java-fit-performer:main'
       channel: ${{ vars.FIT_CLI_CHANNEL || inputs.channel }}
+      fit_cli_ref: ${{ inputs.fit_cli_ref }}

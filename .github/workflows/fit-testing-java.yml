@@ -10,7 +10,7 @@ on:
         description: FIT preset(s) and/or preset group(s) to run.
         required: false
         type: string
-        default: op-multi-release
+        default: op-multi-lite
       collect_extra_diagnostics:
         description: Collect additional diagnostics (includes cbcollect, is slower)
         required: false

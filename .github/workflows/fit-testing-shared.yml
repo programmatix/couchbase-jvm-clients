@@ -67,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         preset: ${{ fromJson(needs.preset-matrix.outputs.presets) }}
-    name: Run FIT (${{ matrix.preset }})
+    name: ${{ matrix.preset }}
     steps:
       # Assume the AWS role 'fit-cli-role' from account 'cb-sdk' (958525475024), as this has all required AWS permissions.
       - name: Configure AWS credentials via OIDC

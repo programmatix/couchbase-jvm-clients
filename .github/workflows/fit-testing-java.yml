@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       preset:
-        description: FIT preset(s) and/or preset group(s) to run.
+        description: FIT presets or preset groups to run, comma-separated. (`fit preset list`)
         required: false
         type: string
         default: op-multi-lite

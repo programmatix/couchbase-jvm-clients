@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       preset:
-        description: FIT preset(s) and/or preset group(s) to generate and execute, comma-separated. (`fit definition list-presets`)
+        description: FIT presets or preset groups to run, comma-separated. (`fit preset list`)
         required: true
         type: string
       collect_extra_diagnostics:
@@ -23,7 +23,7 @@ on:
   workflow_call:
     inputs:
       preset:
-        description: FIT preset(s) and/or preset group(s) to generate and execute, comma-separated. (`fit definition list-presets`)
+        description: FIT preset(s) and/or preset group(s) to generate and execute, comma-separated. (`fit preset list`)
         required: true
         type: string
       collect_extra_diagnostics:

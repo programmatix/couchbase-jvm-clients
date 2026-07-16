@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       preset:
-        description: FIT preset to run.
+        description: FIT presets or preset groups to run, comma-separated. (`fit preset list`)
         required: false
         type: string
         default: columnar-multi-lite

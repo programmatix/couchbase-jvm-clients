@@ -3,7 +3,7 @@ name: Run FIT Testing (Java)
 on:
   schedule:
     # Nb we have hit 429 limits on the `curl https://raw.githubusercontent.com` step, so try to stagger the CI jobs.  Github allows just 60 unauthenticated requests / hour.
-    - cron: '0 5 * * *'
+    - cron: '0 1 * * *'
   workflow_dispatch:
     inputs:
       preset:

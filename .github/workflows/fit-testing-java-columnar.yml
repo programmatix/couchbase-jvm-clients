@@ -35,9 +35,16 @@ on:
 
 jobs:
   run-fit-java:
-    uses: ./.github/workflows/fit-testing-shared.yml
+    # TEST: call the fit-cli reusable workflow directly (cross-repo) instead of the local
+    # fit-testing-shared.yml. This gains JUnit publishing + artifact upload + SHA-pinned actions
+    # and removes the per-repo duplication. Pinned to the test branch until the fit-cli change
+    # merges to main; then switch the ref to @main.
+    uses: couchbaselabs/fit-cli/.github/workflows/fit-cli.yaml@gp-fit-cli-preset-support
     with:
       preset: ${{ vars.FIT_CLI_PRESET || inputs.preset || 'columnar-multi-lite' }}
-      collect_extra_diagnostics: ${{ inputs.collect_extra_diagnostics }}
+      # Guard the empty-string-on-schedule case (mirrors fit-testing-java.yml): passing '' to a
+      # boolean reusable-workflow input is a config-time error.
+      cbcollect: ${{ inputs.collect_extra_diagnostics == '' && true || inputs.collect_extra_diagnostics }}
       performer: 'columnar-java-fit-performer:main'
-      channel: ${{ vars.FIT_CLI_CHANNEL || inputs.channel }}
+      fitCliSource: ${{ vars.FIT_CLI_CHANNEL || inputs.channel }}
+    secrets: inherit

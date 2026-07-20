@@ -33,6 +33,14 @@ on:
         type: string
         default: ci
 
+# A cross-repo reusable workflow can't be granted more than the caller holds, and the callee
+# needs these (id-token for AWS OIDC, checks for JUnit). id-token is never in the default token,
+# so it must be granted explicitly here.
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+
 jobs:
   run-fit-java:
     # TEST: call the fit-cli reusable workflow directly (cross-repo) instead of the local

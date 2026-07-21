@@ -28,7 +28,7 @@ permissions:
   checks: write
 
 jobs:
-  run-fit:
+  fit:
     uses: couchbaselabs/fit-cli/.github/workflows/fit-cli.yaml@main
     with:
       preset: ${{ vars.FIT_CLI_PRESET || inputs.preset || 'op-multi-lite' }}

@@ -40,7 +40,7 @@ permissions:
 
 jobs:
   run-fit-java:
-    uses: couchbaselabs/fit-cli/.github/workflows/fit-cli.yaml@gp-fit-cli-preset-support
+    uses: couchbaselabs/fit-cli/.github/workflows/fit-cli.yaml
     with:
       preset: ${{ vars.FIT_CLI_PRESET || inputs.preset || 'columnar-multi-lite' }}
       collect_extra_diagnostics: ${{ inputs.collect_extra_diagnostics == '' && true || inputs.collect_extra_diagnostics }}
